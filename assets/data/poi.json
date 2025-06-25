@@ -1,0 +1,18 @@
+[
+  {
+    "id": "azrieli",
+    "name": "Azrieli Center",
+    "lat": 32.0741,
+    "lon": 34.7924,
+    "description": "A group of three iconic skyscrapers in Tel Aviv...",
+    "audio": "assets/audio/azrieli.mp3"
+  },
+  {
+    "id": "habima",
+    "name": "Habima Theater",
+    "lat": 32.0722,
+    "lon": 34.7798,
+    "description": "National theatre of Israel, located in central Tel Aviv...",
+    "audio": "assets/audio/habima.mp3"
+  }
+]
