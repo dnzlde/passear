@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/poi_service.dart';
 import '../models/poi.dart';
+import '../services/local_tts_service.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -69,30 +70,49 @@ class _MapPageState extends State<MapPage> {
   }
 }
 
-class _PoiDetail extends StatelessWidget {
+class _PoiDetail extends StatefulWidget {
   final Poi poi;
-
   const _PoiDetail({required this.poi});
 
   @override
+  State<_PoiDetail> createState() => _PoiDetailState();
+}
+
+class _PoiDetailState extends State<_PoiDetail> {
+  late final LocalTtsService tts;
+
+  @override
+  void initState() {
+    super.initState();
+    tts = LocalTtsService();
+  }
+
+  @override
+  void dispose() {
+    tts.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final poi = widget.poi;
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Wrap(
         children: [
-          Text(poi.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(poi.name,
+              style:
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text(poi.description),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            icon: const Icon(Icons.play_arrow),
-            label: const Text("Play Audio"),
             onPressed: () {
-              // TODO: trigger audio playback
+              tts.speak(poi.description);
             },
-          ),
+            icon: const Icon(Icons.volume_up),
+            label: const Text("Listen"),
+          )
         ],
       ),
     );
