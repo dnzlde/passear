@@ -23,6 +23,7 @@ class WikipediaPoiService {
 
   Future<List<WikipediaPoi>> fetchNearbyPois(double lat, double lon,
       {int radius = 1000, int limit = 10}) async {
+    if (radius > 10000) radius = 10000;
     final url = Uri.https('$lang.wikipedia.org', '/w/api.php', {
       'action': 'query',
       'format': 'json',

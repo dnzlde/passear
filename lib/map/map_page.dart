@@ -67,7 +67,17 @@ class _MapPageState extends State<MapPage> {
     final centerLat = (bounds.north + bounds.south) / 2;
     final centerLon = (bounds.east + bounds.west) / 2;
 
-    final pois = await _poiService.fetchNearby(centerLat, centerLon);
+    // approximate radius by vertical distance
+    final distance = const Distance();
+    final radius = (distance.as(
+              LengthUnit.Meter,
+              LatLng(bounds.north, centerLon),
+              LatLng(bounds.south, centerLon),
+            ) /
+            2)
+        .round();
+
+    final pois = await _poiService.fetchNearby(centerLat, centerLon, radius: radius);
 
     setState(() {
       _pois = pois;
