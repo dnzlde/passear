@@ -1,11 +1,22 @@
-import 'dart:convert';
-import 'package:flutter/services.dart' show rootBundle;
+// lib/services/poi_service.dart
 import '../models/poi.dart';
+import 'wikipedia_poi_service.dart';
 
 class PoiService {
-  Future<List<Poi>> loadPoi() async {
-    final jsonStr = await rootBundle.loadString('assets/data/poi.json');
-    final List<dynamic> jsonList = json.decode(jsonStr);
-    return jsonList.map((e) => Poi.fromJson(e)).toList();
+  final WikipediaPoiService _wikiService = WikipediaPoiService();
+
+  Future<List<Poi>> fetchNearby(double lat, double lon) async {
+    final wikiPois = await _wikiService.fetchNearbyWithDescriptions(lat, lon);
+
+    return wikiPois.map((wikiPoi) {
+      return Poi(
+        id: wikiPoi.title, // используем title как ID
+        name: wikiPoi.title,
+        lat: wikiPoi.lat,
+        lon: wikiPoi.lon,
+        description: wikiPoi.description ?? '',
+        audio: '', // позже можно будет сгенерировать/добавить
+      );
+    }).toList();
   }
 }

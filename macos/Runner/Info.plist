@@ -33,5 +33,9 @@
 			<key>NSAllowsArbitraryLoads</key>
 			<true />
 		</dict>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>We use your location to show nearby places of interest.</string>
+		<key>NSLocationUsageDescription</key>
+		<string>We use your location to show nearby places of interest.</string>
 	</dict>
 </plist>

@@ -1,9 +1,11 @@
+// lib/map/map_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../services/poi_service.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/poi.dart';
-import '../services/local_tts_service.dart';
+import '../services/poi_service.dart';
+import 'wiki_poi_detail.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -14,105 +16,133 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   List<Poi> _pois = [];
+  final PoiService _poiService = PoiService();
+  LatLng _mapCenter = const LatLng(32.0741, 34.7924); // fallback: Azrieli
+  final MapController _mapController = MapController();
+  DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _isLoadingPois = false;
 
   @override
   void initState() {
     super.initState();
-    _loadPois();
+    _initMap();
   }
 
-  Future<void> _loadPois() async {
-    final pois = await PoiService().loadPoi();
+  Future<LatLng?> _getCurrentLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return null;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return null;
+    }
+    if (permission == LocationPermission.deniedForever) return null;
+
+    final position = await Geolocator.getCurrentPosition();
+    return LatLng(position.latitude, position.longitude);
+  }
+
+  Future<void> _initMap() async {
+    final location = await _getCurrentLocation();
+
+    if (location != null) {
+      _mapCenter = location;
+      _mapController.move(location, 15);
+    }
+
+    await _loadPoisInView();
+  }
+
+  Future<void> _loadPoisInView() async {
+    final now = DateTime.now();
+    if (now.difference(_lastRequestTime).inSeconds < 2) return;
+    _lastRequestTime = now;
+
+    final bounds = _mapController.bounds;
+    if (bounds == null) return;
+
+    setState(() => _isLoadingPois = true);
+
+    final centerLat = (bounds.north + bounds.south) / 2;
+    final centerLon = (bounds.east + bounds.west) / 2;
+
+    final pois = await _poiService.fetchNearby(centerLat, centerLon);
+
     setState(() {
       _pois = pois;
+      _isLoadingPois = false;
     });
+  }
+
+  Future<void> _centerToCurrentLocation() async {
+    final location = await _getCurrentLocation();
+    if (location != null) {
+      _mapController.move(location, 15);
+      await _loadPoisInView();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Passear')),
-      body: FlutterMap(
-        options: MapOptions(
-          center: LatLng(32.0741, 34.7924),
-          zoom: 15,
-          interactionOptions: const InteractionOptions(),
-        ),
+      body: Stack(
         children: [
-          TileLayer(
-            // urlTemplate: 'https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.example.passear',
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              center: _mapCenter,
+              zoom: 15,
+              interactionOptions: const InteractionOptions(),
+              onMapReady: () => _loadPoisInView(),
+              onPositionChanged: (position, hasGesture) {
+                if (hasGesture) _loadPoisInView();
+              },
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.passear',
+              ),
+              MarkerLayer(
+                markers: _pois
+                    .map((poi) => Marker(
+                          width: 40,
+                          height: 40,
+                          point: LatLng(poi.lat, poi.lon),
+                          child: GestureDetector(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                builder: (_) => WikiPoiDetail(poi: poi),
+                              );
+                            },
+                            child: const Icon(Icons.place, color: Colors.blue),
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ],
           ),
-          MarkerLayer(
-            markers: _pois
-                .map(
-                  (poi) => Marker(
-                    width: 40,
-                    height: 40,
-                    point: LatLng(poi.lat, poi.lon),
-                    child: GestureDetector(
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (_) => _PoiDetail(poi: poi),
-                        );
-                      },
-                      child: const Icon(Icons.location_on, color: Colors.red),
-                    ),
-                  ),
-                )
-                .toList(),
+          if (_isLoadingPois)
+            const Positioned(
+              top: 16,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: FloatingActionButton(
+              onPressed: _centerToCurrentLocation,
+              child: const Icon(Icons.my_location),
+              tooltip: 'Center to my location',
+            ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PoiDetail extends StatefulWidget {
-  final Poi poi;
-  const _PoiDetail({required this.poi});
-
-  @override
-  State<_PoiDetail> createState() => _PoiDetailState();
-}
-
-class _PoiDetailState extends State<_PoiDetail> {
-  late final LocalTtsService tts;
-
-  @override
-  void initState() {
-    super.initState();
-    tts = LocalTtsService();
-  }
-
-  @override
-  void dispose() {
-    tts.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final poi = widget.poi;
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Wrap(
-        children: [
-          Text(poi.name,
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(poi.description),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              tts.speak(poi.description);
-            },
-            icon: const Icon(Icons.volume_up),
-            label: const Text("Listen"),
-          )
         ],
       ),
     );
