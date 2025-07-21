@@ -1,4 +1,4 @@
-// This is a basic Flutter widget test.
+// This is a basic Flutter widget test for the Passear app.
 //
 // To perform an interaction with a widget in your test, use the WidgetTester
 // utility in the flutter_test package. For example, you can send tap and scroll
@@ -11,20 +11,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:passear/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('Passear app loads and shows map page', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const PassearApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that the app shows the Passear title in the app bar.
+    expect(find.text('Passear'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Verify that the location button is present.
+    expect(find.byIcon(Icons.my_location), findsOneWidget);
+    expect(find.byTooltip('Center to my location'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that we have a floating action button for location.
+    expect(find.byType(FloatingActionButton), findsOneWidget);
   });
 }
