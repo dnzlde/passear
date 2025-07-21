@@ -6,6 +6,7 @@
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.6.0%2B-02569B?style=flat&logo=flutter&logoColor=white)](https://flutter.dev/)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-lightgrey?style=flat)](https://github.com/dnzlde/passear)
+[![CI/CD Pipeline](https://github.com/dnzlde/passear/actions/workflows/ci.yml/badge.svg)](https://github.com/dnzlde/passear/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat)](LICENSE)
 [![Contributors](https://img.shields.io/github/contributors/dnzlde/passear?style=flat)](https://github.com/dnzlde/passear/graphs/contributors)
 [![Stars](https://img.shields.io/github/stars/dnzlde/passear?style=social)](https://github.com/dnzlde/passear/stargazers)
@@ -165,6 +166,28 @@
    flutter analyze  # Static analysis
    dart format .    # Code formatting
    ```
+
+### 🔄 CI/CD Pipeline
+
+Our GitHub Actions workflow automatically:
+
+- **🧪 Tests & Analysis**: Runs on every push to `main`/`dev` and PRs to `main`
+  - `flutter test` - Unit and widget tests
+  - `flutter analyze` - Static code analysis  
+  - `dart format --set-exit-if-changed` - Code formatting checks
+  
+- **📱 iOS Builds**: Automated iOS builds on macOS runners
+  - Build without code signing for testing
+  - Generate build artifacts
+  - Ready for TestFlight integration when Apple Developer Account is added
+
+- **🚀 Future Ready**: Prepared structure for:
+  - Android builds (commented template ready)
+  - Fastlane integration for automated deployments
+  - TestFlight/Play Store releases
+
+**Workflow File**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)  
+**Status**: [![CI/CD Pipeline](https://github.com/dnzlde/passear/actions/workflows/ci.yml/badge.svg)](https://github.com/dnzlde/passear/actions/workflows/ci.yml)
 
 ### Project Structure
 ```
