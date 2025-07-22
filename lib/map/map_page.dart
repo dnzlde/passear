@@ -149,8 +149,8 @@ class _MapPageState extends State<MapPage> {
             right: 16,
             child: FloatingActionButton(
               onPressed: _centerToCurrentLocation,
-              child: const Icon(Icons.my_location),
               tooltip: 'Center to my location',
+              child: const Icon(Icons.my_location),
             ),
           ),
         ],

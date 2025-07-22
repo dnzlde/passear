@@ -4,7 +4,7 @@ import '../models/poi.dart';
 
 class WikiPoiDetail extends StatefulWidget {
   final Poi poi;
-  const WikiPoiDetail({required this.poi});
+  const WikiPoiDetail({super.key, required this.poi});
 
   @override
   State<WikiPoiDetail> createState() => _WikiPoiDetailState();

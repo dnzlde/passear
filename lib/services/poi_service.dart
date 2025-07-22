@@ -15,7 +15,7 @@ class PoiService {
         lat: wikiPoi.lat,
         lon: wikiPoi.lon,
         description: wikiPoi.description ?? '',
-        audio: '', // позже можно будет сгенерировать/добавить
+        audio: '', // will be generated/added later
       );
     }).toList();
   }

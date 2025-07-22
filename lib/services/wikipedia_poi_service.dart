@@ -64,7 +64,7 @@ class WikipediaPoiService {
       final data = json.decode(response.body);
       final pages = data['query']['pages'] as Map<String, dynamic>;
       final page = pages.values.first;
-      return page['extract'] ?? null;
+      return page['extract'];
     } else {
       return null;
     }
