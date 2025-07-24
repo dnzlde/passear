@@ -102,8 +102,8 @@ class _MapPageState extends State<MapPage> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              center: _mapCenter,
-              zoom: 15,
+              initialCenter: _mapCenter,
+              initialZoom: 15,
               interactionOptions: const InteractionOptions(),
               onMapReady: () => _loadPoisInView(),
               onPositionChanged: (position, hasGesture) {
