@@ -60,7 +60,6 @@ class _MapPageState extends State<MapPage> {
     _lastRequestTime = now;
 
     final bounds = _mapController.camera.visibleBounds;
-    if (bounds == null) return;
 
     setState(() => _isLoadingPois = true);
 
