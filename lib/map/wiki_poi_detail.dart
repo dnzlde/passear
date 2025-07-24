@@ -28,7 +28,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   @override
   Widget build(BuildContext context) {
     final poi = widget.poi;
-    final description = poi.description ?? 'No description';
+    final description = poi.description;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
