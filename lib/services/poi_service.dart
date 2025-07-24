@@ -1,9 +1,13 @@
 // lib/services/poi_service.dart
 import '../models/poi.dart';
 import 'wikipedia_poi_service.dart';
+import 'api_client.dart';
 
 class PoiService {
-  final WikipediaPoiService _wikiService = WikipediaPoiService();
+  final WikipediaPoiService _wikiService;
+
+  PoiService({ApiClient? apiClient}) 
+      : _wikiService = WikipediaPoiService(apiClient: apiClient);
 
   Future<List<Poi>> fetchNearby(double lat, double lon, {int radius = 1000}) async {
     final wikiPois = await _wikiService.fetchNearbyWithDescriptions(lat, lon, radius: radius);
