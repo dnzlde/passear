@@ -59,7 +59,7 @@ class _MapPageState extends State<MapPage> {
     if (now.difference(_lastRequestTime).inSeconds < 2) return;
     _lastRequestTime = now;
 
-    final bounds = _mapController.bounds;
+    final bounds = _mapController.camera.visibleBounds;
     if (bounds == null) return;
 
     setState(() => _isLoadingPois = true);
@@ -102,8 +102,8 @@ class _MapPageState extends State<MapPage> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              center: _mapCenter,
-              zoom: 15,
+              initialCenter: _mapCenter,
+              initialZoom: 15,
               interactionOptions: const InteractionOptions(),
               onMapReady: () => _loadPoisInView(),
               onPositionChanged: (position, hasGesture) {
