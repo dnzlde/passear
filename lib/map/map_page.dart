@@ -63,25 +63,25 @@ class _MapPageState extends State<MapPage> {
 
     setState(() => _isLoadingPois = true);
 
-    final centerLat = (bounds.north + bounds.south) / 2;
-    final centerLon = (bounds.east + bounds.west) / 2;
+    try {
+      // Use rectangular bounds for precise POI discovery
+      final pois = await _poiService.fetchInBounds(
+        north: bounds.north,
+        south: bounds.south,
+        east: bounds.east,
+        west: bounds.west,
+        maxResults: 20, // Limit to top 20 most interesting POIs
+      );
 
-    // approximate radius by vertical distance
-    final distance = const Distance();
-    final radius = (distance.as(
-              LengthUnit.Meter,
-              LatLng(bounds.north, centerLon),
-              LatLng(bounds.south, centerLon),
-            ) /
-            2)
-        .round();
-
-    final pois = await _poiService.fetchNearby(centerLat, centerLon, radius: radius);
-
-    setState(() {
-      _pois = pois;
-      _isLoadingPois = false;
-    });
+      setState(() {
+        _pois = pois;
+        _isLoadingPois = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingPois = false);
+      // Handle error gracefully - could show a snackbar
+      print('Error loading POIs: $e');
+    }
   }
 
   Future<void> _centerToCurrentLocation() async {
@@ -117,8 +117,8 @@ class _MapPageState extends State<MapPage> {
               MarkerLayer(
                 markers: _pois
                     .map((poi) => Marker(
-                          width: 40,
-                          height: 40,
+                          width: _getMarkerSize(poi.interestLevel),
+                          height: _getMarkerSize(poi.interestLevel),
                           point: LatLng(poi.lat, poi.lon),
                           child: GestureDetector(
                             onTap: () {
@@ -127,7 +127,7 @@ class _MapPageState extends State<MapPage> {
                                 builder: (_) => WikiPoiDetail(poi: poi),
                               );
                             },
-                            child: const Icon(Icons.place, color: Colors.blue),
+                            child: _buildMarkerIcon(poi.interestLevel),
                           ),
                         ))
                     .toList(),
@@ -155,5 +155,56 @@ class _MapPageState extends State<MapPage> {
         ],
       ),
     );
+  }
+
+  double _getMarkerSize(PoiInterestLevel level) {
+    switch (level) {
+      case PoiInterestLevel.high:
+        return 50.0; // Larger for premium POIs
+      case PoiInterestLevel.medium:
+        return 40.0; // Standard size
+      case PoiInterestLevel.low:
+        return 30.0; // Smaller for low-interest POIs
+    }
+  }
+
+  Widget _buildMarkerIcon(PoiInterestLevel level) {
+    switch (level) {
+      case PoiInterestLevel.high:
+        // Premium golden star marker for high-interest POIs
+        return const Icon(
+          Icons.star,
+          color: Colors.amber,
+          size: 40,
+          shadows: [
+            Shadow(
+              offset: Offset(1.0, 1.0),
+              blurRadius: 3.0,
+              color: Color.fromARGB(100, 0, 0, 0),
+            ),
+          ],
+        );
+      case PoiInterestLevel.medium:
+        // Standard blue marker for medium-interest POIs
+        return const Icon(
+          Icons.place,
+          color: Colors.blue,
+          size: 35,
+          shadows: [
+            Shadow(
+              offset: Offset(1.0, 1.0),
+              blurRadius: 2.0,
+              color: Color.fromARGB(100, 0, 0, 0),
+            ),
+          ],
+        );
+      case PoiInterestLevel.low:
+        // Subtle gray marker for low-interest POIs
+        return const Icon(
+          Icons.location_on,
+          color: Colors.grey,
+          size: 25,
+        );
+    }
   }
 }

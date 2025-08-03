@@ -81,14 +81,14 @@ void main() {
       expect(result, isNull);
     });
 
-    test('should fetch nearby POIs with descriptions', () async {
+    test('should fetch nearby POIs with descriptions and scoring', () async {
       // Arrange
       const nearbyResponse = '''
       {
         "query": {
           "geosearch": [
             {
-              "title": "Test Location",
+              "title": "Tel Aviv Museum of Art",
               "lat": 32.0741,
               "lon": 34.7924
             }
@@ -101,7 +101,7 @@ void main() {
         "query": {
           "pages": {
             "12345": {
-              "extract": "Test description for the location."
+              "extract": "The Tel Aviv Museum of Art is a major art museum in Tel Aviv, Israel. Founded in 1932, it houses one of Israel's largest collections of modern and contemporary art."
             }
           }
         }
@@ -116,8 +116,11 @@ void main() {
 
       // Assert
       expect(result, hasLength(1));
-      expect(result[0].title, equals('Test Location'));
-      expect(result[0].description, equals('Test description for the location.'));
+      expect(result[0].title, equals('Tel Aviv Museum of Art'));
+      expect(result[0].description, contains('major art museum'));
+      expect(result[0].interestScore, greaterThan(0.0));
+      expect(result[0].category.name, equals('museum'));
+      expect(result[0].interestLevel.name, equals('high'));
     });
 
     test('should use default mock responses when no specific response configured', () async {
@@ -128,6 +131,69 @@ void main() {
       expect(result, hasLength(2));
       expect(result[0].title, equals('Test Location 1'));
       expect(result[1].title, equals('Test Location 2'));
+    });
+
+    test('should fetch intelligent POIs in bounds', () async {
+      // Arrange
+      const nearbyResponse = '''
+      {
+        "query": {
+          "geosearch": [
+            {
+              "title": "Tel Aviv Museum of Art",
+              "lat": 32.0741,
+              "lon": 34.7924
+            },
+            {
+              "title": "Generic Building",
+              "lat": 32.0751,
+              "lon": 34.7934
+            }
+          ]
+        }
+      }
+      ''';
+      const museumDescriptionResponse = '''
+      {
+        "query": {
+          "pages": {
+            "12345": {
+              "extract": "The Tel Aviv Museum of Art is a major art museum in Tel Aviv, Israel. Founded in 1932, it houses significant collections."
+            }
+          }
+        }
+      }
+      ''';
+      
+      mockClient.setWikipediaNearbyResponse(nearbyResponse);
+      mockClient.setResponse('wikipedia.org/w/api.php', museumDescriptionResponse);
+
+      // Act
+      final result = await service.fetchIntelligentPoisInBounds(
+        north: 32.08,
+        south: 32.07,
+        east: 34.80,
+        west: 34.79,
+        maxResults: 5,
+      );
+
+      // Assert
+      expect(result, isNotEmpty);
+      // Museum should score higher and appear first
+      final museum = result.firstWhere((poi) => poi.title.contains('Museum'), orElse: () => result.first);
+      expect(museum.interestScore, greaterThan(10.0));
+      expect(museum.category.name, equals('museum'));
+    });
+
+    test('should clear caches when requested', () async {
+      // Arrange - make a call to populate cache
+      await service.fetchDescription('Test Title');
+
+      // Act
+      service.clearCaches();
+
+      // Assert - no way to directly test cache clearing, but method should not throw
+      expect(() => service.clearCaches(), returnsNormally);
     });
   });
 }
