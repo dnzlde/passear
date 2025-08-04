@@ -4,7 +4,8 @@ import '../models/poi.dart';
 
 class WikiPoiDetail extends StatefulWidget {
   final Poi poi;
-  const WikiPoiDetail({super.key, required this.poi});
+  final ScrollController? scrollController;
+  const WikiPoiDetail({super.key, required this.poi, this.scrollController});
 
   @override
   State<WikiPoiDetail> createState() => _WikiPoiDetailState();
@@ -30,41 +31,61 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     final poi = widget.poi;
     final description = poi.description;
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  poi.name,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle indicator
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              _buildInterestBadge(poi.interestLevel),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (poi.category != PoiCategory.generic)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: Chip(
-                label: Text(_getCategoryDisplayName(poi.category)),
-                backgroundColor: _getCategoryColor(poi.category),
-                labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
             ),
-          Text(description),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () => tts.speak(description),
-            icon: const Icon(Icons.volume_up),
-            label: const Text("Listen"),
-          ),
-        ],
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    poi.name,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                _buildInterestBadge(poi.interestLevel),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (poi.category != PoiCategory.generic)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Chip(
+                  label: Text(_getCategoryDisplayName(poi.category)),
+                  backgroundColor: _getCategoryColor(poi.category),
+                  labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            Text(
+              description,
+              style: const TextStyle(fontSize: 16, height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => tts.speak(description),
+              icon: const Icon(Icons.volume_up),
+              label: const Text("Listen"),
+            ),
+            // Add extra padding at bottom for comfortable scrolling
+            const SizedBox(height: 50),
+          ],
+        ),
       ),
     );
   }
