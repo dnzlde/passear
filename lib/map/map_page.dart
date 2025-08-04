@@ -103,7 +103,10 @@ class _MapPageState extends State<MapPage> {
             options: MapOptions(
               initialCenter: _mapCenter,
               initialZoom: 15,
-              interactionOptions: const InteractionOptions(),
+              interactionOptions: const InteractionOptions(
+                rotationThreshold: 30.0, // Higher threshold makes rotation require more deliberate gestures
+                pinchZoomThreshold: 0.3, // Lower threshold makes zoom more responsive
+              ),
               onMapReady: () => _loadPoisInView(),
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) _loadPoisInView();
@@ -124,7 +127,26 @@ class _MapPageState extends State<MapPage> {
                             onTap: () {
                               showModalBottomSheet(
                                 context: context,
-                                builder: (_) => WikiPoiDetail(poi: poi),
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => DraggableScrollableSheet(
+                                  initialChildSize: 0.4,
+                                  minChildSize: 0.4,
+                                  maxChildSize: 0.9,
+                                  builder: (context, scrollController) => Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: Radius.circular(20),
+                                        topRight: Radius.circular(20),
+                                      ),
+                                    ),
+                                    child: WikiPoiDetail(
+                                      poi: poi,
+                                      scrollController: scrollController,
+                                    ),
+                                  ),
+                                ),
                               );
                             },
                             child: _buildMarkerIcon(poi.interestLevel),
@@ -146,10 +168,23 @@ class _MapPageState extends State<MapPage> {
           Positioned(
             bottom: 16,
             right: 16,
-            child: FloatingActionButton(
-              onPressed: _centerToCurrentLocation,
-              tooltip: 'Center to my location',
-              child: const Icon(Icons.my_location),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  heroTag: "reset_north",
+                  onPressed: () => _mapController.rotate(0.0),
+                  tooltip: 'Reset map orientation to north',
+                  child: const Icon(Icons.navigation),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton(
+                  heroTag: "my_location",
+                  onPressed: _centerToCurrentLocation,
+                  tooltip: 'Center to my location',
+                  child: const Icon(Icons.my_location),
+                ),
+              ],
             ),
           ),
         ],
