@@ -74,8 +74,8 @@ class WikipediaPoiService {
         poi.lon <= east
     ).toList();
 
-    // Fetch descriptions and calculate scores
-    await _enrichPoisWithDescriptionsAndScores(filteredPois);
+    // Only enrich with basic scoring and categories, not descriptions
+    await _enrichPoisBasic(filteredPois);
 
     // Sort by interest score and take top results
     filteredPois.sort((a, b) => b.interestScore.compareTo(a.interestScore));
@@ -195,6 +195,29 @@ class WikipediaPoiService {
       poi.description = await fetchDescription(poi.title);
       poi.interestScore = PoiInterestScorer.calculateScore(poi.title, poi.description);
       poi.category = PoiInterestScorer.determineCategory(poi.title);
+      poi.interestLevel = PoiInterestScorer.determineInterestLevel(poi.interestScore, poi.category);
+    }
+  }
+
+  /// Enrich POIs with basic information (scores, categories) without descriptions
+  /// This is used for initial map loading to improve performance
+  Future<void> _enrichPoisBasic(List<WikipediaPoi> pois) async {
+    for (final poi in pois) {
+      // Calculate score based on title only for basic enrichment
+      poi.interestScore = PoiInterestScorer.calculateScore(poi.title, null);
+      poi.category = PoiInterestScorer.determineCategory(poi.title);
+      poi.interestLevel = PoiInterestScorer.determineInterestLevel(poi.interestScore, poi.category);
+      // Description is null - will be loaded on-demand
+      poi.description = null;
+    }
+  }
+
+  /// Enrich a single POI with its description (for on-demand loading)
+  Future<void> enrichPoiWithDescription(WikipediaPoi poi) async {
+    if (poi.description == null) {
+      poi.description = await fetchDescription(poi.title);
+      // Recalculate score with description for more accurate scoring
+      poi.interestScore = PoiInterestScorer.calculateScore(poi.title, poi.description);
       poi.interestLevel = PoiInterestScorer.determineInterestLevel(poi.interestScore, poi.category);
     }
   }
