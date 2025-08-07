@@ -36,6 +36,7 @@ class PoiService {
         interestScore: wikiPoi.interestScore,
         category: wikiPoi.category,
         interestLevel: wikiPoi.interestLevel,
+        isDescriptionLoaded: wikiPoi.description != null,
       );
     }).toList();
   }
@@ -55,8 +56,24 @@ class PoiService {
         interestScore: wikiPoi.interestScore,
         category: wikiPoi.category,
         interestLevel: wikiPoi.interestLevel,
+        isDescriptionLoaded: wikiPoi.description != null,
       );
     }).toList();
+  }
+
+  /// Fetch description for a specific POI on-demand
+  Future<Poi> fetchPoiDescription(Poi poi) async {
+    if (poi.isDescriptionLoaded) {
+      return poi; // Description already loaded
+    }
+
+    try {
+      final description = await _wikiService.fetchDescription(poi.name);
+      return poi.copyWithDescription(description ?? '');
+    } catch (e) {
+      // If fetching fails, return the original POI
+      return poi;
+    }
   }
 
   /// Clear caches

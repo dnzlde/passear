@@ -28,6 +28,7 @@ class Poi {
   final double interestScore;
   final PoiCategory category;
   final PoiInterestLevel interestLevel;
+  final bool isDescriptionLoaded;
 
   Poi({
     required this.id,
@@ -39,6 +40,7 @@ class Poi {
     this.interestScore = 0.0,
     this.category = PoiCategory.generic,
     this.interestLevel = PoiInterestLevel.low,
+    this.isDescriptionLoaded = true,
   });
 
   factory Poi.fromJson(Map<String, dynamic> json) {
@@ -58,6 +60,7 @@ class Poi {
         (l) => l.name == json['interestLevel'],
         orElse: () => PoiInterestLevel.low,
       ),
+      isDescriptionLoaded: json['isDescriptionLoaded'] ?? true,
     );
   }
 
@@ -72,6 +75,23 @@ class Poi {
       'interestScore': interestScore,
       'category': category.name,
       'interestLevel': interestLevel.name,
+      'isDescriptionLoaded': isDescriptionLoaded,
     };
+  }
+
+  /// Create a copy of this POI with an updated description
+  Poi copyWithDescription(String newDescription) {
+    return Poi(
+      id: id,
+      name: name,
+      lat: lat,
+      lon: lon,
+      description: newDescription,
+      audio: audio,
+      interestScore: interestScore,
+      category: category,
+      interestLevel: interestLevel,
+      isDescriptionLoaded: true,
+    );
   }
 }

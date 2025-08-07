@@ -153,20 +153,8 @@ void main() {
         }
       }
       ''';
-      const museumDescriptionResponse = '''
-      {
-        "query": {
-          "pages": {
-            "12345": {
-              "extract": "The Tel Aviv Museum of Art is a major art museum in Tel Aviv, Israel. Founded in 1932, it houses significant collections."
-            }
-          }
-        }
-      }
-      ''';
       
       mockClient.setWikipediaNearbyResponse(nearbyResponse);
-      mockClient.setResponse('wikipedia.org/w/api.php', museumDescriptionResponse);
 
       // Act
       final result = await service.fetchIntelligentPoisInBounds(
@@ -183,6 +171,8 @@ void main() {
       final museum = result.firstWhere((poi) => poi.title.contains('Museum'), orElse: () => result.first);
       expect(museum.interestScore, greaterThan(10.0));
       expect(museum.category.name, equals('museum'));
+      // Descriptions should not be loaded in intelligent bounds fetching
+      expect(museum.description, isNull);
     });
 
     test('should clear caches when requested', () async {
@@ -194,6 +184,51 @@ void main() {
 
       // Assert - no way to directly test cache clearing, but method should not throw
       expect(() => service.clearCaches(), returnsNormally);
+    });
+
+    test('should enrich single POI with description on demand', () async {
+      // Arrange
+      const mockDescriptionResponse = '''
+      {
+        "query": {
+          "pages": {
+            "12345": {
+              "extract": "This is a detailed description loaded on demand."
+            }
+          }
+        }
+      }
+      ''';
+      mockClient.setResponse('wikipedia.org/w/api.php', mockDescriptionResponse);
+
+      final poi = WikipediaPoi(
+        title: 'Test POI',
+        lat: 32.0741,
+        lon: 34.7924,
+      );
+
+      // Act
+      await service.enrichPoiWithDescription(poi);
+
+      // Assert
+      expect(poi.description, equals('This is a detailed description loaded on demand.'));
+      expect(poi.interestScore, greaterThan(0.0)); // Score should be recalculated
+    });
+
+    test('should skip enrichment if description already exists', () async {
+      // Arrange
+      final poi = WikipediaPoi(
+        title: 'Test POI',
+        lat: 32.0741,
+        lon: 34.7924,
+        description: 'Existing description',
+      );
+
+      // Act
+      await service.enrichPoiWithDescription(poi);
+
+      // Assert
+      expect(poi.description, equals('Existing description')); // Should remain unchanged
     });
   });
 }
