@@ -129,6 +129,7 @@ class _MapPageState extends State<MapPage> {
                                 context: context,
                                 isScrollControlled: true,
                                 backgroundColor: Colors.transparent,
+                                barrierDismissible: true,
                                 builder: (context) => DraggableScrollableSheet(
                                   initialChildSize: 0.4,
                                   minChildSize: 0.4,

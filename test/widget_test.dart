@@ -49,6 +49,36 @@ void main() {
     // The test should not fail with network errors
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('POI modal should be dismissible by tapping outside', (WidgetTester tester) async {
+    // Create a mock API client
+    final mockClient = MockApiClient();
+    
+    // Build the MapPage widget
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MapPageWithPOISupport(apiClient: mockClient),
+      ),
+    );
+
+    // Wait for the widget to render
+    await tester.pumpAndSettle();
+
+    // Tap on a POI marker to open the modal
+    await tester.tap(find.byKey(const Key('poi_marker_test')));
+    await tester.pumpAndSettle();
+
+    // Verify the modal is displayed
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.text('Test POI'), findsOneWidget);
+
+    // Tap outside the modal to dismiss it
+    await tester.tapAt(const Offset(50, 50)); // Tap in top-left corner
+    await tester.pumpAndSettle();
+
+    // Verify the modal is dismissed
+    expect(find.byType(BottomSheet), findsNothing);
+  });
 }
 
 /// Test wrapper for MapPage that accepts a mock API client
@@ -63,6 +93,83 @@ class MapPageWithMockClient extends StatelessWidget {
       appBar: AppBar(title: const Text('Passear')),
       body: const Center(
         child: Text('Map loaded with mock client'),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        tooltip: 'Center to my location',
+        child: const Icon(Icons.my_location),
+      ),
+    );
+  }
+}
+
+/// Test wrapper for MapPage that supports POI modal testing
+class MapPageWithPOISupport extends StatelessWidget {
+  final ApiClient apiClient;
+  
+  const MapPageWithPOISupport({super.key, required this.apiClient});
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Passear')),
+      body: Stack(
+        children: [
+          const Center(
+            child: Text('Map loaded with POI support'),
+          ),
+          Positioned(
+            bottom: 100,
+            left: 100,
+            child: GestureDetector(
+              key: const Key('poi_marker_test'),
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  barrierDismissible: true,
+                  builder: (context) => DraggableScrollableSheet(
+                    initialChildSize: 0.4,
+                    minChildSize: 0.4,
+                    maxChildSize: 0.9,
+                    builder: (context, scrollController) => Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                      ),
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        child: const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Test POI',
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 16),
+                              Text('This is a test POI description.'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+              child: const Icon(
+                Icons.place,
+                color: Colors.blue,
+                size: 35,
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
