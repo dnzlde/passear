@@ -125,6 +125,8 @@ class _MapPageState extends State<MapPage> {
                           point: LatLng(poi.lat, poi.lon),
                           child: GestureDetector(
                             onTap: () {
+                              // Show POI details in a modal bottom sheet
+                              // barrierDismissible: true ensures the modal can be dismissed by tapping outside
                               showModalBottomSheet(
                                 context: context,
                                 isScrollControlled: true,
