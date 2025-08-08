@@ -131,7 +131,7 @@ class _MapPageState extends State<MapPage> {
                                 context: context,
                                 isScrollControlled: true,
                                 backgroundColor: Colors.transparent,
-                                barrierDismissible: true, // allows dismissal by tapping outside
+                                isDismissible: true, // allows dismissal by tapping outside
                                 enableDrag: true,
                                 builder: (context) => DraggableScrollableSheet(
                                   initialChildSize: 0.4,
