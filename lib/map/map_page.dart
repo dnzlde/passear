@@ -21,6 +21,7 @@ class _MapPageState extends State<MapPage> {
   final MapController _mapController = MapController();
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isLoadingPois = false;
+  Poi? _selectedPoi;
 
   @override
   void initState() {
@@ -98,7 +99,9 @@ class _MapPageState extends State<MapPage> {
       appBar: AppBar(title: const Text('Passear')),
       body: Stack(
         children: [
-          FlutterMap(
+          IgnorePointer(
+            ignoring: _selectedPoi != null,
+            child: FlutterMap(
             mapController: _mapController,
             options: MapOptions(
               initialCenter: _mapCenter,
@@ -125,33 +128,9 @@ class _MapPageState extends State<MapPage> {
                           point: LatLng(poi.lat, poi.lon),
                           child: GestureDetector(
                             onTap: () {
-                              // Show POI details in a modal bottom sheet
-                              // barrierDismissible: true ensures the modal can be dismissed by tapping outside
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                isDismissible: true, // allows dismissal by tapping outside
-                                enableDrag: true,
-                                builder: (context) => DraggableScrollableSheet(
-                                  initialChildSize: 0.4,
-                                  minChildSize: 0.4,
-                                  maxChildSize: 0.9,
-                                  builder: (context, scrollController) => Container(
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: Radius.circular(20),
-                                        topRight: Radius.circular(20),
-                                      ),
-                                    ),
-                                    child: WikiPoiDetail(
-                                      poi: poi,
-                                      scrollController: scrollController,
-                                    ),
-                                  ),
-                                ),
-                              );
+                              setState(() {
+                                _selectedPoi = poi;
+                              });
                             },
                             child: _buildMarkerIcon(poi.interestLevel),
                           ),
@@ -159,6 +138,7 @@ class _MapPageState extends State<MapPage> {
                     .toList(),
               ),
             ],
+          ),
           ),
           if (_isLoadingPois)
             const Positioned(
@@ -191,6 +171,47 @@ class _MapPageState extends State<MapPage> {
               ],
             ),
           ),
+          // POI details overlay
+          if (_selectedPoi != null) ...[
+            // Tap capture layer
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  setState(() {
+                    _selectedPoi = null;
+                  });
+                },
+                child: Container(
+                  color: Colors.transparent,
+                ),
+              ),
+            ),
+            // POI details panel
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: DraggableScrollableSheet(
+                initialChildSize: 0.4,
+                minChildSize: 0.4,
+                maxChildSize: 0.9,
+                builder: (context, scrollController) => Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: WikiPoiDetail(
+                    poi: _selectedPoi!,
+                    scrollController: scrollController,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
