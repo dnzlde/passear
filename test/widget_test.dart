@@ -68,8 +68,8 @@ void main() {
     await tester.tap(find.byKey(const Key('poi_marker_test')));
     await tester.pumpAndSettle();
 
-    // Verify the modal is displayed
-    expect(find.byType(BottomSheet), findsOneWidget);
+    // Verify the modal is displayed - now looking for DraggableScrollableSheet instead of BottomSheet
+    expect(find.byType(DraggableScrollableSheet), findsOneWidget);
     expect(find.text('Test POI'), findsOneWidget);
 
     // Tap outside the modal to dismiss it
@@ -77,7 +77,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify the modal is dismissed
-    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.byType(DraggableScrollableSheet), findsNothing);
   });
 }
 
@@ -104,19 +104,29 @@ class MapPageWithMockClient extends StatelessWidget {
 }
 
 /// Test wrapper for MapPage that supports POI modal testing
-class MapPageWithPOISupport extends StatelessWidget {
+class MapPageWithPOISupport extends StatefulWidget {
   final ApiClient apiClient;
   
   const MapPageWithPOISupport({super.key, required this.apiClient});
   
+  @override
+  State<MapPageWithPOISupport> createState() => _MapPageWithPOISupportState();
+}
+
+class _MapPageWithPOISupportState extends State<MapPageWithPOISupport> {
+  bool _selectedPoi = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Passear')),
       body: Stack(
         children: [
-          const Center(
-            child: Text('Map loaded with POI support'),
+          IgnorePointer(
+            ignoring: _selectedPoi,
+            child: const Center(
+              child: Text('Map loaded with POI support'),
+            ),
           ),
           Positioned(
             bottom: 100,
@@ -124,43 +134,9 @@ class MapPageWithPOISupport extends StatelessWidget {
             child: GestureDetector(
               key: const Key('poi_marker_test'),
               onTap: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  barrierDismissible: true,
-                  builder: (context) => DraggableScrollableSheet(
-                    initialChildSize: 0.4,
-                    minChildSize: 0.4,
-                    maxChildSize: 0.9,
-                    builder: (context, scrollController) => Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
-                      ),
-                      child: SingleChildScrollView(
-                        controller: scrollController,
-                        child: const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Test POI',
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                              ),
-                              SizedBox(height: 16),
-                              Text('This is a test POI description.'),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
+                setState(() {
+                  _selectedPoi = true;
+                });
               },
               child: const Icon(
                 Icons.place,
@@ -169,6 +145,60 @@ class MapPageWithPOISupport extends StatelessWidget {
               ),
             ),
           ),
+          // POI details overlay
+          if (_selectedPoi) ...[
+            // Tap capture layer
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  setState(() {
+                    _selectedPoi = false;
+                  });
+                },
+                child: Container(
+                  color: Colors.transparent,
+                ),
+              ),
+            ),
+            // POI details panel
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: DraggableScrollableSheet(
+                initialChildSize: 0.4,
+                minChildSize: 0.4,
+                maxChildSize: 0.9,
+                builder: (context, scrollController) => Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    child: const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Test POI',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 16),
+                          Text('This is a test POI description.'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
       floatingActionButton: FloatingActionButton(
