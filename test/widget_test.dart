@@ -157,7 +157,7 @@ class _MapPageWithPOISupportState extends State<MapPageWithPOISupport> {
                   });
                 },
                 child: Container(
-                  color: Colors.transparent,
+                  color: Colors.black54,
                 ),
               ),
             ),
@@ -166,32 +166,40 @@ class _MapPageWithPOISupportState extends State<MapPageWithPOISupport> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: DraggableScrollableSheet(
-                initialChildSize: 0.4,
-                minChildSize: 0.4,
-                maxChildSize: 0.9,
-                builder: (context, scrollController) => Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
+              child: SafeArea(
+                top: false,
+                child: DraggableScrollableSheet(
+                  initialChildSize: 0.4,
+                  minChildSize: 0.4,
+                  maxChildSize: 0.9,
+                  builder: (context, scrollController) => Material(
+                    color: Theme.of(context).colorScheme.surface,
+                    elevation: 12,
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(20),
                       topRight: Radius.circular(20),
                     ),
-                  ),
-                  child: SingleChildScrollView(
-                    controller: scrollController,
-                    child: const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Test POI',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        child: const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Test POI',
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 16),
+                              Text('This is a test POI description.'),
+                            ],
                           ),
-                          SizedBox(height: 16),
-                          Text('This is a test POI description.'),
-                        ],
+                        ),
                       ),
                     ),
                   ),

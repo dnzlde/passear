@@ -183,7 +183,7 @@ class _MapPageState extends State<MapPage> {
                   });
                 },
                 child: Container(
-                  color: Colors.transparent,
+                  color: Colors.black54,
                 ),
               ),
             ),
@@ -192,21 +192,29 @@ class _MapPageState extends State<MapPage> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: DraggableScrollableSheet(
-                initialChildSize: 0.4,
-                minChildSize: 0.4,
-                maxChildSize: 0.9,
-                builder: (context, scrollController) => Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
+              child: SafeArea(
+                top: false,
+                child: DraggableScrollableSheet(
+                  initialChildSize: 0.4,
+                  minChildSize: 0.4,
+                  maxChildSize: 0.9,
+                  builder: (context, scrollController) => Material(
+                    color: Theme.of(context).colorScheme.surface,
+                    elevation: 12,
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(20),
                       topRight: Radius.circular(20),
                     ),
-                  ),
-                  child: WikiPoiDetail(
-                    poi: _selectedPoi!,
-                    scrollController: scrollController,
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                      child: WikiPoiDetail(
+                        poi: _selectedPoi!,
+                        scrollController: scrollController,
+                      ),
+                    ),
                   ),
                 ),
               ),
