@@ -129,36 +129,64 @@ class MapPageWithPOISupport extends StatelessWidget {
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
                   barrierDismissible: true,
-                  builder: (context) => DraggableScrollableSheet(
-                    initialChildSize: 0.4,
-                    minChildSize: 0.4,
-                    maxChildSize: 0.9,
-                    builder: (context, scrollController) => Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
-                      ),
-                      child: SingleChildScrollView(
-                        controller: scrollController,
-                        child: const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Test POI',
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                              ),
-                              SizedBox(height: 16),
-                              Text('This is a test POI description.'),
-                            ],
+                  builder: (context) => Stack(
+                    children: [
+                      // Dimming overlay
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Container(
+                            color: Colors.black.withOpacity(0.3),
                           ),
                         ),
                       ),
-                    ),
+                      // POI Details Sheet
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: DraggableScrollableSheet(
+                          initialChildSize: 0.4,
+                          minChildSize: 0.4,
+                          maxChildSize: 0.9,
+                          builder: (context, scrollController) => Material(
+                            elevation: 12,
+                            color: Colors.white,
+                            child: ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(20),
+                                topRight: Radius.circular(20),
+                              ),
+                              child: SafeArea(
+                                top: false,
+                                child: SingleChildScrollView(
+                                  controller: scrollController,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Test POI',
+                                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                        ),
+                                        SizedBox(height: 16),
+                                        Text('This is a test POI description.'),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },

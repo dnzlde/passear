@@ -21,6 +21,8 @@ class _MapPageState extends State<MapPage> {
   final MapController _mapController = MapController();
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isLoadingPois = false;
+  Poi? _selectedPoi;
+  final DraggableScrollableController _sheetController = DraggableScrollableController();
 
   @override
   void initState() {
@@ -84,6 +86,19 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
+  void _showPoiDetails(Poi poi) {
+    setState(() {
+      _selectedPoi = poi;
+    });
+    _sheetController.animateTo(0.4, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+  }
+
+  void _hidePoiDetails() {
+    setState(() {
+      _selectedPoi = null;
+    });
+  }
+
   Future<void> _centerToCurrentLocation() async {
     final location = await _getCurrentLocation();
     if (location != null) {
@@ -124,35 +139,7 @@ class _MapPageState extends State<MapPage> {
                           height: _getMarkerSize(poi.interestLevel),
                           point: LatLng(poi.lat, poi.lon),
                           child: GestureDetector(
-                            onTap: () {
-                              // Show POI details in a modal bottom sheet
-                              // barrierDismissible: true ensures the modal can be dismissed by tapping outside
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                isDismissible: true, // allows dismissal by tapping outside
-                                enableDrag: true,
-                                builder: (context) => DraggableScrollableSheet(
-                                  initialChildSize: 0.4,
-                                  minChildSize: 0.4,
-                                  maxChildSize: 0.9,
-                                  builder: (context, scrollController) => Container(
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: Radius.circular(20),
-                                        topRight: Radius.circular(20),
-                                      ),
-                                    ),
-                                    child: WikiPoiDetail(
-                                      poi: poi,
-                                      scrollController: scrollController,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
+                            onTap: () => _showPoiDetails(poi),
                             child: _buildMarkerIcon(poi.interestLevel),
                           ),
                         ))
@@ -167,6 +154,51 @@ class _MapPageState extends State<MapPage> {
               right: 0,
               child: Center(
                 child: CircularProgressIndicator(),
+              ),
+            ),
+          // Dimming overlay when POI sheet is visible
+          if (_selectedPoi != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: GestureDetector(
+                onTap: _hidePoiDetails,
+                child: Container(
+                  color: Colors.black.withOpacity(0.3),
+                ),
+              ),
+            ),
+          // POI Details Sheet
+          if (_selectedPoi != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: DraggableScrollableSheet(
+                controller: _sheetController,
+                initialChildSize: 0.4,
+                minChildSize: 0.4,
+                maxChildSize: 0.9,
+                builder: (context, scrollController) => Material(
+                  elevation: 12,
+                  color: Theme.of(context).colorScheme.surface,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: WikiPoiDetail(
+                        poi: _selectedPoi!,
+                        scrollController: scrollController,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           Positioned(
