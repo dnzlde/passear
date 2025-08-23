@@ -119,8 +119,9 @@ class _MapPageState extends State<MapPage> {
               initialCenter: _mapCenter,
               initialZoom: 15,
               interactionOptions: const InteractionOptions(
-                rotationThreshold: 30.0, // Higher threshold makes rotation require more deliberate gestures
-                pinchZoomThreshold: 0.3, // Lower threshold makes zoom more responsive
+                enableMultiFingerGestureRace: true, // Enforce gesture race so rotation requires explicit intent
+                rotationThreshold: 90.0,            // High threshold keeps deliberate rotations possible
+                pinchZoomThreshold: 0.3,
               ),
               onMapReady: () => _loadPoisInView(),
               onPositionChanged: (position, hasGesture) {
