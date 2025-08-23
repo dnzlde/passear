@@ -23,6 +23,7 @@ class _MapPageState extends State<MapPage> {
   bool _isLoadingPois = false;
   Poi? _selectedPoi;
   final DraggableScrollableController _sheetController = DraggableScrollableController();
+  double _mapRotation = 0.0; // Track current map rotation for compass display
 
   @override
   void initState() {
@@ -126,6 +127,12 @@ class _MapPageState extends State<MapPage> {
               onMapReady: () => _loadPoisInView(),
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) _loadPoisInView();
+                // Track map rotation for compass display
+                if (position.rotation != _mapRotation) {
+                  setState(() {
+                    _mapRotation = position.rotation ?? 0.0;
+                  });
+                }
               },
             ),
             children: [
@@ -212,7 +219,12 @@ class _MapPageState extends State<MapPage> {
                   heroTag: "reset_north",
                   onPressed: () => _mapController.rotate(0.0),
                   tooltip: 'Reset map orientation to north',
-                  child: const Icon(Icons.navigation),
+                  child: AnimatedRotation(
+                    turns: _mapRotation / 360.0, // Convert degrees to turns
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    child: const Icon(Icons.navigation), // Compass needle reflects map rotation, not true compass
+                  ),
                 ),
                 const SizedBox(height: 8),
                 FloatingActionButton(

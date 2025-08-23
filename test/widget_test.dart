@@ -24,8 +24,12 @@ void main() {
     expect(find.byIcon(Icons.my_location), findsOneWidget);
     expect(find.byTooltip('Center to my location'), findsOneWidget);
 
-    // Verify that we have a floating action button for location.
-    expect(find.byType(FloatingActionButton), findsOneWidget);
+    // Verify that we have floating action buttons.
+    expect(find.byType(FloatingActionButton), findsAtLeastNWidgets(1));
+    
+    // Verify that the reset north button is present with navigation icon
+    expect(find.byIcon(Icons.navigation), findsOneWidget);
+    expect(find.byTooltip('Reset map orientation to north'), findsOneWidget);
   });
 
   testWidgets('MapPage with mock API client loads without network errors', (WidgetTester tester) async {
