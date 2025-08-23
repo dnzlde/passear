@@ -25,6 +25,8 @@ class _MapPageState extends State<MapPage> {
   final DraggableScrollableController _sheetController = DraggableScrollableController();
   double _mapRotation = 0.0; // Track current map rotation for compass display
 
+  bool _initialPoisLoaded = false; // Ensures first load only happens once post map ready
+
   @override
   void initState() {
     super.initState();
@@ -47,25 +49,32 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _initMap() async {
+    // Only set initial center / zoom here. Do NOT load POIs yet.
     final location = await _getCurrentLocation();
-
     if (location != null) {
       _mapCenter = location;
       _mapController.move(location, 15);
     }
-
-    await _loadPoisInView();
   }
 
-  Future<void> _loadPoisInView() async {
+  Future<void> _loadPoisInView({bool force = false}) async {
     final now = DateTime.now();
-    if (now.difference(_lastRequestTime).inSeconds < 2) return;
+    // Throttle interval (seconds). Adjust if needed.
+    const throttleSeconds = 1; 
+    if (!force && now.difference(_lastRequestTime).inSeconds < throttleSeconds) return;
     _lastRequestTime = now;
 
-    final bounds = _mapController.camera.visibleBounds;
+    late final LatLngBounds bounds;
+    try {
+      bounds = _mapController.camera.visibleBounds;
+    } catch (_) {
+      // Bounds might not be ready (very early). Schedule a forced retry.
+      debugPrint('Bounds not ready yet, scheduling retry...');
+      Future.delayed(const Duration(milliseconds: 120), () => _loadPoisInView(force: true));
+      return;
+    }
 
     setState(() => _isLoadingPois = true);
-
     try {
       // Use rectangular bounds for precise POI discovery
       final pois = await _poiService.fetchInBounds(
@@ -83,7 +92,7 @@ class _MapPageState extends State<MapPage> {
     } catch (e) {
       setState(() => _isLoadingPois = false);
       // Handle error gracefully - could show a snackbar
-      print('Error loading POIs: $e');
+      debugPrint('Error loading POIs: $e');
     }
   }
 
@@ -104,7 +113,7 @@ class _MapPageState extends State<MapPage> {
     final location = await _getCurrentLocation();
     if (location != null) {
       _mapController.move(location, 15);
-      await _loadPoisInView();
+      _loadPoisInView();
     }
   }
 
@@ -124,7 +133,15 @@ class _MapPageState extends State<MapPage> {
                 rotationThreshold: 15.0,            // Threshold keeps deliberate rotations possible
                 pinchZoomThreshold: 0.3,
               ),
-              onMapReady: () => _loadPoisInView(),
+              onMapReady: () {
+                if (!_initialPoisLoaded) {
+                  _initialPoisLoaded = true;
+                  // Extra frame to ensure layout has occurred.
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _loadPoisInView(force: true);
+                  });
+                }
+              },
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) _loadPoisInView();
                 // Track map rotation for compass display
