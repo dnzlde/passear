@@ -120,7 +120,7 @@ class _MapPageState extends State<MapPage> {
               initialZoom: 15,
               interactionOptions: const InteractionOptions(
                 enableMultiFingerGestureRace: true, // Enforce gesture race so rotation requires explicit intent
-                rotationThreshold: 90.0,            // High threshold keeps deliberate rotations possible
+                rotationThreshold: 15.0,            // Threshold keeps deliberate rotations possible
                 pinchZoomThreshold: 0.3,
               ),
               onMapReady: () => _loadPoisInView(),
