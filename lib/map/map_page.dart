@@ -24,6 +24,7 @@ class _MapPageState extends State<MapPage> {
   Poi? _selectedPoi;
   final DraggableScrollableController _sheetController = DraggableScrollableController();
   double _mapRotation = 0.0; // Track current map rotation for compass display
+  bool _initialPoisLoaded = false; // Ensure initial POI load happens exactly once after map is ready
 
   @override
   void initState() {
@@ -53,13 +54,11 @@ class _MapPageState extends State<MapPage> {
       _mapCenter = location;
       _mapController.move(location, 15);
     }
-
-    await _loadPoisInView();
   }
 
   Future<void> _loadPoisInView() async {
     final now = DateTime.now();
-    if (now.difference(_lastRequestTime).inSeconds < 2) return;
+    if (now.difference(_lastRequestTime).inSeconds < 1) return;
     _lastRequestTime = now;
 
     final bounds = _mapController.camera.visibleBounds;
@@ -124,7 +123,12 @@ class _MapPageState extends State<MapPage> {
                 rotationThreshold: 15.0,            // Threshold keeps deliberate rotations possible
                 pinchZoomThreshold: 0.3,
               ),
-              onMapReady: () => _loadPoisInView(),
+              onMapReady: () {
+                if (!_initialPoisLoaded) {
+                  _initialPoisLoaded = true;
+                  _loadPoisInView();
+                }
+              },
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) _loadPoisInView();
                 // Track map rotation for compass display
