@@ -58,13 +58,32 @@ class _MapPageState extends State<MapPage> {
     // to ensure map bounds are available
   }
 
-  Future<void> _loadPoisInView() async {
+  Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
     final now = DateTime.now();
     if (now.difference(_lastRequestTime).inSeconds < 2) return;
     _lastRequestTime = now;
 
     try {
       final bounds = _mapController.camera.visibleBounds;
+      
+      if (isInitialLoad) {
+        print('POI: Got map bounds - N:${bounds.north}, S:${bounds.south}, E:${bounds.east}, W:${bounds.west}');
+      }
+      
+      // Validate bounds are reasonable (not NaN or infinite)
+      if (!bounds.isValid || 
+          bounds.north.isNaN || bounds.south.isNaN || 
+          bounds.east.isNaN || bounds.west.isNaN ||
+          bounds.north <= bounds.south || bounds.east <= bounds.west) {
+        if (isInitialLoad) {
+          // Retry after a longer delay for initial load
+          print('Invalid bounds on initial load, retrying...');
+          await Future.delayed(const Duration(milliseconds: 1000));
+          return _loadPoisInView(isInitialLoad: true);
+        }
+        print('Invalid map bounds, skipping POI load');
+        return;
+      }
 
       setState(() => _isLoadingPois = true);
 
@@ -81,11 +100,31 @@ class _MapPageState extends State<MapPage> {
         _pois = pois;
         _isLoadingPois = false;
       });
+      
+      if (isInitialLoad) {
+        print('POI: Successfully loaded ${pois.length} POIs on initial load');
+      }
     } catch (e) {
       setState(() => _isLoadingPois = false);
+      
+      if (isInitialLoad) {
+        // For initial load failures, retry once after a delay
+        print('Initial POI load failed, retrying: $e');
+        await Future.delayed(const Duration(milliseconds: 1000));
+        return _loadPoisInView(isInitialLoad: true);
+      }
+      
       // Handle error gracefully - could show a snackbar
       print('Error loading POIs: $e');
     }
+  }
+
+  Future<void> _loadPoisInViewWithDelay() async {
+    // Add a delay to ensure map is fully stabilized on iOS
+    print('POI: onMapReady triggered, waiting for map stabilization...');
+    await Future.delayed(const Duration(milliseconds: 300));
+    print('POI: Starting initial POI load after delay');
+    return _loadPoisInView(isInitialLoad: true);
   }
 
   void _showPoiDetails(Poi poi) {
@@ -125,7 +164,7 @@ class _MapPageState extends State<MapPage> {
                 rotationThreshold: 15.0,            // Threshold keeps deliberate rotations possible
                 pinchZoomThreshold: 0.3,
               ),
-              onMapReady: () => _loadPoisInView(),
+              onMapReady: () => _loadPoisInViewWithDelay(),
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) _loadPoisInView();
                 // Track map rotation for compass display
