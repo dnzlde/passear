@@ -54,7 +54,8 @@ class _MapPageState extends State<MapPage> {
       _mapController.move(location, 15);
     }
 
-    await _loadPoisInView();
+    // POI loading will be triggered by onMapReady callback
+    // to ensure map bounds are available
   }
 
   Future<void> _loadPoisInView() async {
@@ -62,11 +63,11 @@ class _MapPageState extends State<MapPage> {
     if (now.difference(_lastRequestTime).inSeconds < 2) return;
     _lastRequestTime = now;
 
-    final bounds = _mapController.camera.visibleBounds;
-
-    setState(() => _isLoadingPois = true);
-
     try {
+      final bounds = _mapController.camera.visibleBounds;
+
+      setState(() => _isLoadingPois = true);
+
       // Use rectangular bounds for precise POI discovery
       final pois = await _poiService.fetchInBounds(
         north: bounds.north,
