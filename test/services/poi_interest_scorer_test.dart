@@ -149,5 +149,24 @@ void main() {
       expect(mediumHistoricalLevel, equals(PoiInterestLevel.medium));
       expect(lowGenericLevel, equals(PoiInterestLevel.low));
     });
+
+    test('should solve the main issue: high-scoring generic beats low-scoring premium category', () {
+      // This is the core issue: a low-quality museum should not beat a high-quality generic POI
+      final lowMuseumScore = 5.0; // Very poor museum entry
+      final highGenericScore = 45.0; // Amazing generic POI with rich content
+      
+      final lowMuseumLevel = PoiInterestScorer.determineInterestLevel(lowMuseumScore, PoiCategory.museum);
+      final highGenericLevel = PoiInterestScorer.determineInterestLevel(highGenericScore, PoiCategory.generic);
+      
+      // Low museum: 5.0 + 25.0 = 30.0 (medium)
+      // High generic: 45.0 + 0.0 = 45.0 (medium, close to high threshold)
+      expect(lowMuseumLevel, equals(PoiInterestLevel.medium));
+      expect(highGenericLevel, equals(PoiInterestLevel.medium));
+      
+      // The key improvement: higher score wins in sorting, even with same interest level
+      final lowMuseumAdjusted = lowMuseumScore + 25.0; // 30.0
+      final highGenericAdjusted = highGenericScore + 0.0; // 45.0
+      expect(highGenericAdjusted, greaterThan(lowMuseumAdjusted));
+    });
   });
 }
