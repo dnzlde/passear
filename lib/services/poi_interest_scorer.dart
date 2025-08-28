@@ -114,20 +114,18 @@ class PoiInterestScorer {
   }
 
   /// Determine interest level based on score and category
+  /// Score is the primary factor, category provides additional context
   static PoiInterestLevel determineInterestLevel(double score, PoiCategory category) {
-    // High interest: Premium POIs
-    if (score >= 40.0 || 
-        category == PoiCategory.museum ||
-        category == PoiCategory.historicalSite ||
-        category == PoiCategory.landmark) {
+    // Apply category-based score boost to make final determination more accurate
+    double adjustedScore = score + (_categoryScores[category] ?? 0.0);
+    
+    // High interest: Truly significant POIs (primarily score-based)
+    if (adjustedScore >= 50.0) {
       return PoiInterestLevel.high;
     }
     
     // Medium interest: Notable POIs
-    if (score >= 20.0 ||
-        category == PoiCategory.religiousSite ||
-        category == PoiCategory.monument ||
-        category == PoiCategory.architecture) {
+    if (adjustedScore >= 25.0) {
       return PoiInterestLevel.medium;
     }
 
