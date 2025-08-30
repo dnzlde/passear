@@ -15,7 +15,6 @@ class _SettingsPageState extends State<SettingsPage> {
   final SettingsService _settingsService = SettingsService.instance;
   late AppSettings _settings;
   bool _isLoading = true;
-  int _totalPoiCount = 0; // Will be updated by parent/POI service
 
   @override
   void initState() {
@@ -94,7 +93,7 @@ class _SettingsPageState extends State<SettingsPage> {
       case PoiCategory.park:
         return Icons.park;
       case PoiCategory.monument:
-        return Icons.monument;
+        return Icons.account_balance;
       case PoiCategory.university:
         return Icons.school;
       case PoiCategory.theater:

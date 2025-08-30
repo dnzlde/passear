@@ -1,6 +1,5 @@
 // lib/services/poi_service.dart
 import '../models/poi.dart';
-import '../models/settings.dart';
 import 'wikipedia_poi_service.dart';
 import 'api_client.dart';
 import 'settings_service.dart';
