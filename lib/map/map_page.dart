@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/poi.dart';
 import '../services/poi_service.dart';
+import '../settings/settings_page.dart';
 import 'wiki_poi_detail.dart';
 
 class MapPage extends StatefulWidget {
@@ -73,7 +74,7 @@ class _MapPageState extends State<MapPage> {
         south: bounds.south,
         east: bounds.east,
         west: bounds.west,
-        maxResults: 20, // Limit to top 20 most interesting POIs
+        // maxResults will be determined by settings
       );
 
       setState(() {
@@ -111,7 +112,23 @@ class _MapPageState extends State<MapPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Passear')),
+      appBar: AppBar(
+        title: const Text('Passear'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
+              // Reload POIs after settings change
+              _loadPoisInView();
+            },
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           FlutterMap(
@@ -130,7 +147,7 @@ class _MapPageState extends State<MapPage> {
                 // Track map rotation for compass display
                 if (position.rotation != _mapRotation) {
                   setState(() {
-                    _mapRotation = position.rotation ?? 0.0;
+                    _mapRotation = position.rotation;
                   });
                 }
               },
