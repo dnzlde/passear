@@ -47,7 +47,7 @@ void main() {
       expect(result[0].name, equals('National Museum'));
       expect(result[0].interestScore, greaterThan(0.0));
       expect(result[0].category, equals(PoiCategory.museum));
-      expect(result[0].interestLevel, equals(PoiInterestLevel.high));
+      expect(result[0].interestLevel, equals(PoiInterestLevel.high)); // Museum with good score should get high level
       // Description should not be loaded initially for performance
       expect(result[0].isDescriptionLoaded, isFalse);
       expect(result[0].description, equals(''));
