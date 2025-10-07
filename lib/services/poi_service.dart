@@ -2,9 +2,11 @@
 import '../models/poi.dart';
 import 'wikipedia_poi_service.dart';
 import 'api_client.dart';
+import 'settings_service.dart';
 
 class PoiService {
   final WikipediaPoiService _wikiService;
+  final SettingsService _settingsService = SettingsService.instance;
 
   PoiService({ApiClient? apiClient}) 
       : _wikiService = WikipediaPoiService(apiClient: apiClient);
@@ -15,17 +17,21 @@ class PoiService {
     required double south,
     required double east,
     required double west,
-    int maxResults = 20,
+    int? maxResults,
   }) async {
+    // Load current settings
+    final settings = await _settingsService.loadSettings();
+    final effectiveMaxResults = maxResults ?? settings.maxPoiCount;
+
     final wikiPois = await _wikiService.fetchIntelligentPoisInBounds(
       north: north,
       south: south,
       east: east,
       west: west,
-      maxResults: maxResults,
+      maxResults: effectiveMaxResults * 2, // Fetch more to allow for filtering
     );
 
-    return wikiPois.map((wikiPoi) {
+    final allPois = wikiPois.map((wikiPoi) {
       return Poi(
         id: wikiPoi.title, // используем title как ID
         name: wikiPoi.title,
@@ -39,6 +45,14 @@ class PoiService {
         isDescriptionLoaded: wikiPoi.description != null,
       );
     }).toList();
+
+    // Filter POIs based on enabled categories
+    final filteredPois = allPois.where((poi) => 
+      settings.isCategoryEnabled(poi.category)
+    ).toList();
+
+    // Return only the requested number of POIs
+    return filteredPois.take(effectiveMaxResults).toList();
   }
 
   /// Legacy method for backward compatibility

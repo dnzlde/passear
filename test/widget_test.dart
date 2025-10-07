@@ -10,7 +10,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:passear/main.dart';
 import 'package:passear/services/api_client.dart';
-import 'package:passear/map/map_page.dart';
 
 void main() {
   testWidgets('Passear app loads and shows map page', (WidgetTester tester) async {
@@ -132,7 +131,6 @@ class MapPageWithPOISupport extends StatelessWidget {
                   context: context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
-                  barrierDismissible: true,
                   builder: (context) => Stack(
                     children: [
                       // Dimming overlay

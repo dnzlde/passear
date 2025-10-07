@@ -46,21 +46,6 @@ class PoiInterestScorer {
     'store': 1.0,
   };
 
-  /// Categories and their base scores
-  static const Map<PoiCategory, double> _categoryScores = {
-    PoiCategory.museum: 25.0,
-    PoiCategory.historicalSite: 25.0,
-    PoiCategory.landmark: 20.0,
-    PoiCategory.religiousSite: 20.0,
-    PoiCategory.monument: 20.0,
-    PoiCategory.university: 15.0,
-    PoiCategory.theater: 15.0,
-    PoiCategory.gallery: 15.0,
-    PoiCategory.architecture: 15.0,
-    PoiCategory.park: 10.0,
-    PoiCategory.generic: 0.0,
-  };
-
   /// Calculate interest score for a POI based on title and description
   static double calculateScore(String title, String? description) {
     double score = 0.0;
@@ -114,20 +99,18 @@ class PoiInterestScorer {
   }
 
   /// Determine interest level based on score and category
+  /// Score is the primary factor, category provides additional context
   static PoiInterestLevel determineInterestLevel(double score, PoiCategory category) {
-    // High interest: Premium POIs
-    if (score >= 40.0 || 
-        category == PoiCategory.museum ||
-        category == PoiCategory.historicalSite ||
-        category == PoiCategory.landmark) {
+    // Apply category-based score boost to make final determination more accurate
+    double adjustedScore = score + (_categoryScores[category] ?? 0.0);
+    
+    // High interest: Truly significant POIs (primarily score-based)
+    if (adjustedScore >= 50.0) {
       return PoiInterestLevel.high;
     }
     
     // Medium interest: Notable POIs
-    if (score >= 20.0 ||
-        category == PoiCategory.religiousSite ||
-        category == PoiCategory.monument ||
-        category == PoiCategory.architecture) {
+    if (adjustedScore >= 25.0) {
       return PoiInterestLevel.medium;
     }
 

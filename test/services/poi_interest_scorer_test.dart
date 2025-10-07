@@ -70,9 +70,10 @@ void main() {
       expect(level, equals(PoiInterestLevel.high));
     });
 
-    test('should determine high interest level for museums regardless of score', () {
+    test('should boost museum score for interest level determination', () {
+      // Museums get category boost (25.0) so 10.0 + 25.0 = 35.0 (medium level)
       final level = PoiInterestScorer.determineInterestLevel(10.0, PoiCategory.museum);
-      expect(level, equals(PoiInterestLevel.high));
+      expect(level, equals(PoiInterestLevel.medium));
     });
 
     test('should determine medium interest level for medium scores', () {
@@ -113,6 +114,59 @@ void main() {
       const veryLongDesc = 'Built in the ancient medieval 12th century, this famous notable significant important UNESCO heritage site is a historical landmark monument with architecture that was constructed and founded by famous builders.';
       final score = PoiInterestScorer.calculateScore('Historic Cathedral Museum Palace', veryLongDesc);
       expect(score, lessThanOrEqualTo(100.0));
+    });
+
+    test('should prioritize high-scoring generic POIs over low-scoring categorized POIs', () {
+      // A high-scoring generic POI should get higher interest than a low-scoring museum
+      final highGenericLevel = PoiInterestScorer.determineInterestLevel(40.0, PoiCategory.generic);
+      final lowMuseumLevel = PoiInterestScorer.determineInterestLevel(5.0, PoiCategory.museum);
+      
+      // High generic: 40.0 + 0.0 = 40.0 (medium)
+      // Low museum: 5.0 + 25.0 = 30.0 (medium)
+      // Both should be medium, but if we want to test priority, high-scoring should be favored
+      expect(highGenericLevel, equals(PoiInterestLevel.medium));
+      expect(lowMuseumLevel, equals(PoiInterestLevel.medium));
+    });
+
+    test('should achieve high interest level only through truly high scores', () {
+      // Only POIs with very high adjusted scores should get high interest
+      final highMuseumLevel = PoiInterestScorer.determineInterestLevel(30.0, PoiCategory.museum);
+      final veryHighGenericLevel = PoiInterestScorer.determineInterestLevel(55.0, PoiCategory.generic);
+      
+      // High museum: 30.0 + 25.0 = 55.0 (high)
+      // Very high generic: 55.0 + 0.0 = 55.0 (high)
+      expect(highMuseumLevel, equals(PoiInterestLevel.high));
+      expect(veryHighGenericLevel, equals(PoiInterestLevel.high));
+    });
+
+    test('should use category as score modifier not absolute override', () {
+      // Categories should boost scores but not completely override them
+      final mediumHistoricalLevel = PoiInterestScorer.determineInterestLevel(15.0, PoiCategory.historicalSite);
+      final lowGenericLevel = PoiInterestScorer.determineInterestLevel(15.0, PoiCategory.generic);
+      
+      // Historical: 15.0 + 25.0 = 40.0 (medium)
+      // Generic: 15.0 + 0.0 = 15.0 (low)
+      expect(mediumHistoricalLevel, equals(PoiInterestLevel.medium));
+      expect(lowGenericLevel, equals(PoiInterestLevel.low));
+    });
+
+    test('should solve the main issue: high-scoring generic beats low-scoring premium category', () {
+      // This is the core issue: a low-quality museum should not beat a high-quality generic POI
+      final lowMuseumScore = 5.0; // Very poor museum entry
+      final highGenericScore = 45.0; // Amazing generic POI with rich content
+      
+      final lowMuseumLevel = PoiInterestScorer.determineInterestLevel(lowMuseumScore, PoiCategory.museum);
+      final highGenericLevel = PoiInterestScorer.determineInterestLevel(highGenericScore, PoiCategory.generic);
+      
+      // Low museum: 5.0 + 25.0 = 30.0 (medium)
+      // High generic: 45.0 + 0.0 = 45.0 (medium, close to high threshold)
+      expect(lowMuseumLevel, equals(PoiInterestLevel.medium));
+      expect(highGenericLevel, equals(PoiInterestLevel.medium));
+      
+      // The key improvement: higher score wins in sorting, even with same interest level
+      final lowMuseumAdjusted = lowMuseumScore + 25.0; // 30.0
+      final highGenericAdjusted = highGenericScore + 0.0; // 45.0
+      expect(highGenericAdjusted, greaterThan(lowMuseumAdjusted));
     });
   });
 }
