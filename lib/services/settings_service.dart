@@ -1,5 +1,6 @@
 // lib/services/settings_service.dart
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/settings.dart';
 import '../models/poi.dart';
@@ -47,7 +48,7 @@ class SettingsService {
       _cachedSettings = settings;
     } catch (e) {
       // Handle save errors gracefully
-      print('Failed to save settings: $e');
+      debugPrint('Failed to save settings: $e');
     }
   }
 

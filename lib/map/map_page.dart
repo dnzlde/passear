@@ -1,4 +1,5 @@
 // lib/map/map_page.dart
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -73,7 +74,7 @@ class _MapPageState extends State<MapPage> {
       final bounds = _mapController.camera.visibleBounds;
       
       if (isInitialLoad) {
-        print('POI: Got map bounds - N:${bounds.north}, S:${bounds.south}, E:${bounds.east}, W:${bounds.west}');
+        debugPrint('POI: Got map bounds - N:${bounds.north}, S:${bounds.south}, E:${bounds.east}, W:${bounds.west}');
         _hasPerformedInitialLoad = true;
       }
       
@@ -86,11 +87,11 @@ class _MapPageState extends State<MapPage> {
           // Reset flag to allow retry
           _hasPerformedInitialLoad = false;
           // Retry after a longer delay for initial load
-          print('Invalid bounds on initial load, retrying...');
+          debugPrint('Invalid bounds on initial load, retrying...');
           await Future.delayed(const Duration(milliseconds: 1500));
           return _loadPoisInView(isInitialLoad: true);
         }
-        print('Invalid map bounds, skipping POI load');
+        debugPrint('Invalid map bounds, skipping POI load');
         return;
       }
 
@@ -111,7 +112,7 @@ class _MapPageState extends State<MapPage> {
       });
       
       if (isInitialLoad) {
-        print('POI: Successfully loaded ${pois.length} POIs on initial load');
+        debugPrint('POI: Successfully loaded ${pois.length} POIs on initial load');
       }
     } catch (e) {
       setState(() => _isLoadingPois = false);
@@ -120,33 +121,33 @@ class _MapPageState extends State<MapPage> {
         // Reset flag to allow retry
         _hasPerformedInitialLoad = false;
         // For initial load failures, retry once after a delay
-        print('Initial POI load failed, retrying: $e');
+        debugPrint('Initial POI load failed, retrying: $e');
         await Future.delayed(const Duration(milliseconds: 1500));
         return _loadPoisInView(isInitialLoad: true);
       }
       
       // Handle error gracefully - could show a snackbar
-      print('Error loading POIs: $e');
+      debugPrint('Error loading POIs: $e');
     }
   }
 
   Future<void> _loadPoisInViewWithDelay() async {
     // Add a delay to ensure map is fully stabilized on iOS
-    print('POI: onMapReady triggered, waiting for map stabilization...');
+    debugPrint('POI: onMapReady triggered, waiting for map stabilization...');
     await Future.delayed(const Duration(milliseconds: 300));
-    print('POI: Starting initial POI load after delay');
+    debugPrint('POI: Starting initial POI load after delay');
     return _loadPoisInView(isInitialLoad: true);
   }
 
   Future<void> _scheduleInitialPoiLoad() async {
     if (_hasPerformedInitialLoad) return;
     
-    print('POI: Scheduling initial POI load...');
+    debugPrint('POI: Scheduling initial POI load...');
     // Wait longer on iOS to ensure map is fully initialized
     await Future.delayed(const Duration(milliseconds: 1000));
     
     if (!_hasPerformedInitialLoad) {
-      print('POI: Attempting fallback initial POI load');
+      debugPrint('POI: Attempting fallback initial POI load');
       await _loadPoisInView(isInitialLoad: true);
     }
   }
@@ -155,7 +156,7 @@ class _MapPageState extends State<MapPage> {
     // For the initial load, use the first position change event
     if (!_hasPerformedInitialLoad && !hasGesture) {
       _hasPerformedInitialLoad = true;
-      print('POI: First position change detected, starting initial POI load');
+      debugPrint('POI: First position change detected, starting initial POI load');
       // Small delay to ensure bounds are stable
       await Future.delayed(const Duration(milliseconds: 500));
       await _loadPoisInView(isInitialLoad: true);
@@ -229,7 +230,7 @@ class _MapPageState extends State<MapPage> {
                 pinchZoomThreshold: 0.3,
               ),
               onMapReady: () {
-                print('POI: onMapReady callback fired');
+                debugPrint('POI: onMapReady callback fired');
                 if (!_hasPerformedInitialLoad) {
                   _loadPoisInViewWithDelay();
                 }
