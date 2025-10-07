@@ -81,8 +81,7 @@ class _MapPageState extends State<MapPage> {
       // Validate bounds are reasonable (not NaN or infinite)
       if (!bounds.isValid || 
           bounds.north.isNaN || bounds.south.isNaN || 
-          bounds.east.isNaN || bounds.west.isNaN ||
-          bounds.north <= bounds.south || bounds.east <= bounds.west) {
+          bounds.east.isNaN || bounds.west.isNaN) {
         if (isInitialLoad) {
           // Reset flag to allow retry
           _hasPerformedInitialLoad = false;
