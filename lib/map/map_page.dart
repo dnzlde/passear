@@ -168,9 +168,10 @@ class _MapPageState extends State<MapPage> {
     }
     
     // Track map rotation for compass display
-    if (position.rotation != _mapRotation) {
+    final newRotation = position.rotation ?? 0.0;
+    if (newRotation != _mapRotation) {
       setState(() {
-        _mapRotation = position.rotation ?? 0.0;
+        _mapRotation = newRotation;
       });
     }
   }
