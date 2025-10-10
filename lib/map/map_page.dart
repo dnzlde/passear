@@ -79,9 +79,9 @@ class _MapPageState extends State<MapPage> {
       }
 
       // Validate bounds are reasonable (not NaN or infinite)
-      if (!bounds.isValid ||
-          bounds.north.isNaN || bounds.south.isNaN ||
-          bounds.east.isNaN || bounds.west.isNaN) {
+      if (bounds.north.isNaN || bounds.south.isNaN ||
+          bounds.east.isNaN || bounds.west.isNaN ||
+          bounds.north <= bounds.south || bounds.east <= bounds.west) {
         if (isInitialLoad) {
           // Reset flag to allow retry
           _hasPerformedInitialLoad = false;
@@ -151,7 +151,7 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  void _onMapPositionChanged(MapPosition position, bool hasGesture) {
+  void _onMapPositionChanged(dynamic position, bool hasGesture) {
     // For the initial load, use the first position change event
     if (!_hasPerformedInitialLoad && !hasGesture) {
       _hasPerformedInitialLoad = true;
