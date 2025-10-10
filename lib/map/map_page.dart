@@ -151,14 +151,15 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  Future<void> _onMapPositionChanged(MapPosition position, bool hasGesture) async {
+  void _onMapPositionChanged(MapPosition position, bool hasGesture) {
     // For the initial load, use the first position change event
     if (!_hasPerformedInitialLoad && !hasGesture) {
       _hasPerformedInitialLoad = true;
       debugPrint('POI: First position change detected, starting initial POI load');
-      // Small delay to ensure bounds are stable
-      await Future.delayed(const Duration(milliseconds: 500));
-      await _loadPoisInView(isInitialLoad: true);
+      // Small delay to ensure bounds are stable, then load POIs
+      Future.delayed(const Duration(milliseconds: 500)).then((_) {
+        _loadPoisInView(isInitialLoad: true);
+      });
       return;
     }
     
