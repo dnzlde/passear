@@ -1,4 +1,5 @@
 // lib/map/map_page.dart
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -25,6 +26,7 @@ class _MapPageState extends State<MapPage> {
   Poi? _selectedPoi;
   final DraggableScrollableController _sheetController = DraggableScrollableController();
   double _mapRotation = 0.0; // Track current map rotation for compass display
+  bool _hasPerformedInitialLoad = false; // Flag to ensure initial load happens only once
 
   @override
   void initState() {
@@ -55,19 +57,45 @@ class _MapPageState extends State<MapPage> {
       _mapController.move(location, 15);
     }
 
-    await _loadPoisInView();
+    // POI loading will be triggered by onPositionChanged callback
+    // which is more reliable than onMapReady on iOS
+    // Also schedule a fallback load using post-frame callback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scheduleInitialPoiLoad();
+    });
   }
 
-  Future<void> _loadPoisInView() async {
+  Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
     final now = DateTime.now();
     if (now.difference(_lastRequestTime).inSeconds < 2) return;
     _lastRequestTime = now;
 
-    final bounds = _mapController.camera.visibleBounds;
-
-    setState(() => _isLoadingPois = true);
-
     try {
+      final bounds = _mapController.camera.visibleBounds;
+
+      if (isInitialLoad) {
+        debugPrint('POI: Got map bounds - N:${bounds.north}, S:${bounds.south}, E:${bounds.east}, W:${bounds.west}');
+        _hasPerformedInitialLoad = true;
+      }
+
+      // Validate bounds are reasonable (not NaN or infinite)
+      if (bounds.north.isNaN || bounds.south.isNaN ||
+          bounds.east.isNaN || bounds.west.isNaN ||
+          bounds.north <= bounds.south || bounds.east <= bounds.west) {
+        if (isInitialLoad) {
+          // Reset flag to allow retry
+          _hasPerformedInitialLoad = false;
+          // Retry after a longer delay for initial load
+          debugPrint('Invalid bounds on initial load, retrying...');
+          await Future.delayed(const Duration(milliseconds: 1500));
+          return _loadPoisInView(isInitialLoad: true);
+        }
+        debugPrint('Invalid map bounds, skipping POI load');
+        return;
+      }
+
+      setState(() => _isLoadingPois = true);
+
       // Use rectangular bounds for precise POI discovery
       final pois = await _poiService.fetchInBounds(
         north: bounds.north,
@@ -81,10 +109,71 @@ class _MapPageState extends State<MapPage> {
         _pois = pois;
         _isLoadingPois = false;
       });
+
+      if (isInitialLoad) {
+        debugPrint('POI: Successfully loaded ${pois.length} POIs on initial load');
+      }
     } catch (e) {
       setState(() => _isLoadingPois = false);
+
+      if (isInitialLoad) {
+        // Reset flag to allow retry
+        _hasPerformedInitialLoad = false;
+        // For initial load failures, retry once after a delay
+        debugPrint('Initial POI load failed, retrying: $e');
+        await Future.delayed(const Duration(milliseconds: 1500));
+        return _loadPoisInView(isInitialLoad: true);
+      }
+
       // Handle error gracefully - could show a snackbar
-      print('Error loading POIs: $e');
+      debugPrint('Error loading POIs: $e');
+    }
+  }
+
+  Future<void> _loadPoisInViewWithDelay() async {
+    // Add a delay to ensure map is fully stabilized on iOS
+    debugPrint('POI: onMapReady triggered, waiting for map stabilization...');
+    await Future.delayed(const Duration(milliseconds: 300));
+    debugPrint('POI: Starting initial POI load after delay');
+    return _loadPoisInView(isInitialLoad: true);
+  }
+
+  Future<void> _scheduleInitialPoiLoad() async {
+    if (_hasPerformedInitialLoad) return;
+
+    debugPrint('POI: Scheduling initial POI load...');
+    // Wait longer on iOS to ensure map is fully initialized
+    await Future.delayed(const Duration(milliseconds: 1000));
+
+    if (!_hasPerformedInitialLoad) {
+      debugPrint('POI: Attempting fallback initial POI load');
+      await _loadPoisInView(isInitialLoad: true);
+    }
+  }
+
+  void _onMapPositionChanged(dynamic position, bool hasGesture) {
+    // For the initial load, use the first position change event
+    if (!_hasPerformedInitialLoad && !hasGesture) {
+      _hasPerformedInitialLoad = true;
+      debugPrint('POI: First position change detected, starting initial POI load');
+      // Small delay to ensure bounds are stable, then load POIs
+      Future.delayed(const Duration(milliseconds: 500)).then((_) {
+        _loadPoisInView(isInitialLoad: true);
+      });
+      return;
+    }
+
+    // For subsequent loads triggered by user gestures
+    if (hasGesture) {
+      _loadPoisInView();
+    }
+
+    // Track map rotation for compass display
+    final newRotation = position.rotation ?? 0.0;
+    if (newRotation != _mapRotation) {
+      setState(() {
+        _mapRotation = newRotation;
+      });
     }
   }
 
@@ -141,16 +230,13 @@ class _MapPageState extends State<MapPage> {
                 rotationThreshold: 15.0,            // Threshold keeps deliberate rotations possible
                 pinchZoomThreshold: 0.3,
               ),
-              onMapReady: () => _loadPoisInView(),
-              onPositionChanged: (position, hasGesture) {
-                if (hasGesture) _loadPoisInView();
-                // Track map rotation for compass display
-                if (position.rotation != _mapRotation) {
-                  setState(() {
-                    _mapRotation = position.rotation;
-                  });
+              onMapReady: () {
+                debugPrint('POI: onMapReady callback fired');
+                if (!_hasPerformedInitialLoad) {
+                  _loadPoisInViewWithDelay();
                 }
               },
+              onPositionChanged: _onMapPositionChanged,
             ),
             children: [
               TileLayer(

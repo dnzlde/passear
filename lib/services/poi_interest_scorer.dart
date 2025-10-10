@@ -101,16 +101,15 @@ class PoiInterestScorer {
   /// Determine interest level based on score and category
   /// Score is the primary factor, category provides additional context
   static PoiInterestLevel determineInterestLevel(double score, PoiCategory category) {
-    // Apply category-based score boost to make final determination more accurate
-    double adjustedScore = score + (_categoryScores[category] ?? 0.0);
+    // Use score as primary factor for interest level determination
     
     // High interest: Truly significant POIs (primarily score-based)
-    if (adjustedScore >= 50.0) {
+    if (score >= 50.0) {
       return PoiInterestLevel.high;
     }
-    
+
     // Medium interest: Notable POIs
-    if (adjustedScore >= 25.0) {
+    if (score >= 25.0) {
       return PoiInterestLevel.medium;
     }
 
