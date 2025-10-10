@@ -8,9 +8,9 @@ import '../models/poi.dart';
 class SettingsService {
   static const String _settingsKey = 'app_settings';
   static SettingsService? _instance;
-  
+
   SettingsService._();
-  
+
   static SettingsService get instance => _instance ??= SettingsService._();
 
   AppSettings? _cachedSettings;
@@ -24,7 +24,7 @@ class SettingsService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final settingsJson = prefs.getString(_settingsKey);
-      
+
       if (settingsJson != null) {
         final settingsMap = jsonDecode(settingsJson) as Map<String, dynamic>;
         _cachedSettings = AppSettings.fromJson(settingsMap);
@@ -57,7 +57,7 @@ class SettingsService {
     final currentSettings = await loadSettings();
     final updatedCategories = Map<PoiCategory, bool>.from(currentSettings.enabledCategories);
     updatedCategories[category] = enabled;
-    
+
     final updatedSettings = currentSettings.copyWith(enabledCategories: updatedCategories);
     await saveSettings(updatedSettings);
   }

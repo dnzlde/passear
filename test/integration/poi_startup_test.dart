@@ -39,7 +39,7 @@ void main() {
 
       // Assert - Verify that the map loaded and no exceptions occurred
       expect(tester.takeException(), isNull);
-      
+
       // Verify the map page is displayed
       expect(find.text('Passear'), findsOneWidget);
       expect(find.byType(FloatingActionButton), findsAtLeastNWidgets(1));
@@ -48,7 +48,7 @@ void main() {
     testWidgets('Map initialization should not crash when location permission is denied', (WidgetTester tester) async {
       // Arrange - Create a mock API client
       final mockClient = MockApiClient();
-      
+
       // Act - Build the map page
       await tester.pumpWidget(
         MaterialApp(
@@ -70,9 +70,9 @@ void main() {
 /// This simulates the real MapPage but allows for controlled testing
 class MapPageWithTestClient extends StatelessWidget {
   final ApiClient apiClient;
-  
+
   const MapPageWithTestClient({super.key, required this.apiClient});
-  
+
   @override
   Widget build(BuildContext context) {
     // For this test, we'll use a simplified version that demonstrates
@@ -123,12 +123,12 @@ class _TestMapWidgetState extends State<TestMapWidget> {
   Future<void> _initializeMap() async {
     // Simulate map initialization
     await Future.delayed(const Duration(milliseconds: 100));
-    
+
     if (mounted) {
       setState(() {
         _isInitialized = true;
       });
-      
+
       // Simulate onMapReady callback triggering POI loading
       await _simulateOnMapReady();
     }

@@ -72,15 +72,15 @@ class _MapPageState extends State<MapPage> {
 
     try {
       final bounds = _mapController.camera.visibleBounds;
-      
+
       if (isInitialLoad) {
         debugPrint('POI: Got map bounds - N:${bounds.north}, S:${bounds.south}, E:${bounds.east}, W:${bounds.west}');
         _hasPerformedInitialLoad = true;
       }
-      
+
       // Validate bounds are reasonable (not NaN or infinite)
-      if (!bounds.isValid || 
-          bounds.north.isNaN || bounds.south.isNaN || 
+      if (!bounds.isValid ||
+          bounds.north.isNaN || bounds.south.isNaN ||
           bounds.east.isNaN || bounds.west.isNaN) {
         if (isInitialLoad) {
           // Reset flag to allow retry
@@ -109,13 +109,13 @@ class _MapPageState extends State<MapPage> {
         _pois = pois;
         _isLoadingPois = false;
       });
-      
+
       if (isInitialLoad) {
         debugPrint('POI: Successfully loaded ${pois.length} POIs on initial load');
       }
     } catch (e) {
       setState(() => _isLoadingPois = false);
-      
+
       if (isInitialLoad) {
         // Reset flag to allow retry
         _hasPerformedInitialLoad = false;
@@ -124,7 +124,7 @@ class _MapPageState extends State<MapPage> {
         await Future.delayed(const Duration(milliseconds: 1500));
         return _loadPoisInView(isInitialLoad: true);
       }
-      
+
       // Handle error gracefully - could show a snackbar
       debugPrint('Error loading POIs: $e');
     }
@@ -140,11 +140,11 @@ class _MapPageState extends State<MapPage> {
 
   Future<void> _scheduleInitialPoiLoad() async {
     if (_hasPerformedInitialLoad) return;
-    
+
     debugPrint('POI: Scheduling initial POI load...');
     // Wait longer on iOS to ensure map is fully initialized
     await Future.delayed(const Duration(milliseconds: 1000));
-    
+
     if (!_hasPerformedInitialLoad) {
       debugPrint('POI: Attempting fallback initial POI load');
       await _loadPoisInView(isInitialLoad: true);
@@ -162,12 +162,12 @@ class _MapPageState extends State<MapPage> {
       });
       return;
     }
-    
+
     // For subsequent loads triggered by user gestures
     if (hasGesture) {
       _loadPoisInView();
     }
-    
+
     // Track map rotation for compass display
     final newRotation = position.rotation ?? 0.0;
     if (newRotation != _mapRotation) {
