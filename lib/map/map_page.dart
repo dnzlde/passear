@@ -455,6 +455,46 @@ class _MapPageState extends State<MapPage> {
   }
 
   Widget _buildUserLocationMarker() {
+    // If heading is available, show Google Maps-style directional indicator
+    if (_userHeading != null && _userHeading! >= 0) {
+      return Transform.rotate(
+        angle: _userHeading! * 3.14159 / 180, // Convert degrees to radians
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Directional cone (like Google Maps flashlight beam)
+            CustomPaint(
+              size: const Size(60, 60),
+              painter: _DirectionalConePainter(),
+            ),
+            // White circle border
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.blue,
+                border: Border.all(
+                  color: Colors.white,
+                  width: 3,
+                ),
+              ),
+            ),
+            // Small white dot in center
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // If no heading, show simple circular marker
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -489,17 +529,57 @@ class _MapPageState extends State<MapPage> {
             color: Colors.blue,
           ),
         ),
-        // Direction arrow if heading is available
-        if (_userHeading != null && _userHeading! >= 0)
-          Transform.rotate(
-            angle: _userHeading! * 3.14159 / 180, // Convert degrees to radians
-            child: const Icon(
-              Icons.navigation,
-              color: Colors.white,
-              size: 16,
-            ),
-          ),
       ],
     );
   }
+}
+
+// Custom painter for directional cone (Google Maps style)
+class _DirectionalConePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.blue.withOpacity(0.3)
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    final center = Offset(size.width / 2, size.height / 2);
+    
+    // Create cone shape pointing upward (will be rotated by Transform.rotate)
+    // Cone angle: 45 degrees on each side (90 degrees total)
+    final coneAngle = 3.14159 / 4; // 45 degrees in radians
+    final coneLength = size.height * 0.8;
+    
+    // Start from center
+    path.moveTo(center.dx, center.dy);
+    
+    // Left edge of cone
+    final leftX = center.dx - coneLength * 0.5;
+    final leftY = center.dy - coneLength;
+    path.lineTo(leftX, leftY);
+    
+    // Arc at the top
+    final radius = coneLength * 0.5;
+    path.arcToPoint(
+      Offset(center.dx + coneLength * 0.5, center.dy - coneLength),
+      radius: Radius.circular(radius),
+      clockwise: true,
+    );
+    
+    // Right edge back to center
+    path.lineTo(center.dx, center.dy);
+    path.close();
+    
+    canvas.drawPath(path, paint);
+    
+    // Add a subtle border to the cone
+    final borderPaint = Paint()
+      ..color = Colors.blue.withOpacity(0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawPath(path, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
