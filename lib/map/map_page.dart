@@ -1,4 +1,7 @@
 // lib/map/map_page.dart
+import 'dart:async';
+import 'dart:math' show pi;
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -27,11 +30,23 @@ class _MapPageState extends State<MapPage> {
   final DraggableScrollableController _sheetController = DraggableScrollableController();
   double _mapRotation = 0.0; // Track current map rotation for compass display
   bool _hasPerformedInitialLoad = false; // Flag to ensure initial load happens only once
+  
+  // User location tracking
+  LatLng? _userLocation;
+  double? _userHeading; // Direction user is facing in degrees (0 = North)
+  StreamSubscription<Position>? _locationSubscription;
 
   @override
   void initState() {
     super.initState();
     _initMap();
+    _startLocationTracking();
+  }
+
+  @override
+  void dispose() {
+    _locationSubscription?.cancel();
+    super.dispose();
   }
 
   Future<LatLng?> _getCurrentLocation() async {
@@ -62,6 +77,35 @@ class _MapPageState extends State<MapPage> {
     // Also schedule a fallback load using post-frame callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scheduleInitialPoiLoad();
+    });
+  }
+
+  void _startLocationTracking() async {
+    // Check if location services are enabled
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    if (permission == LocationPermission.deniedForever) return;
+
+    // Start listening to location updates
+    const locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 5, // Update every 5 meters
+    );
+
+    _locationSubscription = Geolocator.getPositionStream(
+      locationSettings: locationSettings,
+    ).listen((Position position) {
+      setState(() {
+        _userLocation = LatLng(position.latitude, position.longitude);
+        // Heading is available on some devices (compass direction)
+        _userHeading = position.heading;
+      });
     });
   }
 
@@ -256,6 +300,18 @@ class _MapPageState extends State<MapPage> {
                         ))
                     .toList(),
               ),
+              // User location marker
+              if (_userLocation != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      width: 60,
+                      height: 60,
+                      point: _userLocation!,
+                      child: _buildUserLocationMarker(),
+                    ),
+                  ],
+                ),
             ],
           ),
           if (_isLoadingPois)
@@ -399,4 +455,132 @@ class _MapPageState extends State<MapPage> {
         );
     }
   }
+
+  Widget _buildUserLocationMarker() {
+    // If heading is available, show Google Maps-style directional indicator
+    if (_userHeading != null && _userHeading! >= 0) {
+      return Transform.rotate(
+        angle: _userHeading! * pi / 180, // Convert degrees to radians
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Directional cone (like Google Maps flashlight beam)
+            CustomPaint(
+              size: const Size(60, 60),
+              painter: _DirectionalConePainter(),
+            ),
+            // White circle border
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.blue,
+                border: Border.all(
+                  color: Colors.white,
+                  width: 3,
+                ),
+              ),
+            ),
+            // Small white dot in center
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // If no heading, show simple circular marker
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Outer pulsing circle
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.blue.withOpacity(0.2),
+          ),
+        ),
+        // Middle circle
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.blue.withOpacity(0.3),
+            border: Border.all(
+              color: Colors.white,
+              width: 2,
+            ),
+          ),
+        ),
+        // Inner blue dot
+        Container(
+          width: 20,
+          height: 20,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.blue,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Custom painter for directional cone (Google Maps style)
+class _DirectionalConePainter extends CustomPainter {
+  @override
+  void paint(ui.Canvas canvas, ui.Size size) {
+    final paint = ui.Paint()
+      ..color = Colors.blue.withOpacity(0.3)
+      ..style = ui.PaintingStyle.fill;
+
+    final path = ui.Path();
+    final center = ui.Offset(size.width / 2, size.height / 2);
+    
+    // Create cone shape pointing upward (will be rotated by Transform.rotate)
+    // Cone angle: 45 degrees on each side (90 degrees total)
+    final coneLength = size.height * 0.8;
+    
+    // Start from center
+    path.moveTo(center.dx, center.dy);
+    
+    // Left edge of cone
+    final leftX = center.dx - coneLength * 0.5;
+    final leftY = center.dy - coneLength;
+    path.lineTo(leftX, leftY);
+    
+    // Arc at the top
+    final radius = coneLength * 0.5;
+    path.arcToPoint(
+      ui.Offset(center.dx + coneLength * 0.5, center.dy - coneLength),
+      radius: ui.Radius.circular(radius),
+      clockwise: true,
+    );
+    
+    // Right edge back to center
+    path.lineTo(center.dx, center.dy);
+    path.close();
+    
+    canvas.drawPath(path, paint);
+    
+    // Add a subtle border to the cone
+    final borderPaint = ui.Paint()
+      ..color = Colors.blue.withOpacity(0.5)
+      ..style = ui.PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawPath(path, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
