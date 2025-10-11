@@ -328,7 +328,7 @@ class _MapPageState extends State<MapPage> {
                   },
                   tooltip: 'Reset map orientation to north',
                   child: AnimatedRotation(
-                    turns: -_mapRotation / 360.0, // Counter-rotate to always point north
+                    turns: _mapRotation / 360.0, // Rotate with map to show orientation
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOut,
                     child: const Icon(Icons.navigation),
