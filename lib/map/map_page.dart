@@ -1,5 +1,6 @@
 // lib/map/map_page.dart
 import 'dart:async';
+import 'dart:math' show pi;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -458,7 +459,7 @@ class _MapPageState extends State<MapPage> {
     // If heading is available, show Google Maps-style directional indicator
     if (_userHeading != null && _userHeading! >= 0) {
       return Transform.rotate(
-        angle: _userHeading! * 3.14159 / 180, // Convert degrees to radians
+        angle: _userHeading! * pi / 180, // Convert degrees to radians
         child: Stack(
           alignment: Alignment.center,
           children: [
