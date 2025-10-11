@@ -1,6 +1,7 @@
 // lib/map/map_page.dart
 import 'dart:async';
 import 'dart:math' show pi;
+import 'dart:ui' show Canvas, Paint, PaintingStyle, Path, Offset, Radius;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
