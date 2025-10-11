@@ -237,7 +237,9 @@ class _MapPageState extends State<MapPage> {
   Future<void> _centerToCurrentLocation() async {
     final location = await _getCurrentLocation();
     if (location != null) {
-      _mapController.move(location, 15);
+      // Preserve the current zoom level when centering to location
+      final currentZoom = _mapController.camera.zoom;
+      _mapController.move(location, currentZoom);
       await _loadPoisInView();
     }
   }
