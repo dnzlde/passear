@@ -547,7 +547,6 @@ class _DirectionalConePainter extends CustomPainter {
     
     // Create cone shape pointing upward (will be rotated by Transform.rotate)
     // Cone angle: 45 degrees on each side (90 degrees total)
-    final coneAngle = 3.14159 / 4; // 45 degrees in radians
     final coneLength = size.height * 0.8;
     
     // Start from center
