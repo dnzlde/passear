@@ -1,4 +1,5 @@
 // lib/map/map_page.dart
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -323,10 +324,13 @@ class _MapPageState extends State<MapPage> {
                   onPressed: () => _mapController.rotate(0.0),
                   tooltip: 'Reset map orientation to north',
                   child: AnimatedRotation(
-                    turns: _mapRotation / 360.0, // Convert degrees to turns
+                    turns: (-_mapRotation) / 360.0, // Counter-rotate like a compass needle
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOut,
-                    child: const Icon(Icons.navigation), // Compass needle reflects map rotation, not true compass
+                    child: Transform.rotate(
+                      angle: -math.pi / 4, // Compensate for Icons.navigation's 45° tilt
+                      child: const Icon(Icons.navigation),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
