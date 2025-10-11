@@ -1,7 +1,7 @@
 // lib/map/map_page.dart
 import 'dart:async';
 import 'dart:math' show pi;
-import 'dart:ui' show Canvas, Paint, PaintingStyle, Path, Offset, Radius;
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -539,13 +539,13 @@ class _MapPageState extends State<MapPage> {
 // Custom painter for directional cone (Google Maps style)
 class _DirectionalConePainter extends CustomPainter {
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
+  void paint(ui.Canvas canvas, ui.Size size) {
+    final paint = ui.Paint()
       ..color = Colors.blue.withOpacity(0.3)
-      ..style = PaintingStyle.fill;
+      ..style = ui.PaintingStyle.fill;
 
-    final path = Path();
-    final center = Offset(size.width / 2, size.height / 2);
+    final path = ui.Path();
+    final center = ui.Offset(size.width / 2, size.height / 2);
     
     // Create cone shape pointing upward (will be rotated by Transform.rotate)
     // Cone angle: 45 degrees on each side (90 degrees total)
@@ -562,8 +562,8 @@ class _DirectionalConePainter extends CustomPainter {
     // Arc at the top
     final radius = coneLength * 0.5;
     path.arcToPoint(
-      Offset(center.dx + coneLength * 0.5, center.dy - coneLength),
-      radius: Radius.circular(radius),
+      ui.Offset(center.dx + coneLength * 0.5, center.dy - coneLength),
+      radius: ui.Radius.circular(radius),
       clockwise: true,
     );
     
@@ -574,9 +574,9 @@ class _DirectionalConePainter extends CustomPainter {
     canvas.drawPath(path, paint);
     
     // Add a subtle border to the cone
-    final borderPaint = Paint()
+    final borderPaint = ui.Paint()
       ..color = Colors.blue.withOpacity(0.5)
-      ..style = PaintingStyle.stroke
+      ..style = ui.PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawPath(path, borderPaint);
   }
