@@ -320,13 +320,18 @@ class _MapPageState extends State<MapPage> {
               children: [
                 FloatingActionButton(
                   heroTag: "reset_north",
-                  onPressed: () => _mapController.rotate(0.0),
+                  onPressed: () {
+                    _mapController.rotate(0.0);
+                    setState(() {
+                      _mapRotation = 0.0;
+                    });
+                  },
                   tooltip: 'Reset map orientation to north',
                   child: AnimatedRotation(
-                    turns: _mapRotation / 360.0, // Convert degrees to turns
+                    turns: _mapRotation / 360.0, // Rotate with map to show orientation
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOut,
-                    child: const Icon(Icons.navigation), // Compass needle reflects map rotation, not true compass
+                    child: const Icon(Icons.navigation),
                   ),
                 ),
                 const SizedBox(height: 8),
