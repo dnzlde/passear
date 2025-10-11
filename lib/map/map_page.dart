@@ -1,8 +1,8 @@
 // lib/map/map_page.dart
 import 'dart:async';
-import 'dart:math' show pi;
+// ignore: unused_import
+import 'dart:math';
 import 'dart:ui' as ui;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -27,10 +27,12 @@ class _MapPageState extends State<MapPage> {
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isLoadingPois = false;
   Poi? _selectedPoi;
-  final DraggableScrollableController _sheetController = DraggableScrollableController();
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
   double _mapRotation = 0.0; // Track current map rotation for compass display
-  bool _hasPerformedInitialLoad = false; // Flag to ensure initial load happens only once
-  
+  bool _hasPerformedInitialLoad =
+      false; // Flag to ensure initial load happens only once
+
   // User location tracking
   LatLng? _userLocation;
   double? _userHeading; // Direction user is facing in degrees (0 = North)
@@ -118,14 +120,18 @@ class _MapPageState extends State<MapPage> {
       final bounds = _mapController.camera.visibleBounds;
 
       if (isInitialLoad) {
-        debugPrint('POI: Got map bounds - N:${bounds.north}, S:${bounds.south}, E:${bounds.east}, W:${bounds.west}');
+        debugPrint(
+            'POI: Got map bounds - N:${bounds.north}, S:${bounds.south}, E:${bounds.east}, W:${bounds.west}');
         _hasPerformedInitialLoad = true;
       }
 
       // Validate bounds are reasonable (not NaN or infinite)
-      if (bounds.north.isNaN || bounds.south.isNaN ||
-          bounds.east.isNaN || bounds.west.isNaN ||
-          bounds.north <= bounds.south || bounds.east <= bounds.west) {
+      if (bounds.north.isNaN ||
+          bounds.south.isNaN ||
+          bounds.east.isNaN ||
+          bounds.west.isNaN ||
+          bounds.north <= bounds.south ||
+          bounds.east <= bounds.west) {
         if (isInitialLoad) {
           // Reset flag to allow retry
           _hasPerformedInitialLoad = false;
@@ -155,7 +161,8 @@ class _MapPageState extends State<MapPage> {
       });
 
       if (isInitialLoad) {
-        debugPrint('POI: Successfully loaded ${pois.length} POIs on initial load');
+        debugPrint(
+            'POI: Successfully loaded ${pois.length} POIs on initial load');
       }
     } catch (e) {
       setState(() => _isLoadingPois = false);
@@ -199,7 +206,8 @@ class _MapPageState extends State<MapPage> {
     // For the initial load, use the first position change event
     if (!_hasPerformedInitialLoad && !hasGesture) {
       _hasPerformedInitialLoad = true;
-      debugPrint('POI: First position change detected, starting initial POI load');
+      debugPrint(
+          'POI: First position change detected, starting initial POI load');
       // Small delay to ensure bounds are stable, then load POIs
       Future.delayed(const Duration(milliseconds: 500)).then((_) {
         _loadPoisInView(isInitialLoad: true);
@@ -225,7 +233,8 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       _selectedPoi = poi;
     });
-    _sheetController.animateTo(0.4, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    _sheetController.animateTo(0.4,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
   }
 
   void _hidePoiDetails() {
@@ -272,8 +281,10 @@ class _MapPageState extends State<MapPage> {
               initialCenter: _mapCenter,
               initialZoom: 15,
               interactionOptions: const InteractionOptions(
-                enableMultiFingerGestureRace: true, // Enforce gesture race so rotation requires explicit intent
-                rotationThreshold: 15.0,            // Threshold keeps deliberate rotations possible
+                enableMultiFingerGestureRace:
+                    true, // Enforce gesture race so rotation requires explicit intent
+                rotationThreshold:
+                    15.0, // Threshold keeps deliberate rotations possible
                 pinchZoomThreshold: 0.3,
               ),
               onMapReady: () {
@@ -335,7 +346,7 @@ class _MapPageState extends State<MapPage> {
               child: GestureDetector(
                 onTap: _hidePoiDetails,
                 child: Container(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                 ),
               ),
             ),
@@ -386,7 +397,8 @@ class _MapPageState extends State<MapPage> {
                   },
                   tooltip: 'Reset map orientation to north',
                   child: AnimatedRotation(
-                    turns: _mapRotation / 360.0, // Rotate with map to show orientation
+                    turns: _mapRotation /
+                        360.0, // Rotate with map to show orientation
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOut,
                     child: const Icon(Icons.navigation),
@@ -497,7 +509,7 @@ class _MapPageState extends State<MapPage> {
         ),
       );
     }
-    
+
     // If no heading, show simple circular marker
     return Stack(
       alignment: Alignment.center,
@@ -508,7 +520,7 @@ class _MapPageState extends State<MapPage> {
           height: 60,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.blue.withOpacity(0.2),
+            color: Colors.blue.withValues(alpha: 0.2),
           ),
         ),
         // Middle circle
@@ -517,7 +529,7 @@ class _MapPageState extends State<MapPage> {
           height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.blue.withOpacity(0.3),
+            color: Colors.blue.withValues(alpha: 0.3),
             border: Border.all(
               color: Colors.white,
               width: 2,
@@ -543,24 +555,24 @@ class _DirectionalConePainter extends CustomPainter {
   @override
   void paint(ui.Canvas canvas, ui.Size size) {
     final paint = ui.Paint()
-      ..color = Colors.blue.withOpacity(0.3)
+      ..color = Colors.blue.withValues(alpha: 0.3)
       ..style = ui.PaintingStyle.fill;
 
     final path = ui.Path();
     final center = ui.Offset(size.width / 2, size.height / 2);
-    
+
     // Create cone shape pointing upward (will be rotated by Transform.rotate)
     // Cone angle: 45 degrees on each side (90 degrees total)
     final coneLength = size.height * 0.8;
-    
+
     // Start from center
     path.moveTo(center.dx, center.dy);
-    
+
     // Left edge of cone
     final leftX = center.dx - coneLength * 0.5;
     final leftY = center.dy - coneLength;
     path.lineTo(leftX, leftY);
-    
+
     // Arc at the top
     final radius = coneLength * 0.5;
     path.arcToPoint(
@@ -568,16 +580,16 @@ class _DirectionalConePainter extends CustomPainter {
       radius: ui.Radius.circular(radius),
       clockwise: true,
     );
-    
+
     // Right edge back to center
     path.lineTo(center.dx, center.dy);
     path.close();
-    
+
     canvas.drawPath(path, paint);
-    
+
     // Add a subtle border to the cone
     final borderPaint = ui.Paint()
-      ..color = Colors.blue.withOpacity(0.5)
+      ..color = Colors.blue.withValues(alpha: 0.5)
       ..style = ui.PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawPath(path, borderPaint);

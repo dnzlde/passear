@@ -29,7 +29,7 @@ void main() {
         }
       }
       ''';
-      
+
       mockClient.setWikipediaNearbyResponse(mockNearbyResponse);
 
       // Act
@@ -47,13 +47,17 @@ void main() {
       expect(result[0].name, equals('National Museum'));
       expect(result[0].interestScore, greaterThan(0.0));
       expect(result[0].category, equals(PoiCategory.museum));
-      expect(result[0].interestLevel, equals(PoiInterestLevel.high)); // Museum with good score should get high level
+      expect(
+          result[0].interestLevel,
+          equals(PoiInterestLevel
+              .high)); // Museum with good score should get high level
       // Description should not be loaded initially for performance
       expect(result[0].isDescriptionLoaded, isFalse);
       expect(result[0].description, equals(''));
     });
 
-    test('should maintain backward compatibility with legacy fetchNearby', () async {
+    test('should maintain backward compatibility with legacy fetchNearby',
+        () async {
       // Act
       final result = await service.fetchNearby(32.0741, 34.7924);
 
@@ -115,7 +119,8 @@ void main() {
         }
       }
       ''';
-      mockClient.setResponse('wikipedia.org/w/api.php', mockDescriptionResponse);
+      mockClient.setResponse(
+          'wikipedia.org/w/api.php', mockDescriptionResponse);
 
       final poi = Poi(
         id: 'test-museum',
@@ -133,7 +138,8 @@ void main() {
       // Assert
       expect(result.isDescriptionLoaded, isTrue);
       expect(result.description, contains('fascinating place'));
-      expect(result.name, equals(poi.name)); // Other fields should remain the same
+      expect(
+          result.name, equals(poi.name)); // Other fields should remain the same
       expect(result.lat, equals(poi.lat));
       expect(result.lon, equals(poi.lon));
     });

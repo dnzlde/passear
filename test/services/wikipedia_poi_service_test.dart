@@ -67,7 +67,10 @@ void main() {
       final result = await service.fetchDescription('Tel Aviv Museum');
 
       // Assert
-      expect(result, equals('Tel Aviv Museum of Art is a major art museum in Tel Aviv, Israel.'));
+      expect(
+          result,
+          equals(
+              'Tel Aviv Museum of Art is a major art museum in Tel Aviv, Israel.'));
     });
 
     test('should handle description fetch failure gracefully', () async {
@@ -106,12 +109,13 @@ void main() {
         }
       }
       ''';
-      
+
       mockClient.setWikipediaNearbyResponse(nearbyResponse);
       mockClient.setResponse('wikipedia.org/w/api.php', descriptionResponse);
 
       // Act
-      final result = await service.fetchNearbyWithDescriptions(32.0741, 34.7924);
+      final result =
+          await service.fetchNearbyWithDescriptions(32.0741, 34.7924);
 
       // Assert
       expect(result, hasLength(1));
@@ -122,7 +126,9 @@ void main() {
       expect(result[0].interestLevel.name, equals('high'));
     });
 
-    test('should use default mock responses when no specific response configured', () async {
+    test(
+        'should use default mock responses when no specific response configured',
+        () async {
       // Act
       final result = await service.fetchNearbyPois(32.0741, 34.7924);
 
@@ -152,7 +158,7 @@ void main() {
         }
       }
       ''';
-      
+
       mockClient.setWikipediaNearbyResponse(nearbyResponse);
 
       // Act
@@ -167,7 +173,8 @@ void main() {
       // Assert
       expect(result, isNotEmpty);
       // Museum should score higher and appear first
-      final museum = result.firstWhere((poi) => poi.title.contains('Museum'), orElse: () => result.first);
+      final museum = result.firstWhere((poi) => poi.title.contains('Museum'),
+          orElse: () => result.first);
       expect(museum.interestScore, greaterThan(10.0));
       expect(museum.category.name, equals('museum'));
       // Descriptions should not be loaded in intelligent bounds fetching
@@ -198,7 +205,8 @@ void main() {
         }
       }
       ''';
-      mockClient.setResponse('wikipedia.org/w/api.php', mockDescriptionResponse);
+      mockClient.setResponse(
+          'wikipedia.org/w/api.php', mockDescriptionResponse);
 
       final poi = WikipediaPoi(
         title: 'Test POI',
@@ -210,8 +218,10 @@ void main() {
       await service.enrichPoiWithDescription(poi);
 
       // Assert
-      expect(poi.description, equals('This is a detailed description loaded on demand.'));
-      expect(poi.interestScore, greaterThan(0.0)); // Score should be recalculated
+      expect(poi.description,
+          equals('This is a detailed description loaded on demand.'));
+      expect(
+          poi.interestScore, greaterThan(0.0)); // Score should be recalculated
     });
 
     test('should skip enrichment if description already exists', () async {
@@ -227,7 +237,8 @@ void main() {
       await service.enrichPoiWithDescription(poi);
 
       // Assert
-      expect(poi.description, equals('Existing description')); // Should remain unchanged
+      expect(poi.description,
+          equals('Existing description')); // Should remain unchanged
     });
   });
 }

@@ -24,7 +24,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     tts = LocalTtsService();
     poiService = PoiService();
     currentPoi = widget.poi;
-    
+
     // Load description if not already loaded
     if (!currentPoi.isDescriptionLoaded) {
       _loadDescription();
@@ -33,7 +33,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
 
   Future<void> _loadDescription() async {
     if (isLoadingDescription || currentPoi.isDescriptionLoaded) return;
-    
+
     setState(() {
       isLoadingDescription = true;
     });
@@ -88,7 +88,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                 Expanded(
                   child: Text(
                     poi.name,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ),
                 _buildInterestBadge(poi.interestLevel),
@@ -101,7 +102,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                 child: Chip(
                   label: Text(_getCategoryDisplayName(poi.category)),
                   backgroundColor: _getCategoryColor(poi.category),
-                  labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+                  labelStyle:
+                      const TextStyle(color: Colors.white, fontSize: 12),
                 ),
               ),
             // Description section with loading state
@@ -131,7 +133,10 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
             else
               const Text(
                 'No description available.',
-                style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.grey),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey),
               ),
             const SizedBox(height: 16),
             if (description.isNotEmpty && !isLoadingDescription)
@@ -174,9 +179,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -185,7 +190,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500),
+            style: TextStyle(
+                color: color, fontSize: 12, fontWeight: FontWeight.w500),
           ),
         ],
       ),

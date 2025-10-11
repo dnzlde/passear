@@ -27,11 +27,13 @@ class AppSettings {
   }
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
-    final enabledCategoriesJson = json['enabledCategories'] as Map<String, dynamic>? ?? {};
+    final enabledCategoriesJson =
+        json['enabledCategories'] as Map<String, dynamic>? ?? {};
     final enabledCategories = <PoiCategory, bool>{};
-    
+
     for (PoiCategory category in PoiCategory.values) {
-      enabledCategories[category] = enabledCategoriesJson[category.name] as bool? ?? true;
+      enabledCategories[category] =
+          enabledCategoriesJson[category.name] as bool? ?? true;
     }
 
     return AppSettings(
@@ -43,15 +45,18 @@ class AppSettings {
   Map<String, dynamic> toJson() {
     return {
       'enabledCategories': {
-        for (var entry in enabledCategories.entries) entry.key.name: entry.value,
+        for (var entry in enabledCategories.entries)
+          entry.key.name: entry.value,
       },
       'maxPoiCount': maxPoiCount,
     };
   }
 
   /// Get count of enabled categories
-  int get enabledCategoryCount => enabledCategories.values.where((enabled) => enabled).length;
+  int get enabledCategoryCount =>
+      enabledCategories.values.where((enabled) => enabled).length;
 
   /// Check if a category is enabled
-  bool isCategoryEnabled(PoiCategory category) => enabledCategories[category] ?? true;
+  bool isCategoryEnabled(PoiCategory category) =>
+      enabledCategories[category] ?? true;
 }

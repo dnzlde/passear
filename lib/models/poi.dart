@@ -13,9 +13,9 @@ enum PoiCategory {
 }
 
 enum PoiInterestLevel {
-  high,    // Premium markers (star-shaped, golden)
-  medium,  // Standard blue markers  
-  low,     // Smaller, subtle markers
+  high, // Premium markers (star-shaped, golden)
+  medium, // Standard blue markers
+  low, // Smaller, subtle markers
 }
 
 class Poi {

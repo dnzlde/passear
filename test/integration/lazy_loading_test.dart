@@ -34,7 +34,7 @@ void main() {
         }
       }
       ''';
-      
+
       const mockDescriptionResponse = '''
       {
         "query": {
@@ -48,7 +48,8 @@ void main() {
       ''';
 
       mockClient.setWikipediaNearbyResponse(mockNearbyResponse);
-      mockClient.setResponse('wikipedia.org/w/api.php', mockDescriptionResponse);
+      mockClient.setResponse(
+          'wikipedia.org/w/api.php', mockDescriptionResponse);
 
       // Act 1: Initial fetch (should not load descriptions)
       final initialPois = await service.fetchInBounds(
@@ -61,7 +62,8 @@ void main() {
 
       // Assert 1: POIs should be loaded without descriptions
       expect(initialPois, hasLength(2));
-      final museum = initialPois.firstWhere((poi) => poi.name.contains('Museum'));
+      final museum =
+          initialPois.firstWhere((poi) => poi.name.contains('Museum'));
       expect(museum.name, equals('Historic Museum'));
       expect(museum.category.name, equals('museum'));
       expect(museum.interestLevel.name, equals('high'));
@@ -83,7 +85,8 @@ void main() {
       expect(enrichedPoi.category, equals(museum.category));
     });
 
-    test('should handle the case where description loading fails gracefully', () async {
+    test('should handle the case where description loading fails gracefully',
+        () async {
       // Arrange - Setup POI without configuring description response
       final poi = Poi(
         id: 'unknown-poi',
