@@ -1,4 +1,5 @@
 // lib/map/map_page.dart
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -27,11 +28,23 @@ class _MapPageState extends State<MapPage> {
   final DraggableScrollableController _sheetController = DraggableScrollableController();
   double _mapRotation = 0.0; // Track current map rotation for compass display
   bool _hasPerformedInitialLoad = false; // Flag to ensure initial load happens only once
+  
+  // User location tracking
+  LatLng? _userLocation;
+  double? _userHeading; // Direction user is facing in degrees (0 = North)
+  StreamSubscription<Position>? _locationSubscription;
 
   @override
   void initState() {
     super.initState();
     _initMap();
+    _startLocationTracking();
+  }
+
+  @override
+  void dispose() {
+    _locationSubscription?.cancel();
+    super.dispose();
   }
 
   Future<LatLng?> _getCurrentLocation() async {
@@ -62,6 +75,35 @@ class _MapPageState extends State<MapPage> {
     // Also schedule a fallback load using post-frame callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scheduleInitialPoiLoad();
+    });
+  }
+
+  void _startLocationTracking() async {
+    // Check if location services are enabled
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    if (permission == LocationPermission.deniedForever) return;
+
+    // Start listening to location updates
+    const locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 5, // Update every 5 meters
+    );
+
+    _locationSubscription = Geolocator.getPositionStream(
+      locationSettings: locationSettings,
+    ).listen((Position position) {
+      setState(() {
+        _userLocation = LatLng(position.latitude, position.longitude);
+        // Heading is available on some devices (compass direction)
+        _userHeading = position.heading;
+      });
     });
   }
 
@@ -256,6 +298,18 @@ class _MapPageState extends State<MapPage> {
                         ))
                     .toList(),
               ),
+              // User location marker
+              if (_userLocation != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      width: 60,
+                      height: 60,
+                      point: _userLocation!,
+                      child: _buildUserLocationMarker(),
+                    ),
+                  ],
+                ),
             ],
           ),
           if (_isLoadingPois)
@@ -398,5 +452,54 @@ class _MapPageState extends State<MapPage> {
           size: 25,
         );
     }
+  }
+
+  Widget _buildUserLocationMarker() {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Outer pulsing circle
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.blue.withOpacity(0.2),
+          ),
+        ),
+        // Middle circle
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.blue.withOpacity(0.3),
+            border: Border.all(
+              color: Colors.white,
+              width: 2,
+            ),
+          ),
+        ),
+        // Inner blue dot
+        Container(
+          width: 20,
+          height: 20,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.blue,
+          ),
+        ),
+        // Direction arrow if heading is available
+        if (_userHeading != null && _userHeading! >= 0)
+          Transform.rotate(
+            angle: _userHeading! * 3.14159 / 180, // Convert degrees to radians
+            child: const Icon(
+              Icons.navigation,
+              color: Colors.white,
+              size: 16,
+            ),
+          ),
+      ],
+    );
   }
 }
