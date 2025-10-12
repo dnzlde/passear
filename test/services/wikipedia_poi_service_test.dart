@@ -218,7 +218,7 @@ void main() {
       mockClient.setResponse('extracts', mockDescriptionResponse);
 
       final poi = WikipediaPoi(
-        title: 'Test Museum',  // Use a title with keywords for better scoring
+        title: 'Test Museum', // Use a title with keywords for better scoring
         lat: 32.0741,
         lon: 34.7924,
       );

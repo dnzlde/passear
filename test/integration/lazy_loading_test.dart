@@ -51,7 +51,7 @@ void main() {
       // and description response for extracts requests
       // Since both use the same URL pattern, we'll use the default behavior
       // by not configuring a specific response, letting the mock handle it based on query params
-      
+
       // Actually, let's configure it properly by setting the geosearch response
       mockClient.setResponse('geosearch', mockNearbyResponse);
       mockClient.setResponse('extracts', mockDescriptionResponse);
@@ -102,10 +102,10 @@ void main() {
         }
       }
       ''';
-      
+
       mockClient.setResponse(
           'wikipedia.org/w/api.php', mockEmptyDescriptionResponse);
-      
+
       final poi = Poi(
         id: 'unknown-poi',
         name: 'Unknown POI',

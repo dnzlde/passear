@@ -107,7 +107,7 @@ class PoiInterestScorer {
       double score, PoiCategory category) {
     // Apply category boost to score for interest level determination
     double adjustedScore = score;
-    
+
     // Add category bonuses
     switch (category) {
       case PoiCategory.museum:

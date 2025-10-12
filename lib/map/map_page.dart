@@ -217,7 +217,8 @@ class _MapPageState extends State<MapPage> {
           'POI: First position change detected, starting initial POI load');
       // Small delay to ensure bounds are stable, then load POIs
       Future.delayed(const Duration(milliseconds: 500)).then((_) {
-        if (mounted) { // Check if widget is still mounted
+        if (mounted) {
+          // Check if widget is still mounted
           _loadPoisInView(isInitialLoad: true);
         }
       });
@@ -232,7 +233,8 @@ class _MapPageState extends State<MapPage> {
     // Track map rotation for compass display
     final newRotation = position.rotation ?? 0.0;
     if (newRotation != _mapRotation) {
-      if (mounted) { // Check if widget is still mounted before setState
+      if (mounted) {
+        // Check if widget is still mounted before setState
         setState(() {
           _mapRotation = newRotation;
         });
