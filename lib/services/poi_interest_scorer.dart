@@ -105,15 +105,39 @@ class PoiInterestScorer {
   /// Score is the primary factor, category provides additional context
   static PoiInterestLevel determineInterestLevel(
       double score, PoiCategory category) {
-    // Use score as primary factor for interest level determination
+    // Apply category boost to score for interest level determination
+    double adjustedScore = score;
+    
+    // Add category bonuses
+    switch (category) {
+      case PoiCategory.museum:
+      case PoiCategory.historicalSite:
+      case PoiCategory.religiousSite:
+        adjustedScore += 25.0;
+        break;
+      case PoiCategory.monument:
+      case PoiCategory.landmark:
+      case PoiCategory.theater:
+      case PoiCategory.gallery:
+        adjustedScore += 15.0;
+        break;
+      case PoiCategory.university:
+      case PoiCategory.architecture:
+      case PoiCategory.park:
+        adjustedScore += 10.0;
+        break;
+      case PoiCategory.generic:
+        // No bonus for generic category
+        break;
+    }
 
-    // High interest: Truly significant POIs (primarily score-based)
-    if (score >= 50.0) {
+    // High interest: Truly significant POIs (adjusted score >= 45)
+    if (adjustedScore >= 45.0) {
       return PoiInterestLevel.high;
     }
 
-    // Medium interest: Notable POIs
-    if (score >= 25.0) {
+    // Medium interest: Notable POIs (adjusted score >= 25)
+    if (adjustedScore >= 25.0) {
       return PoiInterestLevel.medium;
     }
 

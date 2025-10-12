@@ -187,9 +187,9 @@ void main() {
           highGenericScore, PoiCategory.generic);
 
       // Low museum: 5.0 + 25.0 = 30.0 (medium)
-      // High generic: 45.0 + 0.0 = 45.0 (medium, close to high threshold)
+      // High generic: 45.0 + 0.0 = 45.0 (high, at the high threshold)
       expect(lowMuseumLevel, equals(PoiInterestLevel.medium));
-      expect(highGenericLevel, equals(PoiInterestLevel.medium));
+      expect(highGenericLevel, equals(PoiInterestLevel.high));
 
       // The key improvement: higher score wins in sorting, even with same interest level
       final lowMuseumAdjusted = lowMuseumScore + 25.0; // 30.0

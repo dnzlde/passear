@@ -101,7 +101,10 @@ class WikipediaPoiService {
 
     final responseBody = await _apiClient.get(url);
     final data = json.decode(responseBody);
-    final results = data['query']['geosearch'] as List;
+    final query = data['query'];
+    if (query == null) return [];
+    final results = query['geosearch'] as List?;
+    if (results == null) return [];
     return results.map((e) {
       return WikipediaPoi(
         title: e['title'],
