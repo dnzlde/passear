@@ -74,7 +74,17 @@ void main() {
     });
 
     test('should handle description fetch failure gracefully', () async {
-      // Arrange - no response configured, will throw exception
+      // Arrange - configure empty/null response
+      const emptyResponse = '''
+      {
+        "query": {
+          "pages": {
+            "12345": {}
+          }
+        }
+      }
+      ''';
+      mockClient.setResponse('extracts', emptyResponse);
 
       // Act
       final result = await service.fetchDescription('Unknown Title');
@@ -110,8 +120,8 @@ void main() {
       }
       ''';
 
-      mockClient.setWikipediaNearbyResponse(nearbyResponse);
-      mockClient.setResponse('wikipedia.org/w/api.php', descriptionResponse);
+      mockClient.setResponse('geosearch', nearbyResponse);
+      mockClient.setResponse('extracts', descriptionResponse);
 
       // Act
       final result =
@@ -205,11 +215,10 @@ void main() {
         }
       }
       ''';
-      mockClient.setResponse(
-          'wikipedia.org/w/api.php', mockDescriptionResponse);
+      mockClient.setResponse('extracts', mockDescriptionResponse);
 
       final poi = WikipediaPoi(
-        title: 'Test POI',
+        title: 'Test Museum',  // Use a title with keywords for better scoring
         lat: 32.0741,
         lon: 34.7924,
       );

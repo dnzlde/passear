@@ -17,6 +17,9 @@ void main() {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const PassearApp());
 
+    // Pump to advance through the timers
+    await tester.pump(const Duration(milliseconds: 2000));
+
     // Verify that the app shows the Passear title in the app bar.
     expect(find.text('Passear'), findsOneWidget);
 

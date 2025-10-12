@@ -138,12 +138,14 @@ class _MapPageState extends State<MapPage> {
           // Retry after a longer delay for initial load
           debugPrint('Invalid bounds on initial load, retrying...');
           await Future.delayed(const Duration(milliseconds: 1500));
+          if (!mounted) return; // Check if widget is still mounted
           return _loadPoisInView(isInitialLoad: true);
         }
         debugPrint('Invalid map bounds, skipping POI load');
         return;
       }
 
+      if (!mounted) return; // Check before setState
       setState(() => _isLoadingPois = true);
 
       // Use rectangular bounds for precise POI discovery
@@ -155,6 +157,7 @@ class _MapPageState extends State<MapPage> {
         // maxResults will be determined by settings
       );
 
+      if (!mounted) return; // Check before setState
       setState(() {
         _pois = pois;
         _isLoadingPois = false;
@@ -165,6 +168,7 @@ class _MapPageState extends State<MapPage> {
             'POI: Successfully loaded ${pois.length} POIs on initial load');
       }
     } catch (e) {
+      if (!mounted) return; // Check before setState
       setState(() => _isLoadingPois = false);
 
       if (isInitialLoad) {
@@ -173,6 +177,7 @@ class _MapPageState extends State<MapPage> {
         // For initial load failures, retry once after a delay
         debugPrint('Initial POI load failed, retrying: $e');
         await Future.delayed(const Duration(milliseconds: 1500));
+        if (!mounted) return; // Check if widget is still mounted
         return _loadPoisInView(isInitialLoad: true);
       }
 
@@ -185,6 +190,7 @@ class _MapPageState extends State<MapPage> {
     // Add a delay to ensure map is fully stabilized on iOS
     debugPrint('POI: onMapReady triggered, waiting for map stabilization...');
     await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return; // Check if widget is still mounted
     debugPrint('POI: Starting initial POI load after delay');
     return _loadPoisInView(isInitialLoad: true);
   }
@@ -195,6 +201,7 @@ class _MapPageState extends State<MapPage> {
     debugPrint('POI: Scheduling initial POI load...');
     // Wait longer on iOS to ensure map is fully initialized
     await Future.delayed(const Duration(milliseconds: 1000));
+    if (!mounted) return; // Check if widget is still mounted
 
     if (!_hasPerformedInitialLoad) {
       debugPrint('POI: Attempting fallback initial POI load');
@@ -210,7 +217,9 @@ class _MapPageState extends State<MapPage> {
           'POI: First position change detected, starting initial POI load');
       // Small delay to ensure bounds are stable, then load POIs
       Future.delayed(const Duration(milliseconds: 500)).then((_) {
-        _loadPoisInView(isInitialLoad: true);
+        if (mounted) { // Check if widget is still mounted
+          _loadPoisInView(isInitialLoad: true);
+        }
       });
       return;
     }
@@ -223,9 +232,11 @@ class _MapPageState extends State<MapPage> {
     // Track map rotation for compass display
     final newRotation = position.rotation ?? 0.0;
     if (newRotation != _mapRotation) {
-      setState(() {
-        _mapRotation = newRotation;
-      });
+      if (mounted) { // Check if widget is still mounted before setState
+        setState(() {
+          _mapRotation = newRotation;
+        });
+      }
     }
   }
 
