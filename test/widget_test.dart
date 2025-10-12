@@ -12,7 +12,8 @@ import 'package:passear/main.dart';
 import 'package:passear/services/api_client.dart';
 
 void main() {
-  testWidgets('Passear app loads and shows map page', (WidgetTester tester) async {
+  testWidgets('Passear app loads and shows map page',
+      (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const PassearApp());
 
@@ -25,16 +26,17 @@ void main() {
 
     // Verify that we have floating action buttons.
     expect(find.byType(FloatingActionButton), findsAtLeastNWidgets(1));
-    
+
     // Verify that the reset north button is present with navigation icon
     expect(find.byIcon(Icons.navigation), findsOneWidget);
     expect(find.byTooltip('Reset map orientation to north'), findsOneWidget);
   });
 
-  testWidgets('MapPage with mock API client loads without network errors', (WidgetTester tester) async {
+  testWidgets('MapPage with mock API client loads without network errors',
+      (WidgetTester tester) async {
     // Create a mock API client to avoid network requests in tests
     final mockClient = MockApiClient();
-    
+
     // Build the MapPage widget with mock client
     await tester.pumpWidget(
       MaterialApp(
@@ -45,18 +47,19 @@ void main() {
     // Verify that the map page loads
     expect(find.text('Passear'), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsOneWidget);
-    
+
     // Wait for any async operations to complete
     await tester.pumpAndSettle();
-    
+
     // The test should not fail with network errors
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('POI modal should be dismissible by tapping outside', (WidgetTester tester) async {
+  testWidgets('POI modal should be dismissible by tapping outside',
+      (WidgetTester tester) async {
     // Create a mock API client
     final mockClient = MockApiClient();
-    
+
     // Build the MapPage widget
     await tester.pumpWidget(
       MaterialApp(
@@ -87,9 +90,9 @@ void main() {
 /// Test wrapper for MapPage that accepts a mock API client
 class MapPageWithMockClient extends StatelessWidget {
   final ApiClient apiClient;
-  
+
   const MapPageWithMockClient({super.key, required this.apiClient});
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,9 +112,9 @@ class MapPageWithMockClient extends StatelessWidget {
 /// Test wrapper for MapPage that supports POI modal testing
 class MapPageWithPOISupport extends StatelessWidget {
   final ApiClient apiClient;
-  
+
   const MapPageWithPOISupport({super.key, required this.apiClient});
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -142,7 +145,7 @@ class MapPageWithPOISupport extends StatelessWidget {
                         child: GestureDetector(
                           onTap: () => Navigator.of(context).pop(),
                           child: Container(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withValues(alpha: 0.3),
                           ),
                         ),
                       ),
@@ -175,7 +178,9 @@ class MapPageWithPOISupport extends StatelessWidget {
                                       children: [
                                         Text(
                                           'Test POI',
-                                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                          style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold),
                                         ),
                                         SizedBox(height: 16),
                                         Text('This is a test POI description.'),

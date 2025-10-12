@@ -37,10 +37,12 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _updateCategorySetting(PoiCategory category, bool enabled) async {
+  Future<void> _updateCategorySetting(
+      PoiCategory category, bool enabled) async {
     await _settingsService.updateCategoryEnabled(category, enabled);
     setState(() {
-      final updatedCategories = Map<PoiCategory, bool>.from(_settings.enabledCategories);
+      final updatedCategories =
+          Map<PoiCategory, bool>.from(_settings.enabledCategories);
       updatedCategories[category] = enabled;
       _settings = _settings.copyWith(enabledCategories: updatedCategories);
     });
@@ -152,9 +154,9 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Max POI Count Setting
           Card(
             child: Padding(
@@ -185,9 +187,9 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // POI Categories
           Card(
             child: Padding(
@@ -203,8 +205,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   Text(
                     'Toggle which types of Points of Interest to show on the map',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[600],
-                    ),
+                          color: Colors.grey[600],
+                        ),
                   ),
                   const SizedBox(height: 16),
                   ...PoiCategory.values.map((category) {
@@ -223,9 +225,9 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Quick Actions
           Card(
             child: Padding(

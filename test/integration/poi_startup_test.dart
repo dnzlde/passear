@@ -1,12 +1,12 @@
 // test/integration/poi_startup_test.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:passear/map/map_page.dart';
 import 'package:passear/services/api_client.dart';
 
 void main() {
   group('POI Startup Loading', () {
-    testWidgets('POIs should be loaded when map is ready on app startup', (WidgetTester tester) async {
+    testWidgets('POIs should be loaded when map is ready on app startup',
+        (WidgetTester tester) async {
       // Arrange - Create a mock API client with test data
       final mockClient = MockApiClient();
       const mockNearbyResponse = '''
@@ -45,7 +45,9 @@ void main() {
       expect(find.byType(FloatingActionButton), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('Map initialization should not crash when location permission is denied', (WidgetTester tester) async {
+    testWidgets(
+        'Map initialization should not crash when location permission is denied',
+        (WidgetTester tester) async {
       // Arrange - Create a mock API client
       final mockClient = MockApiClient();
 
@@ -111,7 +113,6 @@ class TestMapWidget extends StatefulWidget {
 }
 
 class _TestMapWidgetState extends State<TestMapWidget> {
-  bool _isInitialized = false;
   bool _isLoadingPois = false;
 
   @override
@@ -125,10 +126,6 @@ class _TestMapWidgetState extends State<TestMapWidget> {
     await Future.delayed(const Duration(milliseconds: 100));
 
     if (mounted) {
-      setState(() {
-        _isInitialized = true;
-      });
-
       // Simulate onMapReady callback triggering POI loading
       await _simulateOnMapReady();
     }

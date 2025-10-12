@@ -13,9 +13,9 @@ abstract class ApiClient {
 /// Production implementation that makes real HTTP requests
 class HttpApiClient implements ApiClient {
   final http.Client _httpClient;
-  
+
   HttpApiClient(this._httpClient);
-  
+
   @override
   Future<String> get(Uri url) async {
     final response = await _httpClient.get(url);
@@ -30,17 +30,17 @@ class HttpApiClient implements ApiClient {
 /// Mock implementation for testing
 class MockApiClient implements ApiClient {
   final Map<String, String> _responses = {};
-  
+
   /// Configure a response for a specific URL pattern
   void setResponse(String urlPattern, String response) {
     _responses[urlPattern] = response;
   }
-  
+
   /// Configure Wikipedia nearby POIs response
   void setWikipediaNearbyResponse(String response) {
     setResponse('wikipedia.org/w/api.php', response);
   }
-  
+
   @override
   Future<String> get(Uri url) async {
     // Find matching response based on URL
@@ -49,7 +49,7 @@ class MockApiClient implements ApiClient {
         return _responses[pattern]!;
       }
     }
-    
+
     // Default mock responses for common requests
     if (url.toString().contains('wikipedia.org/w/api.php')) {
       if (url.queryParameters['list'] == 'geosearch') {
@@ -58,10 +58,10 @@ class MockApiClient implements ApiClient {
         return _getDefaultDescriptionResponse();
       }
     }
-    
+
     throw Exception('Mock: No response configured for $url');
   }
-  
+
   String _getDefaultNearbyResponse() {
     return jsonEncode({
       'query': {
@@ -72,7 +72,7 @@ class MockApiClient implements ApiClient {
             'lon': 34.7924,
           },
           {
-            'title': 'Test Location 2', 
+            'title': 'Test Location 2',
             'lat': 32.0751,
             'lon': 34.7934,
           }
@@ -80,7 +80,7 @@ class MockApiClient implements ApiClient {
       }
     });
   }
-  
+
   String _getDefaultDescriptionResponse() {
     return jsonEncode({
       'query': {

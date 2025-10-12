@@ -11,7 +11,8 @@ void main() {
       mockClient = MockApiClient();
     });
 
-    test('should return configured response for matching URL pattern', () async {
+    test('should return configured response for matching URL pattern',
+        () async {
       // Arrange
       const expectedResponse = '{"test": "data"}';
       mockClient.setResponse('example.com', expectedResponse);
@@ -24,7 +25,8 @@ void main() {
       expect(result, expectedResponse);
     });
 
-    test('should return default Wikipedia nearby response for geosearch', () async {
+    test('should return default Wikipedia nearby response for geosearch',
+        () async {
       // Arrange
       final url = Uri.https('en.wikipedia.org', '/w/api.php', {
         'action': 'query',
@@ -47,7 +49,8 @@ void main() {
       expect(data['query']['geosearch'][0]['lon'], equals(34.7924));
     });
 
-    test('should return default Wikipedia description response for extracts', () async {
+    test('should return default Wikipedia description response for extracts',
+        () async {
       // Arrange
       final url = Uri.https('en.wikipedia.org', '/w/api.php', {
         'action': 'query',
@@ -64,7 +67,8 @@ void main() {
 
       // Assert
       expect(data['query']['pages'], isA<Map>());
-      expect(data['query']['pages']['123']['extract'], contains('test description'));
+      expect(data['query']['pages']['123']['extract'],
+          contains('test description'));
     });
 
     test('should throw exception for unconfigured URL', () async {
