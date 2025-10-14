@@ -11,9 +11,9 @@ All software components have been updated to their latest stable versions as of 
 ### 1. Flutter Dependencies (pubspec.yaml)
 
 #### Updated Packages
-- **google_maps_flutter**: `2.12.3` → `3.4.0`
-  - Major version update with new features and improvements
-  - Better performance and API enhancements
+- **google_maps_flutter**: `2.12.3` → `2.16.0`
+  - Latest version with improvements and bug fixes
+  - Better performance and enhanced features
   
 - **shared_preferences**: `2.3.3` → `2.5.3`
   - Minor version updates with bug fixes and improvements
