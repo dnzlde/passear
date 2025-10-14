@@ -85,7 +85,11 @@ class PoiService {
 
     try {
       final description = await _wikiService.fetchDescription(poi.name);
-      return poi.copyWithDescription(description ?? '');
+      if (description != null && description.isNotEmpty) {
+        return poi.copyWithDescription(description);
+      }
+      // If description is null or empty, return original POI without marking as loaded
+      return poi;
     } catch (e) {
       // If fetching fails, return the original POI
       return poi;

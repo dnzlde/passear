@@ -17,6 +17,9 @@ void main() {
       // Wait for initial rendering
       await tester.pump();
 
+      // Pump frames to advance through the timers (300ms + 1000ms + 500ms = 1800ms total)
+      await tester.pump(const Duration(milliseconds: 2000));
+
       // Verify that the map page loads without errors
       expect(tester.takeException(), isNull);
 
@@ -40,6 +43,9 @@ void main() {
 
       // Wait for initial rendering
       await tester.pump();
+
+      // Pump frames to advance through the timers (300ms + 1000ms + 500ms = 1800ms total)
+      await tester.pump(const Duration(milliseconds: 2000));
 
       // Verify that compass/navigation button is present
       expect(find.byIcon(Icons.navigation), findsOneWidget);

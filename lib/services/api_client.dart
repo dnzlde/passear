@@ -43,19 +43,33 @@ class MockApiClient implements ApiClient {
 
   @override
   Future<String> get(Uri url) async {
-    // Find matching response based on URL
-    for (final pattern in _responses.keys) {
-      if (url.toString().contains(pattern)) {
-        return _responses[pattern]!;
+    // For Wikipedia API, check query parameters to determine response type
+    if (url.toString().contains('wikipedia.org/w/api.php')) {
+      if (url.queryParameters['list'] == 'geosearch') {
+        // Check if there's a configured geosearch response
+        for (final pattern in _responses.keys) {
+          if (pattern.contains('geosearch') ||
+              url.toString().contains(pattern)) {
+            return _responses[pattern]!;
+          }
+        }
+        return _getDefaultNearbyResponse();
+      } else if (url.queryParameters['prop'] == 'extracts') {
+        // Check if there's a configured extracts response
+        for (final pattern in _responses.keys) {
+          if (pattern.contains('extracts') ||
+              url.toString().contains(pattern)) {
+            return _responses[pattern]!;
+          }
+        }
+        return _getDefaultDescriptionResponse();
       }
     }
 
-    // Default mock responses for common requests
-    if (url.toString().contains('wikipedia.org/w/api.php')) {
-      if (url.queryParameters['list'] == 'geosearch') {
-        return _getDefaultNearbyResponse();
-      } else if (url.queryParameters['prop'] == 'extracts') {
-        return _getDefaultDescriptionResponse();
+    // Find matching response based on URL pattern
+    for (final pattern in _responses.keys) {
+      if (url.toString().contains(pattern)) {
+        return _responses[pattern]!;
       }
     }
 
