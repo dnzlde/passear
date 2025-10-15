@@ -129,7 +129,7 @@ ios-build:
   name: iOS Build (Manual Only)
   runs-on: macos-latest
   needs: test-and-analyze
-  if: github.event_name == 'workflow_dispatch' && inputs.run_ios_build
+  if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_ios_build == 'true'
 ```
 
 ### Key Points:
