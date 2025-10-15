@@ -5,6 +5,13 @@ on:
     branches: [ main, dev ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      run_ios_build:
+        description: 'Run iOS build job'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   # Main CI job for testing and analysis
@@ -37,11 +44,15 @@ jobs:
     - name: Check code formatting
       run: dart format --set-exit-if-changed .
 
-  # iOS build job
+  # iOS build job (manual trigger only)
+  # Note: This build uses --no-codesign, so artifacts cannot be installed on real devices
+  # Requires Apple Developer account and code signing for device installation
+  # Use this job to verify iOS compilation before releases
   ios-build:
-    name: iOS Build
+    name: iOS Build (Manual Only)
     runs-on: macos-latest
     needs: test-and-analyze
+    if: github.event_name == 'workflow_dispatch' && inputs.run_ios_build == 'true'
     
     steps:
     - name: Checkout repository
