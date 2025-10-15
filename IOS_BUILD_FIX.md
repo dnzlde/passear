@@ -39,12 +39,12 @@ All iOS deployment targets are now consistently set to `15.0`, which:
 6 lines changed (6 insertions, 6 deletions)
 
 ### Affected Configurations
-1. **Profile** (project settings) - Line ~475
-2. **Profile** (Runner target) - Line ~494
-3. **Debug** (project settings) - Line ~606
-4. **Release** (project settings) - Line ~657
-5. **Debug** (Runner target) - Line ~678
-6. **Release** (Runner target) - Line ~702
+1. **Profile** (project settings)
+2. **Profile** (Runner target)
+3. **Debug** (project settings)
+4. **Release** (project settings)
+5. **Debug** (Runner target)
+6. **Release** (Runner target)
 
 ## Verification
 To verify the fix:
