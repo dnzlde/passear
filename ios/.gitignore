@@ -35,6 +35,7 @@ xcuserdata
 timeline.xctimeline
 
 # Flutter-generated files
+Flutter/.last_build_id
 Flutter/App.framework
 Flutter/Flutter.framework
 Flutter/Flutter.podspec
