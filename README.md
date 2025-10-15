@@ -176,18 +176,33 @@ Our GitHub Actions workflow automatically:
   - `flutter analyze` - Static code analysis  
   - `dart format --set-exit-if-changed` - Code formatting checks
   
-- **📱 iOS Builds**: Automated iOS builds on macOS runners
-  - Build without code signing for testing
-  - Generate build artifacts
-  - Ready for TestFlight integration when Apple Developer Account is added
+- **📱 iOS Builds**: Available as manual workflow trigger only
+  - ⚠️ **Important**: iOS builds use `--no-codesign` and **cannot be installed on real devices**
+  - Requires Apple Developer account and code signing for device installation
+  - Use manual trigger to verify iOS compilation before releases
+  - **To run**: Go to Actions → CI/CD Pipeline → Run workflow → Enable "Run iOS build job"
 
 - **🚀 Future Ready**: Prepared structure for:
   - Android builds (commented template ready)
   - Fastlane integration for automated deployments
-  - TestFlight/Play Store releases
+  - TestFlight/Play Store releases with proper code signing
 
 **Workflow File**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)  
 **Status**: [![CI/CD Pipeline](https://github.com/dnzlde/passear/actions/workflows/ci.yml/badge.svg)](https://github.com/dnzlde/passear/actions/workflows/ci.yml)
+
+#### Why iOS builds are manual-only
+
+The iOS build job has been optimized to run only when manually triggered because:
+
+1. **Build artifacts cannot be installed**: Builds without code signing cannot be installed on real iOS devices
+2. **CI performance**: Saves 5-10 minutes per CI run by not building iOS on every commit
+3. **Cost optimization**: macOS runners are more expensive than Linux runners
+4. **Flutter is cross-platform**: If tests pass on Linux, iOS-specific build issues are rare
+
+When to manually trigger iOS build:
+- Before creating a release
+- After making iOS-specific changes (e.g., permissions, native modules)
+- To verify iOS compilation after major dependency updates
 
 ### Project Structure
 ```
