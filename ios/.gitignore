@@ -1,3 +1,4 @@
+# Xcode user-specific files
 **/dgph
 *.mode1v3
 *.mode2v3
@@ -15,6 +16,25 @@ Icon?
 profile
 xcuserdata
 **/.generated/
+
+# Xcode workspace files
+*.xcuserstate
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
+!*.xcworkspace/xcshareddata/
+
+# Xcode project files
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+
+# Xcode temporary files
+*.xccheckout
+*.xcscmblueprint
+*.xcdebugger
+timeline.xctimeline
+
+# Flutter-generated files
 Flutter/App.framework
 Flutter/Flutter.framework
 Flutter/Flutter.podspec
