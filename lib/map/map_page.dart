@@ -8,7 +8,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/poi.dart';
+import '../models/route.dart';
 import '../services/poi_service.dart';
+import '../services/routing_service.dart';
 import '../settings/settings_page.dart';
 import 'wiki_poi_detail.dart';
 
@@ -22,6 +24,7 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   List<Poi> _pois = [];
   final PoiService _poiService = PoiService();
+  final RoutingService _routingService = RoutingService();
   LatLng _mapCenter = const LatLng(32.0741, 34.7924); // fallback: Azrieli
   final MapController _mapController = MapController();
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
@@ -37,6 +40,11 @@ class _MapPageState extends State<MapPage> {
   LatLng? _userLocation;
   double? _userHeading; // Direction user is facing in degrees (0 = North)
   StreamSubscription<Position>? _locationSubscription;
+
+  // Navigation state
+  NavigationRoute? _currentRoute;
+  LatLng? _destinationMarker;
+  bool _isLoadingRoute = false;
 
   @override
   void initState() {
@@ -256,6 +264,92 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
+  Future<void> _startNavigation(LatLng destination) async {
+    if (_userLocation == null) {
+      // Show error message if user location is not available
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Current location not available. Please try again.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _isLoadingRoute = true;
+      _destinationMarker = destination;
+    });
+
+    try {
+      final route = await _routingService.getRoute(
+        start: _userLocation!,
+        destination: destination,
+      );
+
+      if (mounted) {
+        setState(() {
+          _currentRoute = route;
+          _isLoadingRoute = false;
+        });
+
+        // Fit the map to show the entire route
+        if (route != null && route.waypoints.isNotEmpty) {
+          _fitMapToRoute(route);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingRoute = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to calculate route: $e'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _stopNavigation() {
+    setState(() {
+      _currentRoute = null;
+      _destinationMarker = null;
+    });
+  }
+
+  void _fitMapToRoute(NavigationRoute route) {
+    if (route.waypoints.isEmpty) return;
+
+    // Calculate bounds to fit all waypoints
+    double minLat = route.waypoints.first.latitude;
+    double maxLat = route.waypoints.first.latitude;
+    double minLon = route.waypoints.first.longitude;
+    double maxLon = route.waypoints.first.longitude;
+
+    for (final point in route.waypoints) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLon) minLon = point.longitude;
+      if (point.longitude > maxLon) maxLon = point.longitude;
+    }
+
+    final bounds = LatLngBounds(
+      LatLng(minLat, minLon),
+      LatLng(maxLat, maxLon),
+    );
+
+    // Fit the map to the bounds with some padding
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: bounds,
+        padding: const EdgeInsets.all(50),
+      ),
+    );
+  }
+
   Future<void> _centerToCurrentLocation() async {
     final location = await _getCurrentLocation();
     if (location != null) {
@@ -326,6 +420,40 @@ class _MapPageState extends State<MapPage> {
                         ))
                     .toList(),
               ),
+              // Route polyline
+              if (_currentRoute != null)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _currentRoute!.waypoints,
+                      color: Colors.blue,
+                      strokeWidth: 4.0,
+                    ),
+                  ],
+                ),
+              // Destination marker
+              if (_destinationMarker != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      width: 40,
+                      height: 40,
+                      point: _destinationMarker!,
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.red,
+                        size: 40,
+                        shadows: [
+                          Shadow(
+                            offset: Offset(1.0, 1.0),
+                            blurRadius: 3.0,
+                            color: Color.fromARGB(100, 0, 0, 0),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               // User location marker
               if (_userLocation != null)
                 MarkerLayer(
@@ -347,6 +475,77 @@ class _MapPageState extends State<MapPage> {
               right: 0,
               child: Center(
                 child: CircularProgressIndicator(),
+              ),
+            ),
+          // Route loading indicator
+          if (_isLoadingRoute)
+            const Positioned(
+              top: 16,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 12),
+                        Text('Calculating route...'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          // Route summary display
+          if (_currentRoute != null && !_isLoadingRoute)
+            Positioned(
+              top: 16,
+              left: 16,
+              right: 16,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.directions_walk, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _currentRoute!.formattedDistance,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              'About ${_currentRoute!.formattedDuration}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: _stopNavigation,
+                        tooltip: 'Stop navigation',
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           // Dimming overlay when POI sheet is visible
@@ -388,6 +587,10 @@ class _MapPageState extends State<MapPage> {
                       child: WikiPoiDetail(
                         poi: _selectedPoi!,
                         scrollController: scrollController,
+                        onNavigate: (destination) {
+                          _hidePoiDetails();
+                          _startNavigation(destination);
+                        },
                       ),
                     ),
                   ),

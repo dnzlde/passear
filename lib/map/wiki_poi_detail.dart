@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import '../services/local_tts_service.dart';
 import '../services/poi_service.dart';
 import '../models/poi.dart';
@@ -6,7 +7,13 @@ import '../models/poi.dart';
 class WikiPoiDetail extends StatefulWidget {
   final Poi poi;
   final ScrollController? scrollController;
-  const WikiPoiDetail({super.key, required this.poi, this.scrollController});
+  final Function(LatLng)? onNavigate;
+  const WikiPoiDetail({
+    super.key,
+    required this.poi,
+    this.scrollController,
+    this.onNavigate,
+  });
 
   @override
   State<WikiPoiDetail> createState() => _WikiPoiDetailState();
@@ -139,11 +146,33 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                     color: Colors.grey),
               ),
             const SizedBox(height: 16),
+            // Action buttons
             if (description.isNotEmpty && !isLoadingDescription)
-              ElevatedButton.icon(
-                onPressed: () => tts.speak(description),
-                icon: const Icon(Icons.volume_up),
-                label: const Text("Listen"),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => tts.speak(description),
+                      icon: const Icon(Icons.volume_up),
+                      label: const Text("Listen"),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (widget.onNavigate != null)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          widget.onNavigate!(LatLng(poi.lat, poi.lon));
+                        },
+                        icon: const Icon(Icons.directions_walk),
+                        label: const Text("Navigate"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             // Add extra padding at bottom for comfortable scrolling
             const SizedBox(height: 50),
