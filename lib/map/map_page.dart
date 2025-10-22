@@ -45,6 +45,7 @@ class _MapPageState extends State<MapPage> {
   NavigationRoute? _currentRoute;
   LatLng? _destinationMarker;
   bool _isLoadingRoute = false;
+  int _currentInstructionIndex = 0;
 
   @override
   void initState() {
@@ -116,6 +117,8 @@ class _MapPageState extends State<MapPage> {
         // Heading is available on some devices (compass direction)
         _userHeading = position.heading;
       });
+      // Update navigation progress if navigating
+      _updateNavigationProgress();
     });
   }
 
@@ -317,7 +320,60 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       _currentRoute = null;
       _destinationMarker = null;
+      _currentInstructionIndex = 0;
     });
+  }
+
+  void _updateNavigationProgress() {
+    if (_currentRoute == null || _userLocation == null) return;
+
+    // Find the closest instruction point
+    for (int i = _currentInstructionIndex;
+        i < _currentRoute!.instructions.length;
+        i++) {
+      final instruction = _currentRoute!.instructions[i];
+      final distance =
+          const Distance().distance(_userLocation!, instruction.location);
+
+      // If we're within 20 meters of the next instruction, move to it
+      if (distance < 20 && i > _currentInstructionIndex) {
+        setState(() {
+          _currentInstructionIndex = i;
+        });
+        break;
+      }
+    }
+  }
+
+  void _showCustomDestinationDialog(LatLng destination) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Navigate to this location?'),
+        content: Text(
+          'Latitude: ${destination.latitude.toStringAsFixed(5)}\n'
+          'Longitude: ${destination.longitude.toStringAsFixed(5)}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _startNavigation(destination);
+            },
+            icon: const Icon(Icons.directions_walk),
+            label: const Text('Navigate'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _fitMapToRoute(NavigationRoute route) {
@@ -401,6 +457,10 @@ class _MapPageState extends State<MapPage> {
                 }
               },
               onPositionChanged: _onMapPositionChanged,
+              onLongPress: (tapPosition, point) {
+                // Long press to set custom destination
+                _showCustomDestinationDialog(point);
+              },
             ),
             children: [
               TileLayer(
@@ -597,6 +657,74 @@ class _MapPageState extends State<MapPage> {
                 ),
               ),
             ),
+          // Navigation instruction display
+          if (_currentRoute != null &&
+              _currentInstructionIndex < _currentRoute!.instructions.length)
+            Positioned(
+              bottom: 80,
+              left: 16,
+              right: 16,
+              child: Card(
+                elevation: 8,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            _getInstructionIcon(
+                                _currentRoute!
+                                    .instructions[_currentInstructionIndex]
+                                    .type),
+                            color: Colors.blue,
+                            size: 32,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _currentRoute!
+                                      .instructions[_currentInstructionIndex]
+                                      .text,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (_currentRoute!
+                                        .instructions[_currentInstructionIndex]
+                                        .distanceMeters >
+                                    0)
+                                  Text(
+                                    'In ${_currentRoute!.instructions[_currentInstructionIndex].formattedDistance}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: (_currentInstructionIndex + 1) /
+                            _currentRoute!.instructions.length,
+                        backgroundColor: Colors.grey[300],
+                        valueColor:
+                            const AlwaysStoppedAnimation<Color>(Colors.blue),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             bottom: 16,
             right: 16,
@@ -633,6 +761,32 @@ class _MapPageState extends State<MapPage> {
         ],
       ),
     );
+  }
+
+  IconData _getInstructionIcon(int type) {
+    // OpenRouteService instruction types
+    switch (type) {
+      case 0: // Turn left
+        return Icons.turn_left;
+      case 1: // Turn right
+        return Icons.turn_right;
+      case 2: // Turn sharp left
+        return Icons.turn_sharp_left;
+      case 3: // Turn sharp right
+        return Icons.turn_sharp_right;
+      case 4: // Turn slight left
+        return Icons.turn_slight_left;
+      case 5: // Turn slight right
+        return Icons.turn_slight_right;
+      case 6: // Continue straight
+        return Icons.straight;
+      case 7: // Enter roundabout
+        return Icons.roundabout_right;
+      case 10: // Arrive at destination
+        return Icons.flag;
+      default:
+        return Icons.navigation;
+    }
   }
 
   double _getMarkerSize(PoiInterestLevel level) {
