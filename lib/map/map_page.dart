@@ -11,6 +11,7 @@ import '../models/poi.dart';
 import '../models/route.dart';
 import '../services/poi_service.dart';
 import '../services/routing_service.dart';
+import '../services/local_tts_service.dart';
 import '../settings/settings_page.dart';
 import 'wiki_poi_detail.dart';
 
@@ -25,6 +26,7 @@ class _MapPageState extends State<MapPage> {
   List<Poi> _pois = [];
   final PoiService _poiService = PoiService();
   final RoutingService _routingService = RoutingService();
+  late final LocalTtsService _ttsService;
   LatLng _mapCenter = const LatLng(32.0741, 34.7924); // fallback: Azrieli
   final MapController _mapController = MapController();
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
@@ -50,6 +52,7 @@ class _MapPageState extends State<MapPage> {
   @override
   void initState() {
     super.initState();
+    _ttsService = LocalTtsService();
     _initMap();
     _startLocationTracking();
   }
@@ -57,6 +60,7 @@ class _MapPageState extends State<MapPage> {
   @override
   void dispose() {
     _locationSubscription?.cancel();
+    _ttsService.dispose();
     super.dispose();
   }
 
@@ -295,11 +299,17 @@ class _MapPageState extends State<MapPage> {
         setState(() {
           _currentRoute = route;
           _isLoadingRoute = false;
+          _currentInstructionIndex = 0;
         });
 
         // Fit the map to show the entire route
         if (route != null && route.waypoints.isNotEmpty) {
           _fitMapToRoute(route);
+          // Announce route summary
+          _ttsService.speak(
+            'Route calculated. Distance: ${route.formattedDistance}. '
+            'Estimated time: ${route.formattedDuration}',
+          );
         }
       }
     } catch (e) {
@@ -335,14 +345,32 @@ class _MapPageState extends State<MapPage> {
       final distance =
           const Distance().distance(_userLocation!, instruction.location);
 
-      // If we're within 20 meters of the next instruction, move to it
-      if (distance < 20 && i > _currentInstructionIndex) {
+      // If we're within 50 meters of the next instruction, announce it
+      if (distance < 50 && i > _currentInstructionIndex) {
         setState(() {
           _currentInstructionIndex = i;
         });
+        // Announce the instruction via TTS
+        _announceInstruction(instruction, distance);
         break;
       }
     }
+  }
+
+  void _announceInstruction(RouteInstruction instruction, double distance) {
+    String announcement;
+    if (instruction.type == 10) {
+      // Arrival instruction
+      announcement = 'You have arrived at your destination';
+    } else if (distance < 20) {
+      // Very close
+      announcement = instruction.text;
+    } else {
+      // Still approaching
+      announcement =
+          'In ${instruction.formattedDistance}, ${instruction.text.toLowerCase()}';
+    }
+    _ttsService.speak(announcement);
   }
 
   void _showCustomDestinationDialog(LatLng destination) {
