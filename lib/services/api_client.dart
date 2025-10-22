@@ -8,21 +8,42 @@ abstract class ApiClient {
   /// Returns the response body as a string if successful
   /// Throws an exception if the request fails
   Future<String> get(Uri url);
+
+  /// Makes a POST request to the specified URL with body
+  /// Returns the response body as a string if successful
+  /// Throws an exception if the request fails
+  Future<String> post(Uri url, String body);
 }
 
 /// Production implementation that makes real HTTP requests
 class HttpApiClient implements ApiClient {
-  final http.Client _httpClient;
+  final http.Client? _httpClient;
 
   HttpApiClient(this._httpClient);
 
   @override
   Future<String> get(Uri url) async {
-    final response = await _httpClient.get(url);
+    final client = _httpClient ?? http.Client();
+    final response = await client.get(url);
     if (response.statusCode == 200) {
       return response.body;
     } else {
       throw Exception('HTTP ${response.statusCode}: Failed to fetch $url');
+    }
+  }
+
+  @override
+  Future<String> post(Uri url, String body) async {
+    final client = _httpClient ?? http.Client();
+    final response = await client.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+    if (response.statusCode == 200) {
+      return response.body;
+    } else {
+      throw Exception('HTTP ${response.statusCode}: Failed to post to $url');
     }
   }
 }
@@ -105,5 +126,47 @@ class MockApiClient implements ApiClient {
         }
       }
     });
+  }
+
+  @override
+  Future<String> post(Uri url, String body) async {
+    // Mock implementation for POST requests
+    // For routing service, return a simple mock response
+    if (url.toString().contains('openrouteservice')) {
+      return jsonEncode({
+        'routes': [
+          {
+            'summary': {
+              'distance': 1000.0,
+              'duration': 720.0, // 12 minutes
+            },
+            'geometry': [
+              [34.7924, 32.0741],
+              [34.7934, 32.0751],
+            ],
+            'segments': [
+              {
+                'steps': [
+                  {
+                    'instruction': 'Head north',
+                    'distance': 500.0,
+                    'type': 0,
+                    'way_points': [0],
+                  },
+                  {
+                    'instruction': 'Turn right',
+                    'distance': 500.0,
+                    'type': 1,
+                    'way_points': [1],
+                  },
+                ]
+              }
+            ]
+          }
+        ]
+      });
+    }
+
+    throw Exception('Mock: No POST response configured for $url');
   }
 }
