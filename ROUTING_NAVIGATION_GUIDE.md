@@ -57,7 +57,8 @@ The app provides automatic voice announcements:
 
 ### Routing Service
 - **Architecture**: Pluggable provider system with abstraction layer
-- **Primary**: OSRM (Open Source Routing Machine) public API for pedestrian routing
+- **Primary**: OSRM pedestrian routing via `routing.openstreetmap.de`
+- **Profile**: Uses dedicated `foot` profile that ignores one-way restrictions for cars
 - **No API Key Required**: Free to use public OSRM server
 - **Fallback**: Straight-line routes when API is unavailable
 - **Offline Support**: Simple fallback routes work without internet connection
@@ -95,18 +96,27 @@ The app uses a pluggable routing provider system that allows easy switching betw
 **Current Default Provider: OSRM**
 
 ### OSRM (Open Source Routing Machine)
-The app uses the public OSRM API for routing:
+The app uses a public OSRM API for routing:
 
-- **No API key required**: Free to use public server at `router.project-osrm.org`
+- **Server**: `routing.openstreetmap.de` - Dedicated pedestrian routing server
+- **No API key required**: Free to use public server
 - **Based on OpenStreetMap data**: High-quality routing for pedestrians
-- **No rate limits**: Public server is available for free use
+- **Pedestrian-optimized**: Uses `foot` profile that properly handles pedestrian paths
+- **Ignores vehicle restrictions**: Does not respect one-way streets or car-only roads
+- **No rate limits on reasonable use**: Public server is available for free use
 - **Self-hosting option**: You can host your own OSRM server if needed
 
-The implementation automatically uses OSRM's pedestrian profile (`foot`) which:
+The implementation uses OSRM's dedicated pedestrian routing endpoint (`/routed-foot/`) which:
 - Prioritizes pedestrian paths and sidewalks
+- Ignores one-way street restrictions (pedestrians can walk both ways)
 - Avoids highways and motorways
 - Provides accurate walking time estimates
-- Returns detailed turn-by-turn instructions
+- Returns detailed turn-by-turn instructions with street names
+
+**Why `routing.openstreetmap.de`?**
+- The general OSRM demo server (`router.project-osrm.org`) primarily supports car routing
+- `routing.openstreetmap.de` provides dedicated pedestrian routing that correctly handles walking scenarios
+- Pedestrian routes ignore car-specific restrictions like one-way streets
 
 ### Adding Other Routing Providers
 

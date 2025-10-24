@@ -6,12 +6,15 @@ import 'api_client.dart';
 import 'routing_provider.dart';
 
 /// OSRM (Open Source Routing Machine) implementation of routing provider
-/// Uses the free public OSRM server with OpenStreetMap data
+/// Uses a public OSRM server with OpenStreetMap data
+/// Note: The public demo server may have limited pedestrian routing support
 class OsrmRoutingProvider implements RoutingProvider {
   final ApiClient _apiClient;
 
-  // OSRM public API endpoint - free to use, no API key required
-  static const String _baseUrl = 'router.project-osrm.org';
+  // Using a public OSRM server
+  // Note: router.project-osrm.org primarily supports car routing
+  // For better pedestrian routing, consider using GraphHopper or hosting your own OSRM
+  static const String _baseUrl = 'routing.openstreetmap.de';
 
   OsrmRoutingProvider({ApiClient? apiClient})
       : _apiClient = apiClient ?? HttpApiClient(null);
@@ -28,14 +31,16 @@ class OsrmRoutingProvider implements RoutingProvider {
     required LatLng destination,
   }) async {
     try {
-      // Use OSRM API for pedestrian routing (foot profile)
+      // Use OSRM API for pedestrian routing with foot profile
+      // routing.openstreetmap.de has proper foot routing that ignores one-way restrictions
       final url = Uri.https(
         _baseUrl,
-        '/route/v1/foot/${start.longitude},${start.latitude};${destination.longitude},${destination.latitude}',
+        '/routed-foot/route/v1/foot/${start.longitude},${start.latitude};${destination.longitude},${destination.latitude}',
         {
           'steps': 'true',
           'overview': 'full',
           'geometries': 'geojson',
+          'alternatives': 'false',
         },
       );
 

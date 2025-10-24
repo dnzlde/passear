@@ -64,9 +64,11 @@ class MockApiClient implements ApiClient {
 
   @override
   Future<String> get(Uri url) async {
-    // For OSRM routing API
+    // For OSRM routing API (both old and new endpoints)
     if (url.toString().contains('router.project-osrm.org') || 
-        url.toString().contains('/route/v1/foot/')) {
+        url.toString().contains('routing.openstreetmap.de') ||
+        url.toString().contains('/route/v1/foot/') ||
+        url.toString().contains('/routed-foot/route/v1/foot/')) {
       return jsonEncode({
         'code': 'Ok',
         'routes': [
