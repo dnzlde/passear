@@ -8,21 +8,42 @@ abstract class ApiClient {
   /// Returns the response body as a string if successful
   /// Throws an exception if the request fails
   Future<String> get(Uri url);
+
+  /// Makes a POST request to the specified URL with body
+  /// Returns the response body as a string if successful
+  /// Throws an exception if the request fails
+  Future<String> post(Uri url, String body);
 }
 
 /// Production implementation that makes real HTTP requests
 class HttpApiClient implements ApiClient {
-  final http.Client _httpClient;
+  final http.Client? _httpClient;
 
   HttpApiClient(this._httpClient);
 
   @override
   Future<String> get(Uri url) async {
-    final response = await _httpClient.get(url);
+    final client = _httpClient ?? http.Client();
+    final response = await client.get(url);
     if (response.statusCode == 200) {
       return response.body;
     } else {
       throw Exception('HTTP ${response.statusCode}: Failed to fetch $url');
+    }
+  }
+
+  @override
+  Future<String> post(Uri url, String body) async {
+    final client = _httpClient ?? http.Client();
+    final response = await client.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+    if (response.statusCode == 200) {
+      return response.body;
+    } else {
+      throw Exception('HTTP ${response.statusCode}: Failed to post to $url');
     }
   }
 }
@@ -43,6 +64,71 @@ class MockApiClient implements ApiClient {
 
   @override
   Future<String> get(Uri url) async {
+    // For OSRM routing API (both old and new endpoints)
+    if (url.toString().contains('router.project-osrm.org') ||
+        url.toString().contains('routing.openstreetmap.de') ||
+        url.toString().contains('/route/v1/foot/') ||
+        url.toString().contains('/routed-foot/route/v1/foot/')) {
+      return jsonEncode({
+        'code': 'Ok',
+        'routes': [
+          {
+            'distance': 1000.0,
+            'duration': 720.0, // 12 minutes
+            'geometry': {
+              'coordinates': [
+                [34.7924, 32.0741], // Start [lon, lat]
+                [34.7928, 32.0745],
+                [34.7932, 32.0748],
+                [34.7934, 32.0751], // End [lon, lat]
+              ],
+              'type': 'LineString',
+            },
+            'legs': [
+              {
+                'steps': [
+                  {
+                    'distance': 300.0,
+                    'duration': 216.0,
+                    'name': 'Test Street',
+                    'maneuver': {'type': 'depart', 'modifier': null},
+                  },
+                  {
+                    'distance': 400.0,
+                    'duration': 288.0,
+                    'name': 'Main Avenue',
+                    'maneuver': {'type': 'turn', 'modifier': 'left'},
+                  },
+                  {
+                    'distance': 300.0,
+                    'duration': 216.0,
+                    'name': 'Destination Road',
+                    'maneuver': {'type': 'turn', 'modifier': 'right'},
+                  },
+                  {
+                    'distance': 0.0,
+                    'duration': 0.0,
+                    'name': '',
+                    'maneuver': {'type': 'arrive', 'modifier': null},
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        'waypoints': [
+          {
+            'location': [34.7924, 32.0741],
+            'name': 'Start',
+          },
+          {
+            'location': [34.7934, 32.0751],
+            'name': 'End',
+          },
+        ],
+      });
+    }
+
     // For Wikipedia API, check query parameters to determine response type
     if (url.toString().contains('wikipedia.org/w/api.php')) {
       if (url.queryParameters['list'] == 'geosearch') {
@@ -80,18 +166,10 @@ class MockApiClient implements ApiClient {
     return jsonEncode({
       'query': {
         'geosearch': [
-          {
-            'title': 'Test Location 1',
-            'lat': 32.0741,
-            'lon': 34.7924,
-          },
-          {
-            'title': 'Test Location 2',
-            'lat': 32.0751,
-            'lon': 34.7934,
-          }
-        ]
-      }
+          {'title': 'Test Location 1', 'lat': 32.0741, 'lon': 34.7924},
+          {'title': 'Test Location 2', 'lat': 32.0751, 'lon': 34.7934},
+        ],
+      },
     });
   }
 
@@ -100,10 +178,52 @@ class MockApiClient implements ApiClient {
       'query': {
         'pages': {
           '123': {
-            'extract': 'This is a test description for a Wikipedia article.'
-          }
-        }
-      }
+            'extract': 'This is a test description for a Wikipedia article.',
+          },
+        },
+      },
     });
+  }
+
+  @override
+  Future<String> post(Uri url, String body) async {
+    // Mock implementation for POST requests
+    // For routing service, return a simple mock response
+    if (url.toString().contains('openrouteservice')) {
+      return jsonEncode({
+        'routes': [
+          {
+            'summary': {
+              'distance': 1000.0,
+              'duration': 720.0, // 12 minutes
+            },
+            'geometry': [
+              [34.7924, 32.0741],
+              [34.7934, 32.0751],
+            ],
+            'segments': [
+              {
+                'steps': [
+                  {
+                    'instruction': 'Head north',
+                    'distance': 500.0,
+                    'type': 0,
+                    'way_points': [0],
+                  },
+                  {
+                    'instruction': 'Turn right',
+                    'distance': 500.0,
+                    'type': 1,
+                    'way_points': [1],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    }
+
+    throw Exception('Mock: No POST response configured for $url');
   }
 }

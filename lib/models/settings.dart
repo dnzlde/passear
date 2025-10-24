@@ -11,9 +11,7 @@ class AppSettings {
   }) : enabledCategories = enabledCategories ?? _defaultEnabledCategories();
 
   static Map<PoiCategory, bool> _defaultEnabledCategories() {
-    return {
-      for (PoiCategory category in PoiCategory.values) category: true,
-    };
+    return {for (PoiCategory category in PoiCategory.values) category: true};
   }
 
   AppSettings copyWith({

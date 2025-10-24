@@ -5,14 +5,11 @@ import 'package:passear/map/map_page.dart';
 
 void main() {
   group('User Location Display', () {
-    testWidgets('MapPage should initialize location tracking on startup',
-        (WidgetTester tester) async {
+    testWidgets('MapPage should initialize location tracking on startup', (
+      WidgetTester tester,
+    ) async {
       // Build the MapPage widget
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: MapPage(),
-        ),
-      );
+      await tester.pumpWidget(const MaterialApp(home: MapPage()));
 
       // Wait for initial rendering
       await tester.pump();
@@ -32,14 +29,11 @@ void main() {
       expect(find.byTooltip('Center to my location'), findsOneWidget);
     });
 
-    testWidgets('MapPage should have location-related UI elements',
-        (WidgetTester tester) async {
+    testWidgets('MapPage should have location-related UI elements', (
+      WidgetTester tester,
+    ) async {
       // Build the MapPage widget
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: MapPage(),
-        ),
-      );
+      await tester.pumpWidget(const MaterialApp(home: MapPage()));
 
       // Wait for initial rendering
       await tester.pump();

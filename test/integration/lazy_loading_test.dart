@@ -67,8 +67,9 @@ void main() {
 
       // Assert 1: POIs should be loaded without descriptions
       expect(initialPois, hasLength(2));
-      final museum =
-          initialPois.firstWhere((poi) => poi.name.contains('Museum'));
+      final museum = initialPois.firstWhere(
+        (poi) => poi.name.contains('Museum'),
+      );
       expect(museum.name, equals('Historic Museum'));
       expect(museum.category.name, equals('museum'));
       expect(museum.interestLevel.name, equals('high'));
@@ -90,10 +91,11 @@ void main() {
       expect(enrichedPoi.category, equals(museum.category));
     });
 
-    test('should handle the case where description loading fails gracefully',
-        () async {
-      // Arrange - Setup POI and configure mock to return null/empty description
-      const mockEmptyDescriptionResponse = '''
+    test(
+      'should handle the case where description loading fails gracefully',
+      () async {
+        // Arrange - Setup POI and configure mock to return null/empty description
+        const mockEmptyDescriptionResponse = '''
       {
         "query": {
           "pages": {
@@ -103,27 +105,30 @@ void main() {
       }
       ''';
 
-      mockClient.setResponse(
-          'wikipedia.org/w/api.php', mockEmptyDescriptionResponse);
+        mockClient.setResponse(
+          'wikipedia.org/w/api.php',
+          mockEmptyDescriptionResponse,
+        );
 
-      final poi = Poi(
-        id: 'unknown-poi',
-        name: 'Unknown POI',
-        lat: 32.0741,
-        lon: 34.7924,
-        description: '',
-        audio: '',
-        isDescriptionLoaded: false,
-      );
+        final poi = Poi(
+          id: 'unknown-poi',
+          name: 'Unknown POI',
+          lat: 32.0741,
+          lon: 34.7924,
+          description: '',
+          audio: '',
+          isDescriptionLoaded: false,
+        );
 
-      // Act - Try to fetch description (will return null/empty)
-      final result = await service.fetchPoiDescription(poi);
+        // Act - Try to fetch description (will return null/empty)
+        final result = await service.fetchPoiDescription(poi);
 
-      // Assert - Should return original POI gracefully
-      expect(result.name, equals(poi.name));
-      expect(result.isDescriptionLoaded, isFalse);
-      expect(result.description, isEmpty);
-    });
+        // Assert - Should return original POI gracefully
+        expect(result.name, equals(poi.name));
+        expect(result.isDescriptionLoaded, isFalse);
+        expect(result.description, isEmpty);
+      },
+    );
 
     test('should not refetch description if already loaded', () async {
       // Arrange

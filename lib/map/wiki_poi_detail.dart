@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import '../services/local_tts_service.dart';
 import '../services/poi_service.dart';
 import '../models/poi.dart';
@@ -6,7 +7,13 @@ import '../models/poi.dart';
 class WikiPoiDetail extends StatefulWidget {
   final Poi poi;
   final ScrollController? scrollController;
-  const WikiPoiDetail({super.key, required this.poi, this.scrollController});
+  final Function(LatLng)? onNavigate;
+  const WikiPoiDetail({
+    super.key,
+    required this.poi,
+    this.scrollController,
+    this.onNavigate,
+  });
 
   @override
   State<WikiPoiDetail> createState() => _WikiPoiDetailState();
@@ -89,7 +96,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                   child: Text(
                     poi.name,
                     style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 _buildInterestBadge(poi.interestLevel),
@@ -102,8 +111,10 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                 child: Chip(
                   label: Text(_getCategoryDisplayName(poi.category)),
                   backgroundColor: _getCategoryColor(poi.category),
-                  labelStyle:
-                      const TextStyle(color: Colors.white, fontSize: 12),
+                  labelStyle: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             // Description section with loading state
@@ -134,16 +145,39 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
               const Text(
                 'No description available.',
                 style: TextStyle(
-                    fontSize: 16,
-                    fontStyle: FontStyle.italic,
-                    color: Colors.grey),
+                  fontSize: 16,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey,
+                ),
               ),
             const SizedBox(height: 16),
+            // Action buttons
             if (description.isNotEmpty && !isLoadingDescription)
-              ElevatedButton.icon(
-                onPressed: () => tts.speak(description),
-                icon: const Icon(Icons.volume_up),
-                label: const Text("Listen"),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => tts.speak(description),
+                      icon: const Icon(Icons.volume_up),
+                      label: const Text("Listen"),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (widget.onNavigate != null)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          widget.onNavigate!(LatLng(poi.lat, poi.lon));
+                        },
+                        icon: const Icon(Icons.directions_walk),
+                        label: const Text("Navigate"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             // Add extra padding at bottom for comfortable scrolling
             const SizedBox(height: 50),
@@ -191,7 +225,10 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
           Text(
             label,
             style: TextStyle(
-                color: color, fontSize: 12, fontWeight: FontWeight.w500),
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),

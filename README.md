@@ -53,12 +53,14 @@
 - 🔊 **Text-to-Speech**: High-quality audio narration of POI descriptions
 - 📖 **Wikipedia Integration**: Rich content sourced from Wikipedia articles
 - 🎯 **Proximity Detection**: Automatic POI loading based on your location
+- 🚶 **Pedestrian Navigation**: Route planning and turn-by-turn navigation to POIs or custom destinations
+- 🎙️ **Voice Guidance**: Automatic voice announcements for navigation instructions
 - 📱 **Cross-Platform**: Native Android and iOS support
 
 ### Planned Features (MVP)
 - 🎵 **Audio Playlists**: Curated audio tours for popular routes
-- 🏃‍♂️ **Walking Routes**: Guided walking tours with turn-by-turn audio
-- ⬇️ **Offline Mode**: Download content for offline exploration
+- 🔄 **Auto-Rerouting**: Automatic route recalculation when deviating from path
+- ⬇️ **Offline Mode**: Download content and maps for offline exploration
 - 🎨 **Customizable Themes**: Personalize your app experience
 - 🌐 **Multi-language Support**: Content in multiple languages
 
@@ -131,12 +133,17 @@
 2. **Explore the Map**: Pan and zoom to explore different areas
 3. **Discover POIs**: Blue markers indicate points of interest
 4. **Listen to Stories**: Tap on POI markers to hear audio descriptions
-5. **Navigate**: Use your device's built-in navigation while listening
+5. **Navigate to POIs**: Tap "Navigate" button to get walking directions
+6. **Custom Destinations**: Long-press on map to navigate to any location
+7. **Follow Voice Guidance**: Listen to turn-by-turn navigation instructions
 
 ### Key Interactions
-- **Tap POI Marker**: Open detailed view with audio playback
+- **Tap POI Marker**: Open detailed view with audio playback and navigation
+- **Long-Press Map**: Set custom destination for navigation
 - **Pan Map**: Discover new POIs in different areas
 - **Location Button**: Center map on your current location
+- **Navigate Button**: Start turn-by-turn pedestrian navigation
+- **Stop Navigation**: Close route summary card to cancel navigation
 
 ## 💻 Development Setup
 
@@ -223,15 +230,19 @@ assets/
 - [x] POI display and interaction
 - [x] Text-to-speech integration
 - [x] Location services
+- [x] Pedestrian routing and navigation
+- [x] Turn-by-turn voice guidance
 - [ ] Enhanced UI/UX polish
 - [ ] Performance optimizations
 
 ### Phase 2: Enhanced Features
 - [ ] Audio playlist creation
-- [ ] Guided walking routes
+- [ ] Auto-rerouting when deviating from route
+- [ ] Alternative route suggestions
 - [ ] Offline content download
 - [ ] User-generated content
 - [ ] Social sharing features
+- [ ] Saved routes and favorites
 
 ### Phase 3: Advanced Features
 - [ ] AR integration

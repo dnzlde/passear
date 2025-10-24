@@ -70,8 +70,13 @@ class PoiInterestScorer {
     if (_containsAny(titleLower, ['museum', 'gallery', 'exhibition'])) {
       return PoiCategory.museum;
     }
-    if (_containsAny(
-        titleLower, ['cathedral', 'church', 'temple', 'mosque', 'synagogue'])) {
+    if (_containsAny(titleLower, [
+      'cathedral',
+      'church',
+      'temple',
+      'mosque',
+      'synagogue',
+    ])) {
       return PoiCategory.religiousSite;
     }
     if (_containsAny(titleLower, ['palace', 'castle', 'fortress', 'citadel'])) {
@@ -89,12 +94,20 @@ class PoiInterestScorer {
     if (_containsAny(titleLower, ['park', 'garden', 'botanical'])) {
       return PoiCategory.park;
     }
-    if (_containsAny(
-        titleLower, ['tower', 'bridge', 'building', 'architecture'])) {
+    if (_containsAny(titleLower, [
+      'tower',
+      'bridge',
+      'building',
+      'architecture',
+    ])) {
       return PoiCategory.architecture;
     }
-    if (_containsAny(
-        titleLower, ['landmark', 'site', 'historical', 'heritage'])) {
+    if (_containsAny(titleLower, [
+      'landmark',
+      'site',
+      'historical',
+      'heritage',
+    ])) {
       return PoiCategory.landmark;
     }
 
@@ -104,7 +117,9 @@ class PoiInterestScorer {
   /// Determine interest level based on score and category
   /// Score is the primary factor, category provides additional context
   static PoiInterestLevel determineInterestLevel(
-      double score, PoiCategory category) {
+    double score,
+    PoiCategory category,
+  ) {
     // Apply category boost to score for interest level determination
     double adjustedScore = score;
 
@@ -188,20 +203,36 @@ class PoiInterestScorer {
     final descLower = description.toLowerCase();
 
     // Historical/cultural keywords
-    if (_containsAny(
-        descLower, ['built', 'constructed', 'founded', 'established'])) {
+    if (_containsAny(descLower, [
+      'built',
+      'constructed',
+      'founded',
+      'established',
+    ])) {
       score += 5.0;
     }
-    if (_containsAny(
-        descLower, ['century', 'historical', 'ancient', 'medieval'])) {
+    if (_containsAny(descLower, [
+      'century',
+      'historical',
+      'ancient',
+      'medieval',
+    ])) {
       score += 5.0;
     }
-    if (_containsAny(
-        descLower, ['famous', 'notable', 'important', 'significant'])) {
+    if (_containsAny(descLower, [
+      'famous',
+      'notable',
+      'important',
+      'significant',
+    ])) {
       score += 5.0;
     }
-    if (_containsAny(
-        descLower, ['unesco', 'heritage', 'landmark', 'monument'])) {
+    if (_containsAny(descLower, [
+      'unesco',
+      'heritage',
+      'landmark',
+      'monument',
+    ])) {
       score += 10.0;
     }
 

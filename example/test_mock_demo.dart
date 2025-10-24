@@ -30,10 +30,12 @@ void main() async {
     final data = jsonDecode(response);
 
     print(
-        '✅ Mock API returned ${data['query']['geosearch'].length} test locations');
+      '✅ Mock API returned ${data['query']['geosearch'].length} test locations',
+    );
     for (var location in data['query']['geosearch']) {
       print(
-          '   📍 ${location['title']} at ${location['lat']}, ${location['lon']}');
+        '   📍 ${location['title']} at ${location['lat']}, ${location['lon']}',
+      );
     }
   } catch (e) {
     print('❌ Test 1 failed: $e');
