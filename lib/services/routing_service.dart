@@ -4,13 +4,13 @@ import 'package:latlong2/latlong.dart';
 import '../models/route.dart';
 import 'api_client.dart';
 
-/// Service for fetching pedestrian routes using OpenRouteService API
+/// Service for fetching pedestrian routes using OSRM (Open Source Routing Machine)
 class RoutingService {
   final ApiClient _apiClient;
 
-  // OpenRouteService public API endpoint
-  // Note: For production use, you should get your own API key from https://openrouteservice.org/
-  static const String _baseUrl = 'api.openrouteservice.org';
+  // OSRM public API endpoint - free to use, no API key required
+  // Uses OpenStreetMap data for routing
+  static const String _baseUrl = 'router.project-osrm.org';
 
   RoutingService({ApiClient? apiClient})
       : _apiClient = apiClient ?? HttpApiClient(null);
@@ -22,27 +22,21 @@ class RoutingService {
     required LatLng destination,
   }) async {
     try {
-      // Use OpenRouteService v2 API for pedestrian routing
-      // Using public demo key - should be replaced with actual key in production
+      // Use OSRM API for pedestrian routing (foot profile)
+      // Format: /route/v1/{profile}/{coordinates}?steps=true&overview=full
       final url = Uri.https(
         _baseUrl,
-        '/v2/directions/foot-walking',
+        '/route/v1/foot/${start.longitude},${start.latitude};${destination.longitude},${destination.latitude}',
+        {
+          'steps': 'true',
+          'overview': 'full',
+          'geometries': 'geojson',
+        },
       );
 
-      final body = json.encode({
-        'coordinates': [
-          [start.longitude, start.latitude],
-          [destination.longitude, destination.latitude],
-        ],
-        'instructions': true,
-        'units': 'm',
-      });
-
-      // For this implementation, we'll use a simple fallback to straight-line routing
-      // when the API is not available (for testing purposes)
       String responseBody;
       try {
-        responseBody = await _apiClient.post(url, body);
+        responseBody = await _apiClient.get(url);
       } catch (e) {
         // Fallback to simple straight-line route if API call fails
         debugPrint('Routing API not available, using fallback: $e');
@@ -51,45 +45,161 @@ class RoutingService {
 
       final data = json.decode(responseBody);
 
-      if (data['routes'] == null || (data['routes'] as List).isEmpty) {
+      // Check if the request was successful
+      if (data['code'] != 'Ok' || data['routes'] == null || (data['routes'] as List).isEmpty) {
+        debugPrint('OSRM API returned no routes, using fallback');
         return _createFallbackRoute(start, destination);
       }
 
       final route = data['routes'][0];
-      final summary = route['summary'];
       final geometry = route['geometry'];
-      final segments = route['segments'] as List?;
+      final legs = route['legs'] as List?;
 
-      // Parse waypoints from geometry (encoded polyline or coordinates)
-      final waypoints = _parseGeometry(geometry);
+      // Parse waypoints from GeoJSON geometry
+      final waypoints = _parseGeoJsonGeometry(geometry);
 
-      // Parse instructions
+      if (waypoints.isEmpty) {
+        debugPrint('Failed to parse route geometry, using fallback');
+        return _createFallbackRoute(start, destination);
+      }
+
+      // Parse instructions from legs/steps
       final instructions = <RouteInstruction>[];
-      if (segments != null) {
-        for (final segment in segments) {
-          final steps = segment['steps'] as List?;
+      if (legs != null && legs.isNotEmpty) {
+        for (final leg in legs) {
+          final steps = leg['steps'] as List?;
           if (steps != null) {
-            for (final step in steps) {
+            for (int i = 0; i < steps.length; i++) {
+              final step = steps[i];
+              final maneuver = step['maneuver'];
+              
+              // Get instruction text
+              String instruction = _getInstructionText(maneuver, step);
+              
+              // Get step location from waypoint
+              final location = waypoints.length > i 
+                  ? waypoints[i] 
+                  : waypoints[0];
+              
               instructions.add(RouteInstruction(
-                text: step['instruction'] ?? '',
+                text: instruction,
                 distanceMeters: (step['distance'] ?? 0.0).toDouble(),
-                type: step['type'] ?? 0,
-                location: waypoints[step['way_points']?[0] ?? 0],
+                type: _getManeuverType(maneuver['type']),
+                location: location,
               ));
             }
           }
         }
       }
 
+      // Add arrival instruction if not present
+      if (instructions.isEmpty || instructions.last.type != 10) {
+        instructions.add(RouteInstruction(
+          text: 'Arrive at destination',
+          distanceMeters: 0,
+          type: 10,
+          location: destination,
+        ));
+      }
+
       return NavigationRoute(
         waypoints: waypoints,
-        distanceMeters: (summary['distance'] ?? 0.0).toDouble(),
-        durationSeconds: (summary['duration'] ?? 0.0).toDouble(),
+        distanceMeters: (route['distance'] ?? 0.0).toDouble(),
+        durationSeconds: (route['duration'] ?? 0.0).toDouble(),
         instructions: instructions,
       );
     } catch (e) {
       debugPrint('Error fetching route: $e');
       return _createFallbackRoute(start, destination);
+    }
+  }
+
+  /// Parse GeoJSON geometry to list of LatLng points
+  List<LatLng> _parseGeoJsonGeometry(dynamic geometry) {
+    if (geometry == null) return [];
+    
+    final coordinates = geometry['coordinates'] as List?;
+    if (coordinates == null) return [];
+
+    return coordinates.map((coord) {
+      if (coord is List && coord.length >= 2) {
+        return LatLng(
+          (coord[1] as num).toDouble(),
+          (coord[0] as num).toDouble(),
+        );
+      }
+      return null;
+    }).whereType<LatLng>().toList();
+  }
+
+  /// Get human-readable instruction text from OSRM maneuver
+  String _getInstructionText(dynamic maneuver, dynamic step) {
+    if (maneuver == null) return 'Continue';
+    
+    final type = maneuver['type'] as String?;
+    final modifier = maneuver['modifier'] as String?;
+    final name = step['name'] as String?;
+    
+    String instruction = '';
+    
+    switch (type) {
+      case 'depart':
+        instruction = 'Start on ${name ?? "the path"}';
+        break;
+      case 'arrive':
+        instruction = 'Arrive at destination';
+        break;
+      case 'turn':
+        if (modifier != null) {
+          instruction = 'Turn ${modifier.replaceAll('-', ' ')}';
+          if (name != null && name.isNotEmpty) {
+            instruction += ' onto $name';
+          }
+        } else {
+          instruction = 'Turn';
+        }
+        break;
+      case 'new name':
+        instruction = 'Continue on ${name ?? "the path"}';
+        break;
+      case 'continue':
+        instruction = 'Continue straight';
+        if (name != null && name.isNotEmpty) {
+          instruction += ' on $name';
+        }
+        break;
+      case 'roundabout':
+        instruction = 'Enter roundabout';
+        break;
+      case 'rotary':
+        instruction = 'Enter rotary';
+        break;
+      case 'end of road':
+        instruction = 'At the end of the road, turn ${modifier ?? ""}';
+        break;
+      default:
+        instruction = 'Continue';
+    }
+    
+    return instruction;
+  }
+
+  /// Map OSRM maneuver type to instruction type code
+  int _getManeuverType(String? type) {
+    switch (type) {
+      case 'turn':
+        return 1; // Turn
+      case 'depart':
+        return 0; // Start
+      case 'arrive':
+        return 10; // Arrive
+      case 'continue':
+        return 6; // Continue straight
+      case 'roundabout':
+      case 'rotary':
+        return 7; // Roundabout
+      default:
+        return 0; // Default
     }
   }
 
@@ -122,24 +232,6 @@ class RoutingService {
         ),
       ],
     );
-  }
-
-  /// Parse geometry from OpenRouteService response
-  List<LatLng> _parseGeometry(dynamic geometry) {
-    if (geometry is List) {
-      // Coordinates array format
-      return geometry
-          .map((coord) => LatLng(
-                coord[1].toDouble(),
-                coord[0].toDouble(),
-              ))
-          .toList();
-    } else if (geometry is String) {
-      // Encoded polyline format (would need polyline decoder)
-      // For now, return empty list and rely on fallback
-      return [];
-    }
-    return [];
   }
 
   /// Interpolate points between start and destination for smoother route

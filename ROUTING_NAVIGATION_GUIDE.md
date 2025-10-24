@@ -56,7 +56,8 @@ The app provides automatic voice announcements:
 ## Technical Details
 
 ### Routing Service
-- **Primary**: OpenRouteService API for pedestrian routing
+- **Primary**: OSRM (Open Source Routing Machine) public API for pedestrian routing
+- **No API Key Required**: Free to use public OSRM server
 - **Fallback**: Straight-line routes when API is unavailable
 - **Offline Support**: Simple fallback routes work without internet connection
 
@@ -85,12 +86,19 @@ The app recognizes the following instruction types:
 
 ## API Configuration (For Developers)
 
-### OpenRouteService Setup
-The app uses OpenRouteService for routing. For production use:
+### OSRM (Open Source Routing Machine)
+The app uses the public OSRM API for routing:
 
-1. Get a free API key from [OpenRouteService](https://openrouteservice.org/dev/#/signup)
-2. Add the API key to your routing service implementation
-3. Update the API endpoint configuration in `lib/services/routing_service.dart`
+- **No API key required**: Free to use public server at `router.project-osrm.org`
+- **Based on OpenStreetMap data**: High-quality routing for pedestrians
+- **No rate limits**: Public server is available for free use
+- **Self-hosting option**: You can host your own OSRM server if needed
+
+The implementation automatically uses OSRM's pedestrian profile (`foot`) which:
+- Prioritizes pedestrian paths and sidewalks
+- Avoids highways and motorways
+- Provides accurate walking time estimates
+- Returns detailed turn-by-turn instructions
 
 ### Fallback Routing
 The app includes a fallback routing mode that:

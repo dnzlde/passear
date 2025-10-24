@@ -64,6 +64,81 @@ class MockApiClient implements ApiClient {
 
   @override
   Future<String> get(Uri url) async {
+    // For OSRM routing API
+    if (url.toString().contains('router.project-osrm.org') || 
+        url.toString().contains('/route/v1/foot/')) {
+      return jsonEncode({
+        'code': 'Ok',
+        'routes': [
+          {
+            'distance': 1000.0,
+            'duration': 720.0, // 12 minutes
+            'geometry': {
+              'coordinates': [
+                [34.7924, 32.0741], // Start [lon, lat]
+                [34.7928, 32.0745],
+                [34.7932, 32.0748],
+                [34.7934, 32.0751], // End [lon, lat]
+              ],
+              'type': 'LineString'
+            },
+            'legs': [
+              {
+                'steps': [
+                  {
+                    'distance': 300.0,
+                    'duration': 216.0,
+                    'name': 'Test Street',
+                    'maneuver': {
+                      'type': 'depart',
+                      'modifier': null,
+                    }
+                  },
+                  {
+                    'distance': 400.0,
+                    'duration': 288.0,
+                    'name': 'Main Avenue',
+                    'maneuver': {
+                      'type': 'turn',
+                      'modifier': 'left',
+                    }
+                  },
+                  {
+                    'distance': 300.0,
+                    'duration': 216.0,
+                    'name': 'Destination Road',
+                    'maneuver': {
+                      'type': 'turn',
+                      'modifier': 'right',
+                    }
+                  },
+                  {
+                    'distance': 0.0,
+                    'duration': 0.0,
+                    'name': '',
+                    'maneuver': {
+                      'type': 'arrive',
+                      'modifier': null,
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        'waypoints': [
+          {
+            'location': [34.7924, 32.0741],
+            'name': 'Start'
+          },
+          {
+            'location': [34.7934, 32.0751],
+            'name': 'End'
+          }
+        ]
+      });
+    }
+    
     // For Wikipedia API, check query parameters to determine response type
     if (url.toString().contains('wikipedia.org/w/api.php')) {
       if (url.queryParameters['list'] == 'geosearch') {

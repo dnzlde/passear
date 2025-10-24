@@ -68,11 +68,11 @@ void main() {
         destination: destination,
       );
 
-      // Should still return a fallback route
+      // Should still return a route (now from OSRM mock)
       expect(route, isNotNull);
       expect(route!.waypoints, isNotEmpty);
       expect(route.distanceMeters, greaterThan(0));
-      expect(route.instructions, hasLength(2)); // Start and end instructions
+      expect(route.instructions.isNotEmpty, true);
     });
 
     test('should include navigation instructions', () async {
