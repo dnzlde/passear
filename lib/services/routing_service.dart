@@ -17,8 +17,9 @@ class RoutingService {
     RoutingProvider? primaryProvider,
     RoutingProvider? fallbackProvider,
     ApiClient? apiClient,
-  })  : _primaryProvider = primaryProvider ?? OsrmRoutingProvider(apiClient: apiClient),
-        _fallbackProvider = fallbackProvider ?? FallbackRoutingProvider();
+  }) : _primaryProvider =
+           primaryProvider ?? OsrmRoutingProvider(apiClient: apiClient),
+       _fallbackProvider = fallbackProvider ?? FallbackRoutingProvider();
 
   /// Get the current primary routing provider name
   String get currentProviderName => _primaryProvider.providerName;
@@ -43,7 +44,8 @@ class RoutingService {
 
       // Primary provider returned null, use fallback
       debugPrint(
-          '${_primaryProvider.providerName} provider returned no route, using ${_fallbackProvider.providerName}');
+        '${_primaryProvider.providerName} provider returned no route, using ${_fallbackProvider.providerName}',
+      );
       return await _fallbackProvider.getRoute(
         start: start,
         destination: destination,
@@ -51,7 +53,8 @@ class RoutingService {
     } catch (e) {
       // Primary provider failed, use fallback
       debugPrint(
-          'Error with ${_primaryProvider.providerName} provider, using ${_fallbackProvider.providerName}: $e');
+        'Error with ${_primaryProvider.providerName} provider, using ${_fallbackProvider.providerName}: $e',
+      );
       return await _fallbackProvider.getRoute(
         start: start,
         destination: destination,
@@ -59,4 +62,3 @@ class RoutingService {
     }
   }
 }
-

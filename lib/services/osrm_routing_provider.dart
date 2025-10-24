@@ -17,7 +17,7 @@ class OsrmRoutingProvider implements RoutingProvider {
   static const String _baseUrl = 'routing.openstreetmap.de';
 
   OsrmRoutingProvider({ApiClient? apiClient})
-      : _apiClient = apiClient ?? HttpApiClient(null);
+    : _apiClient = apiClient ?? HttpApiClient(null);
 
   @override
   String get providerName => 'OSRM';
@@ -48,8 +48,8 @@ class OsrmRoutingProvider implements RoutingProvider {
       final data = json.decode(responseBody);
 
       // Check if the request was successful
-      if (data['code'] != 'Ok' || 
-          data['routes'] == null || 
+      if (data['code'] != 'Ok' ||
+          data['routes'] == null ||
           (data['routes'] as List).isEmpty) {
         debugPrint('OSRM API returned no routes');
         return null;
@@ -76,18 +76,20 @@ class OsrmRoutingProvider implements RoutingProvider {
             for (int i = 0; i < steps.length; i++) {
               final step = steps[i];
               final maneuver = step['maneuver'];
-              
+
               String instruction = _getInstructionText(maneuver, step);
-              final location = waypoints.length > i 
-                  ? waypoints[i] 
+              final location = waypoints.length > i
+                  ? waypoints[i]
                   : waypoints[0];
-              
-              instructions.add(RouteInstruction(
-                text: instruction,
-                distanceMeters: (step['distance'] ?? 0.0).toDouble(),
-                type: _getManeuverType(maneuver['type']),
-                location: location,
-              ));
+
+              instructions.add(
+                RouteInstruction(
+                  text: instruction,
+                  distanceMeters: (step['distance'] ?? 0.0).toDouble(),
+                  type: _getManeuverType(maneuver['type']),
+                  location: location,
+                ),
+              );
             }
           }
         }
@@ -95,12 +97,14 @@ class OsrmRoutingProvider implements RoutingProvider {
 
       // Add arrival instruction if not present
       if (instructions.isEmpty || instructions.last.type != 10) {
-        instructions.add(RouteInstruction(
-          text: 'Arrive at destination',
-          distanceMeters: 0,
-          type: 10,
-          location: destination,
-        ));
+        instructions.add(
+          RouteInstruction(
+            text: 'Arrive at destination',
+            distanceMeters: 0,
+            type: 10,
+            location: destination,
+          ),
+        );
       }
 
       return NavigationRoute(
@@ -118,31 +122,34 @@ class OsrmRoutingProvider implements RoutingProvider {
   /// Parse GeoJSON geometry to list of LatLng points
   List<LatLng> _parseGeoJsonGeometry(dynamic geometry) {
     if (geometry == null) return [];
-    
+
     final coordinates = geometry['coordinates'] as List?;
     if (coordinates == null) return [];
 
-    return coordinates.map((coord) {
-      if (coord is List && coord.length >= 2) {
-        return LatLng(
-          (coord[1] as num).toDouble(),
-          (coord[0] as num).toDouble(),
-        );
-      }
-      return null;
-    }).whereType<LatLng>().toList();
+    return coordinates
+        .map((coord) {
+          if (coord is List && coord.length >= 2) {
+            return LatLng(
+              (coord[1] as num).toDouble(),
+              (coord[0] as num).toDouble(),
+            );
+          }
+          return null;
+        })
+        .whereType<LatLng>()
+        .toList();
   }
 
   /// Get human-readable instruction text from OSRM maneuver
   String _getInstructionText(dynamic maneuver, dynamic step) {
     if (maneuver == null) return 'Continue';
-    
+
     final type = maneuver['type'] as String?;
     final modifier = maneuver['modifier'] as String?;
     final name = step['name'] as String?;
-    
+
     String instruction = '';
-    
+
     switch (type) {
       case 'depart':
         instruction = 'Start on ${name ?? "the path"}';
@@ -181,7 +188,7 @@ class OsrmRoutingProvider implements RoutingProvider {
       default:
         instruction = 'Continue';
     }
-    
+
     return instruction;
   }
 

@@ -96,7 +96,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                   child: Text(
                     poi.name,
                     style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 _buildInterestBadge(poi.interestLevel),
@@ -109,8 +111,10 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                 child: Chip(
                   label: Text(_getCategoryDisplayName(poi.category)),
                   backgroundColor: _getCategoryColor(poi.category),
-                  labelStyle:
-                      const TextStyle(color: Colors.white, fontSize: 12),
+                  labelStyle: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             // Description section with loading state
@@ -141,9 +145,10 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
               const Text(
                 'No description available.',
                 style: TextStyle(
-                    fontSize: 16,
-                    fontStyle: FontStyle.italic,
-                    color: Colors.grey),
+                  fontSize: 16,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey,
+                ),
               ),
             const SizedBox(height: 16),
             // Action buttons
@@ -220,7 +225,10 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
           Text(
             label,
             style: TextStyle(
-                color: color, fontSize: 12, fontWeight: FontWeight.w500),
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),

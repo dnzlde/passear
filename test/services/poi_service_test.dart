@@ -48,27 +48,29 @@ void main() {
       expect(result[0].interestScore, greaterThan(0.0));
       expect(result[0].category, equals(PoiCategory.museum));
       expect(
-          result[0].interestLevel,
-          equals(PoiInterestLevel
-              .high)); // Museum with good score should get high level
+        result[0].interestLevel,
+        equals(PoiInterestLevel.high),
+      ); // Museum with good score should get high level
       // Description should not be loaded initially for performance
       expect(result[0].isDescriptionLoaded, isFalse);
       expect(result[0].description, equals(''));
     });
 
-    test('should maintain backward compatibility with legacy fetchNearby',
-        () async {
-      // Act
-      final result = await service.fetchNearby(32.0741, 34.7924);
+    test(
+      'should maintain backward compatibility with legacy fetchNearby',
+      () async {
+        // Act
+        final result = await service.fetchNearby(32.0741, 34.7924);
 
-      // Assert
-      expect(result, hasLength(2)); // Default mock returns 2 POIs
-      expect(result[0], isA<Poi>());
-      expect(result[0].name, equals('Test Location 1'));
-      expect(result[0].interestScore, greaterThanOrEqualTo(0.0));
-      // Legacy method should still load descriptions for backward compatibility
-      expect(result[0].isDescriptionLoaded, isTrue);
-    });
+        // Assert
+        expect(result, hasLength(2)); // Default mock returns 2 POIs
+        expect(result[0], isA<Poi>());
+        expect(result[0].name, equals('Test Location 1'));
+        expect(result[0].interestScore, greaterThanOrEqualTo(0.0));
+        // Legacy method should still load descriptions for backward compatibility
+        expect(result[0].isDescriptionLoaded, isTrue);
+      },
+    );
 
     test('should clear caches', () {
       // Act & Assert - should not throw
@@ -120,7 +122,9 @@ void main() {
       }
       ''';
       mockClient.setResponse(
-          'wikipedia.org/w/api.php', mockDescriptionResponse);
+        'wikipedia.org/w/api.php',
+        mockDescriptionResponse,
+      );
 
       final poi = Poi(
         id: 'test-museum',
@@ -139,7 +143,9 @@ void main() {
       expect(result.isDescriptionLoaded, isTrue);
       expect(result.description, contains('fascinating place'));
       expect(
-          result.name, equals(poi.name)); // Other fields should remain the same
+        result.name,
+        equals(poi.name),
+      ); // Other fields should remain the same
       expect(result.lat, equals(poi.lat));
       expect(result.lon, equals(poi.lon));
     });

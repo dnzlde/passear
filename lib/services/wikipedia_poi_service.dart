@@ -32,10 +32,8 @@ class WikipediaPoiService {
   final Map<String, String> _descriptionCache = {};
   final Map<String, List<WikipediaPoi>> _searchCache = {};
 
-  WikipediaPoiService({
-    this.lang = 'en',
-    ApiClient? apiClient,
-  }) : _apiClient = apiClient ?? HttpApiClient(http.Client());
+  WikipediaPoiService({this.lang = 'en', ApiClient? apiClient})
+    : _apiClient = apiClient ?? HttpApiClient(http.Client());
 
   /// Fetch POIs within rectangular bounds (north, south, east, west)
   Future<List<WikipediaPoi>> fetchPoisInBounds({
@@ -69,11 +67,13 @@ class WikipediaPoiService {
 
     // Filter POIs to only include those within the actual bounds
     final filteredPois = pois
-        .where((poi) =>
-            poi.lat >= south &&
-            poi.lat <= north &&
-            poi.lon >= west &&
-            poi.lon <= east)
+        .where(
+          (poi) =>
+              poi.lat >= south &&
+              poi.lat <= north &&
+              poi.lon >= west &&
+              poi.lon <= east,
+        )
         .toList();
 
     // Only enrich with basic scoring and categories, not descriptions
@@ -87,8 +87,12 @@ class WikipediaPoiService {
     return result;
   }
 
-  Future<List<WikipediaPoi>> fetchNearbyPois(double lat, double lon,
-      {int radius = 1000, int limit = 10}) async {
+  Future<List<WikipediaPoi>> fetchNearbyPois(
+    double lat,
+    double lon, {
+    int radius = 1000,
+    int limit = 10,
+  }) async {
     if (radius > 10000) radius = 10000;
     final url = Uri.https('$lang.wikipedia.org', '/w/api.php', {
       'action': 'query',
@@ -106,11 +110,7 @@ class WikipediaPoiService {
     final results = query['geosearch'] as List?;
     if (results == null) return [];
     return results.map((e) {
-      return WikipediaPoi(
-        title: e['title'],
-        lat: e['lat'],
-        lon: e['lon'],
-      );
+      return WikipediaPoi(title: e['title'], lat: e['lat'], lon: e['lon']);
     }).toList();
   }
 
@@ -145,8 +145,12 @@ class WikipediaPoiService {
     }
   }
 
-  Future<List<WikipediaPoi>> fetchNearbyWithDescriptions(double lat, double lon,
-      {int radius = 1000, int limit = 10}) async {
+  Future<List<WikipediaPoi>> fetchNearbyWithDescriptions(
+    double lat,
+    double lon, {
+    int radius = 1000,
+    int limit = 10,
+  }) async {
     final pois = await fetchNearbyPois(lat, lon, radius: radius, limit: limit);
     await _enrichPoisWithDescriptionsAndScores(pois);
     return pois;
@@ -169,8 +173,9 @@ class WikipediaPoiService {
     );
 
     // Apply additional intelligent filtering
-    final highQualityPois =
-        pois.where((poi) => poi.interestScore >= 10.0).toList();
+    final highQualityPois = pois
+        .where((poi) => poi.interestScore >= 10.0)
+        .toList();
 
     // If we have enough high-quality POIs, return them
     if (highQualityPois.length >= maxResults) {
@@ -179,11 +184,21 @@ class WikipediaPoiService {
 
     // Otherwise, ensure geographic distribution and mix of interest levels
     return _ensureGeographicDistribution(
-        pois, maxResults, north, south, east, west);
+      pois,
+      maxResults,
+      north,
+      south,
+      east,
+      west,
+    );
   }
 
   int _calculateRadiusForBounds(
-      double north, double south, double east, double west) {
+    double north,
+    double south,
+    double east,
+    double west,
+  ) {
     // Calculate the diagonal distance of the rectangle and use it as radius
     final latDiff = north - south;
     final lonDiff = east - west;
@@ -193,22 +208,28 @@ class WikipediaPoiService {
     final lonDistance =
         lonDiff * 111000 * math.cos((north + south) / 2 * math.pi / 180);
 
-    final diagonalDistance =
-        math.sqrt(latDistance * latDistance + lonDistance * lonDistance);
+    final diagonalDistance = math.sqrt(
+      latDistance * latDistance + lonDistance * lonDistance,
+    );
 
     // Use diagonal distance as radius, with some padding
     return (diagonalDistance * 0.6).round().clamp(500, 10000);
   }
 
   Future<void> _enrichPoisWithDescriptionsAndScores(
-      List<WikipediaPoi> pois) async {
+    List<WikipediaPoi> pois,
+  ) async {
     for (final poi in pois) {
       poi.description = await fetchDescription(poi.title);
-      poi.interestScore =
-          PoiInterestScorer.calculateScore(poi.title, poi.description);
+      poi.interestScore = PoiInterestScorer.calculateScore(
+        poi.title,
+        poi.description,
+      );
       poi.category = PoiInterestScorer.determineCategory(poi.title);
       poi.interestLevel = PoiInterestScorer.determineInterestLevel(
-          poi.interestScore, poi.category);
+        poi.interestScore,
+        poi.category,
+      );
     }
   }
 
@@ -220,7 +241,9 @@ class WikipediaPoiService {
       poi.interestScore = PoiInterestScorer.calculateScore(poi.title, null);
       poi.category = PoiInterestScorer.determineCategory(poi.title);
       poi.interestLevel = PoiInterestScorer.determineInterestLevel(
-          poi.interestScore, poi.category);
+        poi.interestScore,
+        poi.category,
+      );
       // Description is null - will be loaded on-demand
       poi.description = null;
     }
@@ -231,15 +254,25 @@ class WikipediaPoiService {
     if (poi.description == null) {
       poi.description = await fetchDescription(poi.title);
       // Recalculate score with description for more accurate scoring
-      poi.interestScore =
-          PoiInterestScorer.calculateScore(poi.title, poi.description);
+      poi.interestScore = PoiInterestScorer.calculateScore(
+        poi.title,
+        poi.description,
+      );
       poi.interestLevel = PoiInterestScorer.determineInterestLevel(
-          poi.interestScore, poi.category);
+        poi.interestScore,
+        poi.category,
+      );
     }
   }
 
-  List<WikipediaPoi> _ensureGeographicDistribution(List<WikipediaPoi> pois,
-      int maxResults, double north, double south, double east, double west) {
+  List<WikipediaPoi> _ensureGeographicDistribution(
+    List<WikipediaPoi> pois,
+    int maxResults,
+    double north,
+    double south,
+    double east,
+    double west,
+  ) {
     if (pois.length <= maxResults) return pois;
 
     // Divide the area into a grid and try to get POIs from different sections
@@ -259,11 +292,13 @@ class WikipediaPoiService {
         final cellEast = west + (j + 1) * lonStep;
 
         final poisInCell = remainingPois
-            .where((poi) =>
-                poi.lat >= cellSouth &&
-                poi.lat < cellNorth &&
-                poi.lon >= cellWest &&
-                poi.lon < cellEast)
+            .where(
+              (poi) =>
+                  poi.lat >= cellSouth &&
+                  poi.lat < cellNorth &&
+                  poi.lon >= cellWest &&
+                  poi.lon < cellEast,
+            )
             .toList();
 
         if (poisInCell.isNotEmpty) {

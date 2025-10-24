@@ -9,7 +9,7 @@ class PoiService {
   final SettingsService _settingsService = SettingsService.instance;
 
   PoiService({ApiClient? apiClient})
-      : _wikiService = WikipediaPoiService(apiClient: apiClient);
+    : _wikiService = WikipediaPoiService(apiClient: apiClient);
 
   /// Fetch POIs within rectangular bounds using intelligent scoring
   Future<List<Poi>> fetchInBounds({
@@ -56,10 +56,16 @@ class PoiService {
   }
 
   /// Legacy method for backward compatibility
-  Future<List<Poi>> fetchNearby(double lat, double lon,
-      {int radius = 1000}) async {
-    final wikiPois = await _wikiService.fetchNearbyWithDescriptions(lat, lon,
-        radius: radius);
+  Future<List<Poi>> fetchNearby(
+    double lat,
+    double lon, {
+    int radius = 1000,
+  }) async {
+    final wikiPois = await _wikiService.fetchNearbyWithDescriptions(
+      lat,
+      lon,
+      radius: radius,
+    );
 
     return wikiPois.map((wikiPoi) {
       return Poi(

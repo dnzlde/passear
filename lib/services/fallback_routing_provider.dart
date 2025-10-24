@@ -47,12 +47,16 @@ class FallbackRoutingProvider implements RoutingProvider {
 
   /// Interpolate points between start and destination for smoother route
   List<LatLng> _interpolatePoints(
-      LatLng start, LatLng destination, int numPoints) {
+    LatLng start,
+    LatLng destination,
+    int numPoints,
+  ) {
     final points = <LatLng>[start];
 
     for (int i = 1; i < numPoints; i++) {
       final ratio = i / numPoints;
-      final lat = start.latitude + (destination.latitude - start.latitude) * ratio;
+      final lat =
+          start.latitude + (destination.latitude - start.latitude) * ratio;
       final lng =
           start.longitude + (destination.longitude - start.longitude) * ratio;
       points.add(LatLng(lat, lng));

@@ -51,8 +51,7 @@ void main() {
       );
 
       expect(route, isNotNull);
-      expect(
-          route!.formattedDuration, matches(RegExp(r'\d+ min|(\d+h \d+m)')));
+      expect(route!.formattedDuration, matches(RegExp(r'\d+ min|(\d+h \d+m)')));
     });
 
     test('should return fallback route when API fails', () async {
@@ -116,12 +115,15 @@ void main() {
       expect(route, isNotNull);
       expect(route!.waypoints.length, greaterThanOrEqualTo(2));
       expect(route.waypoints.first.latitude, closeTo(start.latitude, 0.0001));
+      expect(route.waypoints.first.longitude, closeTo(start.longitude, 0.0001));
       expect(
-          route.waypoints.first.longitude, closeTo(start.longitude, 0.0001));
+        route.waypoints.last.latitude,
+        closeTo(destination.latitude, 0.0001),
+      );
       expect(
-          route.waypoints.last.latitude, closeTo(destination.latitude, 0.0001));
-      expect(route.waypoints.last.longitude,
-          closeTo(destination.longitude, 0.0001));
+        route.waypoints.last.longitude,
+        closeTo(destination.longitude, 0.0001),
+      );
     });
   });
 }

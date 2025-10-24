@@ -113,17 +113,18 @@ class _MapPageState extends State<MapPage> {
       distanceFilter: 5, // Update every 5 meters
     );
 
-    _locationSubscription = Geolocator.getPositionStream(
-      locationSettings: locationSettings,
-    ).listen((Position position) {
-      setState(() {
-        _userLocation = LatLng(position.latitude, position.longitude);
-        // Heading is available on some devices (compass direction)
-        _userHeading = position.heading;
-      });
-      // Update navigation progress if navigating
-      _updateNavigationProgress();
-    });
+    _locationSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+          (Position position) {
+            setState(() {
+              _userLocation = LatLng(position.latitude, position.longitude);
+              // Heading is available on some devices (compass direction)
+              _userHeading = position.heading;
+            });
+            // Update navigation progress if navigating
+            _updateNavigationProgress();
+          },
+        );
   }
 
   Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
@@ -136,7 +137,8 @@ class _MapPageState extends State<MapPage> {
 
       if (isInitialLoad) {
         debugPrint(
-            'POI: Got map bounds - N:${bounds.north}, S:${bounds.south}, E:${bounds.east}, W:${bounds.west}');
+          'POI: Got map bounds - N:${bounds.north}, S:${bounds.south}, E:${bounds.east}, W:${bounds.west}',
+        );
         _hasPerformedInitialLoad = true;
       }
 
@@ -180,7 +182,8 @@ class _MapPageState extends State<MapPage> {
 
       if (isInitialLoad) {
         debugPrint(
-            'POI: Successfully loaded ${pois.length} POIs on initial load');
+          'POI: Successfully loaded ${pois.length} POIs on initial load',
+        );
       }
     } catch (e) {
       if (!mounted) return; // Check before setState
@@ -229,7 +232,8 @@ class _MapPageState extends State<MapPage> {
     if (!_hasPerformedInitialLoad && !hasGesture) {
       _hasPerformedInitialLoad = true;
       debugPrint(
-          'POI: First position change detected, starting initial POI load');
+        'POI: First position change detected, starting initial POI load',
+      );
       // Small delay to ensure bounds are stable, then load POIs
       Future.delayed(const Duration(milliseconds: 500)).then((_) {
         if (mounted) {
@@ -261,8 +265,11 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       _selectedPoi = poi;
     });
-    _sheetController.animateTo(0.4,
-        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    _sheetController.animateTo(
+      0.4,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   void _hidePoiDetails() {
@@ -318,9 +325,7 @@ class _MapPageState extends State<MapPage> {
           _isLoadingRoute = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to calculate route: $e'),
-          ),
+          SnackBar(content: Text('Failed to calculate route: $e')),
         );
       }
     }
@@ -338,12 +343,16 @@ class _MapPageState extends State<MapPage> {
     if (_currentRoute == null || _userLocation == null) return;
 
     // Find the closest instruction point
-    for (int i = _currentInstructionIndex;
-        i < _currentRoute!.instructions.length;
-        i++) {
+    for (
+      int i = _currentInstructionIndex;
+      i < _currentRoute!.instructions.length;
+      i++
+    ) {
       final instruction = _currentRoute!.instructions[i];
-      final distance =
-          const Distance().distance(_userLocation!, instruction.location);
+      final distance = const Distance().distance(
+        _userLocation!,
+        instruction.location,
+      );
 
       // If we're within 50 meters of the next instruction, announce it
       if (distance < 50 && i > _currentInstructionIndex) {
@@ -420,17 +429,11 @@ class _MapPageState extends State<MapPage> {
       if (point.longitude > maxLon) maxLon = point.longitude;
     }
 
-    final bounds = LatLngBounds(
-      LatLng(minLat, minLon),
-      LatLng(maxLat, maxLon),
-    );
+    final bounds = LatLngBounds(LatLng(minLat, minLon), LatLng(maxLat, maxLon));
 
     // Fit the map to the bounds with some padding
     _mapController.fitCamera(
-      CameraFit.bounds(
-        bounds: bounds,
-        padding: const EdgeInsets.all(50),
-      ),
+      CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(50)),
     );
   }
 
@@ -497,15 +500,17 @@ class _MapPageState extends State<MapPage> {
               ),
               MarkerLayer(
                 markers: _pois
-                    .map((poi) => Marker(
-                          width: _getMarkerSize(poi.interestLevel),
-                          height: _getMarkerSize(poi.interestLevel),
-                          point: LatLng(poi.lat, poi.lon),
-                          child: GestureDetector(
-                            onTap: () => _showPoiDetails(poi),
-                            child: _buildMarkerIcon(poi.interestLevel),
-                          ),
-                        ))
+                    .map(
+                      (poi) => Marker(
+                        width: _getMarkerSize(poi.interestLevel),
+                        height: _getMarkerSize(poi.interestLevel),
+                        point: LatLng(poi.lat, poi.lon),
+                        child: GestureDetector(
+                          onTap: () => _showPoiDetails(poi),
+                          child: _buildMarkerIcon(poi.interestLevel),
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
               // Route polyline
@@ -561,9 +566,7 @@ class _MapPageState extends State<MapPage> {
               top: 16,
               left: 0,
               right: 0,
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: Center(child: CircularProgressIndicator()),
             ),
           // Route loading indicator
           if (_isLoadingRoute)
@@ -645,9 +648,7 @@ class _MapPageState extends State<MapPage> {
               bottom: 0,
               child: GestureDetector(
                 onTap: _hidePoiDetails,
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.3),
-                ),
+                child: Container(color: Colors.black.withValues(alpha: 0.3)),
               ),
             ),
           // POI Details Sheet
@@ -704,9 +705,10 @@ class _MapPageState extends State<MapPage> {
                         children: [
                           Icon(
                             _getInstructionIcon(
-                                _currentRoute!
-                                    .instructions[_currentInstructionIndex]
-                                    .type),
+                              _currentRoute!
+                                  .instructions[_currentInstructionIndex]
+                                  .type,
+                            ),
                             color: Colors.blue,
                             size: 32,
                           ),
@@ -742,11 +744,13 @@ class _MapPageState extends State<MapPage> {
                       ),
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
-                        value: (_currentInstructionIndex + 1) /
+                        value:
+                            (_currentInstructionIndex + 1) /
                             _currentRoute!.instructions.length,
                         backgroundColor: Colors.grey[300],
-                        valueColor:
-                            const AlwaysStoppedAnimation<Color>(Colors.blue),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Colors.blue,
+                        ),
                       ),
                     ],
                   ),
@@ -769,7 +773,8 @@ class _MapPageState extends State<MapPage> {
                   },
                   tooltip: 'Reset map orientation to north',
                   child: AnimatedRotation(
-                    turns: _mapRotation /
+                    turns:
+                        _mapRotation /
                         360.0, // Rotate with map to show orientation
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOut,
@@ -860,11 +865,7 @@ class _MapPageState extends State<MapPage> {
         );
       case PoiInterestLevel.low:
         // Subtle gray marker for low-interest POIs
-        return const Icon(
-          Icons.location_on,
-          color: Colors.grey,
-          size: 25,
-        );
+        return const Icon(Icons.location_on, color: Colors.grey, size: 25);
     }
   }
 
@@ -888,10 +889,7 @@ class _MapPageState extends State<MapPage> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.blue,
-                border: Border.all(
-                  color: Colors.white,
-                  width: 3,
-                ),
+                border: Border.all(color: Colors.white, width: 3),
               ),
             ),
             // Small white dot in center
@@ -928,10 +926,7 @@ class _MapPageState extends State<MapPage> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.blue.withValues(alpha: 0.3),
-            border: Border.all(
-              color: Colors.white,
-              width: 2,
-            ),
+            border: Border.all(color: Colors.white, width: 2),
           ),
         ),
         // Inner blue dot

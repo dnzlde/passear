@@ -38,11 +38,14 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _updateCategorySetting(
-      PoiCategory category, bool enabled) async {
+    PoiCategory category,
+    bool enabled,
+  ) async {
     await _settingsService.updateCategoryEnabled(category, enabled);
     setState(() {
-      final updatedCategories =
-          Map<PoiCategory, bool>.from(_settings.enabledCategories);
+      final updatedCategories = Map<PoiCategory, bool>.from(
+        _settings.enabledCategories,
+      );
       updatedCategories[category] = enabled;
       _settings = _settings.copyWith(enabledCategories: updatedCategories);
     });
@@ -113,20 +116,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Settings'),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        appBar: AppBar(title: const Text('Settings')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('POI Settings'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('POI Settings'), elevation: 0),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
@@ -204,9 +200,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   const SizedBox(height: 8),
                   Text(
                     'Toggle which types of Points of Interest to show on the map',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 16),
                   ...PoiCategory.values.map((category) {

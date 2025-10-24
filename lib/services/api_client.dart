@@ -65,7 +65,7 @@ class MockApiClient implements ApiClient {
   @override
   Future<String> get(Uri url) async {
     // For OSRM routing API (both old and new endpoints)
-    if (url.toString().contains('router.project-osrm.org') || 
+    if (url.toString().contains('router.project-osrm.org') ||
         url.toString().contains('routing.openstreetmap.de') ||
         url.toString().contains('/route/v1/foot/') ||
         url.toString().contains('/routed-foot/route/v1/foot/')) {
@@ -82,7 +82,7 @@ class MockApiClient implements ApiClient {
                 [34.7932, 32.0748],
                 [34.7934, 32.0751], // End [lon, lat]
               ],
-              'type': 'LineString'
+              'type': 'LineString',
             },
             'legs': [
               {
@@ -91,56 +91,44 @@ class MockApiClient implements ApiClient {
                     'distance': 300.0,
                     'duration': 216.0,
                     'name': 'Test Street',
-                    'maneuver': {
-                      'type': 'depart',
-                      'modifier': null,
-                    }
+                    'maneuver': {'type': 'depart', 'modifier': null},
                   },
                   {
                     'distance': 400.0,
                     'duration': 288.0,
                     'name': 'Main Avenue',
-                    'maneuver': {
-                      'type': 'turn',
-                      'modifier': 'left',
-                    }
+                    'maneuver': {'type': 'turn', 'modifier': 'left'},
                   },
                   {
                     'distance': 300.0,
                     'duration': 216.0,
                     'name': 'Destination Road',
-                    'maneuver': {
-                      'type': 'turn',
-                      'modifier': 'right',
-                    }
+                    'maneuver': {'type': 'turn', 'modifier': 'right'},
                   },
                   {
                     'distance': 0.0,
                     'duration': 0.0,
                     'name': '',
-                    'maneuver': {
-                      'type': 'arrive',
-                      'modifier': null,
-                    }
-                  }
-                ]
-              }
-            ]
-          }
+                    'maneuver': {'type': 'arrive', 'modifier': null},
+                  },
+                ],
+              },
+            ],
+          },
         ],
         'waypoints': [
           {
             'location': [34.7924, 32.0741],
-            'name': 'Start'
+            'name': 'Start',
           },
           {
             'location': [34.7934, 32.0751],
-            'name': 'End'
-          }
-        ]
+            'name': 'End',
+          },
+        ],
       });
     }
-    
+
     // For Wikipedia API, check query parameters to determine response type
     if (url.toString().contains('wikipedia.org/w/api.php')) {
       if (url.queryParameters['list'] == 'geosearch') {
@@ -178,18 +166,10 @@ class MockApiClient implements ApiClient {
     return jsonEncode({
       'query': {
         'geosearch': [
-          {
-            'title': 'Test Location 1',
-            'lat': 32.0741,
-            'lon': 34.7924,
-          },
-          {
-            'title': 'Test Location 2',
-            'lat': 32.0751,
-            'lon': 34.7934,
-          }
-        ]
-      }
+          {'title': 'Test Location 1', 'lat': 32.0741, 'lon': 34.7924},
+          {'title': 'Test Location 2', 'lat': 32.0751, 'lon': 34.7934},
+        ],
+      },
     });
   }
 
@@ -198,10 +178,10 @@ class MockApiClient implements ApiClient {
       'query': {
         'pages': {
           '123': {
-            'extract': 'This is a test description for a Wikipedia article.'
-          }
-        }
-      }
+            'extract': 'This is a test description for a Wikipedia article.',
+          },
+        },
+      },
     });
   }
 
@@ -236,11 +216,11 @@ class MockApiClient implements ApiClient {
                     'type': 1,
                     'way_points': [1],
                   },
-                ]
-              }
-            ]
-          }
-        ]
+                ],
+              },
+            ],
+          },
+        ],
       });
     }
 
