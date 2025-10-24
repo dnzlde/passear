@@ -56,10 +56,12 @@ The app provides automatic voice announcements:
 ## Technical Details
 
 ### Routing Service
+- **Architecture**: Pluggable provider system with abstraction layer
 - **Primary**: OSRM (Open Source Routing Machine) public API for pedestrian routing
 - **No API Key Required**: Free to use public OSRM server
 - **Fallback**: Straight-line routes when API is unavailable
 - **Offline Support**: Simple fallback routes work without internet connection
+- **Extensible**: Easy to add new routing providers (Google Maps, OpenRouteService, etc.)
 
 ### Route Calculation
 - Routes are calculated between your current location and the destination
@@ -86,6 +88,12 @@ The app recognizes the following instruction types:
 
 ## API Configuration (For Developers)
 
+### Routing Provider Architecture
+
+The app uses a pluggable routing provider system that allows easy switching between different routing services. See `ROUTING_ARCHITECTURE.md` for detailed documentation.
+
+**Current Default Provider: OSRM**
+
 ### OSRM (Open Source Routing Machine)
 The app uses the public OSRM API for routing:
 
@@ -99,6 +107,16 @@ The implementation automatically uses OSRM's pedestrian profile (`foot`) which:
 - Avoids highways and motorways
 - Provides accurate walking time estimates
 - Returns detailed turn-by-turn instructions
+
+### Adding Other Routing Providers
+
+The abstraction layer makes it easy to add new providers like:
+- **Google Maps Directions API** (requires API key)
+- **OpenRouteService** (free tier available)
+- **Mapbox Directions API** (requires API key)
+- **GraphHopper** (open source option)
+
+To add a new provider, implement the `RoutingProvider` interface in a new class. See `ROUTING_ARCHITECTURE.md` for step-by-step instructions.
 
 ### Fallback Routing
 The app includes a fallback routing mode that:
