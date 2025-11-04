@@ -50,6 +50,7 @@ class _MapPageState extends State<MapPage> {
   LatLng? _destinationMarker;
   bool _isLoadingRoute = false;
   int _currentInstructionIndex = 0;
+  bool _voiceGuidanceEnabled = true; // Cache for performance
 
   @override
   void initState() {
@@ -57,6 +58,7 @@ class _MapPageState extends State<MapPage> {
     _ttsService = LocalTtsService();
     _initMap();
     _startLocationTracking();
+    _loadVoiceGuidanceSetting();
   }
 
   @override
@@ -64,6 +66,15 @@ class _MapPageState extends State<MapPage> {
     _locationSubscription?.cancel();
     _ttsService.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadVoiceGuidanceSetting() async {
+    final settings = await _settingsService.loadSettings();
+    if (mounted) {
+      setState(() {
+        _voiceGuidanceEnabled = settings.voiceGuidanceEnabled;
+      });
+    }
   }
 
   Future<LatLng?> _getCurrentLocation() async {
@@ -315,8 +326,7 @@ class _MapPageState extends State<MapPage> {
         if (route != null && route.waypoints.isNotEmpty) {
           _fitMapToRoute(route);
           // Announce route summary if voice guidance is enabled
-          final settings = await _settingsService.loadSettings();
-          if (settings.voiceGuidanceEnabled) {
+          if (_voiceGuidanceEnabled) {
             _ttsService.speak(
               'Route calculated. Distance: ${route.formattedDistance}. '
               'Estimated time: ${route.formattedDuration}',
@@ -369,11 +379,9 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  void _announceInstruction(
-      RouteInstruction instruction, double distance) async {
-    // Check if voice guidance is enabled in settings
-    final settings = await _settingsService.loadSettings();
-    if (!settings.voiceGuidanceEnabled) {
+  void _announceInstruction(RouteInstruction instruction, double distance) {
+    // Check if voice guidance is enabled (using cached value for performance)
+    if (!_voiceGuidanceEnabled) {
       return; // Voice guidance is disabled, skip announcement
     }
 
@@ -471,8 +479,9 @@ class _MapPageState extends State<MapPage> {
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsPage()),
               );
-              // Reload POIs after settings change
+              // Reload POIs and voice guidance setting after settings change
               _loadPoisInView();
+              _loadVoiceGuidanceSetting();
             },
           ),
         ],
