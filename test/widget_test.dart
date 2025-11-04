@@ -12,8 +12,9 @@ import 'package:passear/main.dart';
 import 'package:passear/services/api_client.dart';
 
 void main() {
-  testWidgets('Passear app loads and shows map page',
-      (WidgetTester tester) async {
+  testWidgets('Passear app loads and shows map page', (
+    WidgetTester tester,
+  ) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const PassearApp());
 
@@ -35,16 +36,15 @@ void main() {
     expect(find.byTooltip('Reset map orientation to north'), findsOneWidget);
   });
 
-  testWidgets('MapPage with mock API client loads without network errors',
-      (WidgetTester tester) async {
+  testWidgets('MapPage with mock API client loads without network errors', (
+    WidgetTester tester,
+  ) async {
     // Create a mock API client to avoid network requests in tests
     final mockClient = MockApiClient();
 
     // Build the MapPage widget with mock client
     await tester.pumpWidget(
-      MaterialApp(
-        home: MapPageWithMockClient(apiClient: mockClient),
-      ),
+      MaterialApp(home: MapPageWithMockClient(apiClient: mockClient)),
     );
 
     // Verify that the map page loads
@@ -58,16 +58,15 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('POI modal should be dismissible by tapping outside',
-      (WidgetTester tester) async {
+  testWidgets('POI modal should be dismissible by tapping outside', (
+    WidgetTester tester,
+  ) async {
     // Create a mock API client
     final mockClient = MockApiClient();
 
     // Build the MapPage widget
     await tester.pumpWidget(
-      MaterialApp(
-        home: MapPageWithPOISupport(apiClient: mockClient),
-      ),
+      MaterialApp(home: MapPageWithPOISupport(apiClient: mockClient)),
     );
 
     // Wait for the widget to render
@@ -100,9 +99,7 @@ class MapPageWithMockClient extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Passear')),
-      body: const Center(
-        child: Text('Map loaded with mock client'),
-      ),
+      body: const Center(child: Text('Map loaded with mock client')),
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
         tooltip: 'Center to my location',
@@ -124,9 +121,7 @@ class MapPageWithPOISupport extends StatelessWidget {
       appBar: AppBar(title: const Text('Passear')),
       body: Stack(
         children: [
-          const Center(
-            child: Text('Map loaded with POI support'),
-          ),
+          const Center(child: Text('Map loaded with POI support')),
           Positioned(
             bottom: 100,
             left: 100,
@@ -182,8 +177,9 @@ class MapPageWithPOISupport extends StatelessWidget {
                                         Text(
                                           'Test POI',
                                           style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold),
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                         SizedBox(height: 16),
                                         Text('This is a test POI description.'),
@@ -200,11 +196,7 @@ class MapPageWithPOISupport extends StatelessWidget {
                   ),
                 );
               },
-              child: const Icon(
-                Icons.place,
-                color: Colors.blue,
-                size: 35,
-              ),
+              child: const Icon(Icons.place, color: Colors.blue, size: 35),
             ),
           ),
         ],

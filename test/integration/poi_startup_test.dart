@@ -5,8 +5,9 @@ import 'package:passear/services/api_client.dart';
 
 void main() {
   group('POI Startup Loading', () {
-    testWidgets('POIs should be loaded when map is ready on app startup',
-        (WidgetTester tester) async {
+    testWidgets('POIs should be loaded when map is ready on app startup', (
+      WidgetTester tester,
+    ) async {
       // Arrange - Create a mock API client with test data
       final mockClient = MockApiClient();
       const mockNearbyResponse = '''
@@ -26,9 +27,7 @@ void main() {
 
       // Act - Build the app and trigger map initialization
       await tester.pumpWidget(
-        MaterialApp(
-          home: MapPageWithTestClient(apiClient: mockClient),
-        ),
+        MaterialApp(home: MapPageWithTestClient(apiClient: mockClient)),
       );
 
       // Wait for initial rendering
@@ -46,25 +45,24 @@ void main() {
     });
 
     testWidgets(
-        'Map initialization should not crash when location permission is denied',
-        (WidgetTester tester) async {
-      // Arrange - Create a mock API client
-      final mockClient = MockApiClient();
+      'Map initialization should not crash when location permission is denied',
+      (WidgetTester tester) async {
+        // Arrange - Create a mock API client
+        final mockClient = MockApiClient();
 
-      // Act - Build the map page
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MapPageWithTestClient(apiClient: mockClient),
-        ),
-      );
+        // Act - Build the map page
+        await tester.pumpWidget(
+          MaterialApp(home: MapPageWithTestClient(apiClient: mockClient)),
+        );
 
-      // Wait for initialization to complete
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+        // Wait for initialization to complete
+        await tester.pumpAndSettle(const Duration(seconds: 2));
 
-      // Assert - App should not crash and should display fallback location
-      expect(tester.takeException(), isNull);
-      expect(find.text('Passear'), findsOneWidget);
-    });
+        // Assert - App should not crash and should display fallback location
+        expect(tester.takeException(), isNull);
+        expect(find.text('Passear'), findsOneWidget);
+      },
+    );
   });
 }
 
@@ -151,17 +149,13 @@ class _TestMapWidgetState extends State<TestMapWidget> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        const Center(
-          child: Text('Test Map Initialized'),
-        ),
+        const Center(child: Text('Test Map Initialized')),
         if (_isLoadingPois)
           const Positioned(
             top: 16,
             left: 0,
             right: 0,
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
+            child: Center(child: CircularProgressIndicator()),
           ),
       ],
     );

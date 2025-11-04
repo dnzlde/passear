@@ -8,7 +8,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/poi.dart';
+import '../models/route.dart';
 import '../services/poi_service.dart';
+import '../services/routing_service.dart';
+import '../services/local_tts_service.dart';
 import '../settings/settings_page.dart';
 import 'wiki_poi_detail.dart';
 
@@ -22,6 +25,8 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   List<Poi> _pois = [];
   final PoiService _poiService = PoiService();
+  final RoutingService _routingService = RoutingService();
+  late final LocalTtsService _ttsService;
   LatLng _mapCenter = const LatLng(32.0741, 34.7924); // fallback: Azrieli
   final MapController _mapController = MapController();
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
@@ -38,9 +43,16 @@ class _MapPageState extends State<MapPage> {
   double? _userHeading; // Direction user is facing in degrees (0 = North)
   StreamSubscription<Position>? _locationSubscription;
 
+  // Navigation state
+  NavigationRoute? _currentRoute;
+  LatLng? _destinationMarker;
+  bool _isLoadingRoute = false;
+  int _currentInstructionIndex = 0;
+
   @override
   void initState() {
     super.initState();
+    _ttsService = LocalTtsService();
     _initMap();
     _startLocationTracking();
   }
@@ -48,6 +60,7 @@ class _MapPageState extends State<MapPage> {
   @override
   void dispose() {
     _locationSubscription?.cancel();
+    _ttsService.dispose();
     super.dispose();
   }
 
@@ -100,15 +113,18 @@ class _MapPageState extends State<MapPage> {
       distanceFilter: 5, // Update every 5 meters
     );
 
-    _locationSubscription = Geolocator.getPositionStream(
-      locationSettings: locationSettings,
-    ).listen((Position position) {
-      setState(() {
-        _userLocation = LatLng(position.latitude, position.longitude);
-        // Heading is available on some devices (compass direction)
-        _userHeading = position.heading;
-      });
-    });
+    _locationSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+      (Position position) {
+        setState(() {
+          _userLocation = LatLng(position.latitude, position.longitude);
+          // Heading is available on some devices (compass direction)
+          _userHeading = position.heading;
+        });
+        // Update navigation progress if navigating
+        _updateNavigationProgress();
+      },
+    );
   }
 
   Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
@@ -121,7 +137,8 @@ class _MapPageState extends State<MapPage> {
 
       if (isInitialLoad) {
         debugPrint(
-            'POI: Got map bounds - N:${bounds.north}, S:${bounds.south}, E:${bounds.east}, W:${bounds.west}');
+          'POI: Got map bounds - N:${bounds.north}, S:${bounds.south}, E:${bounds.east}, W:${bounds.west}',
+        );
         _hasPerformedInitialLoad = true;
       }
 
@@ -165,7 +182,8 @@ class _MapPageState extends State<MapPage> {
 
       if (isInitialLoad) {
         debugPrint(
-            'POI: Successfully loaded ${pois.length} POIs on initial load');
+          'POI: Successfully loaded ${pois.length} POIs on initial load',
+        );
       }
     } catch (e) {
       if (!mounted) return; // Check before setState
@@ -214,7 +232,8 @@ class _MapPageState extends State<MapPage> {
     if (!_hasPerformedInitialLoad && !hasGesture) {
       _hasPerformedInitialLoad = true;
       debugPrint(
-          'POI: First position change detected, starting initial POI load');
+        'POI: First position change detected, starting initial POI load',
+      );
       // Small delay to ensure bounds are stable, then load POIs
       Future.delayed(const Duration(milliseconds: 500)).then((_) {
         if (mounted) {
@@ -246,14 +265,174 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       _selectedPoi = poi;
     });
-    _sheetController.animateTo(0.4,
-        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    _sheetController.animateTo(
+      0.4,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   void _hidePoiDetails() {
     setState(() {
       _selectedPoi = null;
     });
+  }
+
+  Future<void> _startNavigation(LatLng destination) async {
+    if (_userLocation == null) {
+      // Show error message if user location is not available
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Current location not available. Please try again.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _isLoadingRoute = true;
+      _destinationMarker = destination;
+    });
+
+    try {
+      final route = await _routingService.getRoute(
+        start: _userLocation!,
+        destination: destination,
+      );
+
+      if (mounted) {
+        setState(() {
+          _currentRoute = route;
+          _isLoadingRoute = false;
+          _currentInstructionIndex = 0;
+        });
+
+        // Fit the map to show the entire route
+        if (route != null && route.waypoints.isNotEmpty) {
+          _fitMapToRoute(route);
+          // Announce route summary
+          _ttsService.speak(
+            'Route calculated. Distance: ${route.formattedDistance}. '
+            'Estimated time: ${route.formattedDuration}',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingRoute = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to calculate route: $e')),
+        );
+      }
+    }
+  }
+
+  void _stopNavigation() {
+    setState(() {
+      _currentRoute = null;
+      _destinationMarker = null;
+      _currentInstructionIndex = 0;
+    });
+  }
+
+  void _updateNavigationProgress() {
+    if (_currentRoute == null || _userLocation == null) return;
+
+    // Find the closest instruction point
+    for (int i = _currentInstructionIndex;
+        i < _currentRoute!.instructions.length;
+        i++) {
+      final instruction = _currentRoute!.instructions[i];
+      final distance = const Distance().distance(
+        _userLocation!,
+        instruction.location,
+      );
+
+      // If we're within 50 meters of the next instruction, announce it
+      if (distance < 50 && i > _currentInstructionIndex) {
+        setState(() {
+          _currentInstructionIndex = i;
+        });
+        // Announce the instruction via TTS
+        _announceInstruction(instruction, distance);
+        break;
+      }
+    }
+  }
+
+  void _announceInstruction(RouteInstruction instruction, double distance) {
+    String announcement;
+    if (instruction.type == 10) {
+      // Arrival instruction
+      announcement = 'You have arrived at your destination';
+    } else if (distance < 20) {
+      // Very close
+      announcement = instruction.text;
+    } else {
+      // Still approaching
+      announcement =
+          'In ${instruction.formattedDistance}, ${instruction.text.toLowerCase()}';
+    }
+    _ttsService.speak(announcement);
+  }
+
+  void _showCustomDestinationDialog(LatLng destination) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Navigate to this location?'),
+        content: Text(
+          'Latitude: ${destination.latitude.toStringAsFixed(5)}\n'
+          'Longitude: ${destination.longitude.toStringAsFixed(5)}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _startNavigation(destination);
+            },
+            icon: const Icon(Icons.directions_walk),
+            label: const Text('Navigate'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _fitMapToRoute(NavigationRoute route) {
+    if (route.waypoints.isEmpty) return;
+
+    // Calculate bounds to fit all waypoints
+    double minLat = route.waypoints.first.latitude;
+    double maxLat = route.waypoints.first.latitude;
+    double minLon = route.waypoints.first.longitude;
+    double maxLon = route.waypoints.first.longitude;
+
+    for (final point in route.waypoints) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLon) minLon = point.longitude;
+      if (point.longitude > maxLon) maxLon = point.longitude;
+    }
+
+    final bounds = LatLngBounds(LatLng(minLat, minLon), LatLng(maxLat, maxLon));
+
+    // Fit the map to the bounds with some padding
+    _mapController.fitCamera(
+      CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(50)),
+    );
   }
 
   Future<void> _centerToCurrentLocation() async {
@@ -307,6 +486,10 @@ class _MapPageState extends State<MapPage> {
                 }
               },
               onPositionChanged: _onMapPositionChanged,
+              onLongPress: (tapPosition, point) {
+                // Long press to set custom destination
+                _showCustomDestinationDialog(point);
+              },
             ),
             children: [
               TileLayer(
@@ -315,17 +498,53 @@ class _MapPageState extends State<MapPage> {
               ),
               MarkerLayer(
                 markers: _pois
-                    .map((poi) => Marker(
-                          width: _getMarkerSize(poi.interestLevel),
-                          height: _getMarkerSize(poi.interestLevel),
-                          point: LatLng(poi.lat, poi.lon),
-                          child: GestureDetector(
-                            onTap: () => _showPoiDetails(poi),
-                            child: _buildMarkerIcon(poi.interestLevel),
-                          ),
-                        ))
+                    .map(
+                      (poi) => Marker(
+                        width: _getMarkerSize(poi.interestLevel),
+                        height: _getMarkerSize(poi.interestLevel),
+                        point: LatLng(poi.lat, poi.lon),
+                        child: GestureDetector(
+                          onTap: () => _showPoiDetails(poi),
+                          child: _buildMarkerIcon(poi.interestLevel),
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
+              // Route polyline
+              if (_currentRoute != null)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _currentRoute!.waypoints,
+                      color: Colors.blue,
+                      strokeWidth: 4.0,
+                    ),
+                  ],
+                ),
+              // Destination marker
+              if (_destinationMarker != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      width: 40,
+                      height: 40,
+                      point: _destinationMarker!,
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.red,
+                        size: 40,
+                        shadows: [
+                          Shadow(
+                            offset: Offset(1.0, 1.0),
+                            blurRadius: 3.0,
+                            color: Color.fromARGB(100, 0, 0, 0),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               // User location marker
               if (_userLocation != null)
                 MarkerLayer(
@@ -345,8 +564,77 @@ class _MapPageState extends State<MapPage> {
               top: 16,
               left: 0,
               right: 0,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          // Route loading indicator
+          if (_isLoadingRoute)
+            const Positioned(
+              top: 16,
+              left: 0,
+              right: 0,
               child: Center(
-                child: CircularProgressIndicator(),
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 12),
+                        Text('Calculating route...'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          // Route summary display
+          if (_currentRoute != null && !_isLoadingRoute)
+            Positioned(
+              top: 16,
+              left: 16,
+              right: 16,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.directions_walk, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _currentRoute!.formattedDistance,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              'About ${_currentRoute!.formattedDuration}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: _stopNavigation,
+                        tooltip: 'Stop navigation',
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           // Dimming overlay when POI sheet is visible
@@ -358,9 +646,7 @@ class _MapPageState extends State<MapPage> {
               bottom: 0,
               child: GestureDetector(
                 onTap: _hidePoiDetails,
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.3),
-                ),
+                child: Container(color: Colors.black.withValues(alpha: 0.3)),
               ),
             ),
           // POI Details Sheet
@@ -388,8 +674,81 @@ class _MapPageState extends State<MapPage> {
                       child: WikiPoiDetail(
                         poi: _selectedPoi!,
                         scrollController: scrollController,
+                        onNavigate: (destination) {
+                          _hidePoiDetails();
+                          _startNavigation(destination);
+                        },
                       ),
                     ),
+                  ),
+                ),
+              ),
+            ),
+          // Navigation instruction display
+          if (_currentRoute != null &&
+              _currentInstructionIndex < _currentRoute!.instructions.length)
+            Positioned(
+              bottom: 80,
+              left: 16,
+              right: 16,
+              child: Card(
+                elevation: 8,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            _getInstructionIcon(
+                              _currentRoute!
+                                  .instructions[_currentInstructionIndex].type,
+                            ),
+                            color: Colors.blue,
+                            size: 32,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _currentRoute!
+                                      .instructions[_currentInstructionIndex]
+                                      .text,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (_currentRoute!
+                                        .instructions[_currentInstructionIndex]
+                                        .distanceMeters >
+                                    0)
+                                  Text(
+                                    'In ${_currentRoute!.instructions[_currentInstructionIndex].formattedDistance}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: (_currentInstructionIndex + 1) /
+                            _currentRoute!.instructions.length,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Colors.blue,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -430,6 +789,32 @@ class _MapPageState extends State<MapPage> {
         ],
       ),
     );
+  }
+
+  IconData _getInstructionIcon(int type) {
+    // OpenRouteService instruction types
+    switch (type) {
+      case 0: // Turn left
+        return Icons.turn_left;
+      case 1: // Turn right
+        return Icons.turn_right;
+      case 2: // Turn sharp left
+        return Icons.turn_sharp_left;
+      case 3: // Turn sharp right
+        return Icons.turn_sharp_right;
+      case 4: // Turn slight left
+        return Icons.turn_slight_left;
+      case 5: // Turn slight right
+        return Icons.turn_slight_right;
+      case 6: // Continue straight
+        return Icons.straight;
+      case 7: // Enter roundabout
+        return Icons.roundabout_right;
+      case 10: // Arrive at destination
+        return Icons.flag;
+      default:
+        return Icons.navigation;
+    }
   }
 
   double _getMarkerSize(PoiInterestLevel level) {
@@ -475,11 +860,7 @@ class _MapPageState extends State<MapPage> {
         );
       case PoiInterestLevel.low:
         // Subtle gray marker for low-interest POIs
-        return const Icon(
-          Icons.location_on,
-          color: Colors.grey,
-          size: 25,
-        );
+        return const Icon(Icons.location_on, color: Colors.grey, size: 25);
     }
   }
 
@@ -503,10 +884,7 @@ class _MapPageState extends State<MapPage> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.blue,
-                border: Border.all(
-                  color: Colors.white,
-                  width: 3,
-                ),
+                border: Border.all(color: Colors.white, width: 3),
               ),
             ),
             // Small white dot in center
@@ -543,10 +921,7 @@ class _MapPageState extends State<MapPage> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.blue.withValues(alpha: 0.3),
-            border: Border.all(
-              color: Colors.white,
-              width: 2,
-            ),
+            border: Border.all(color: Colors.white, width: 2),
           ),
         ),
         // Inner blue dot

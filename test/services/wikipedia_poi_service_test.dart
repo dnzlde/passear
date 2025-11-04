@@ -68,9 +68,11 @@ void main() {
 
       // Assert
       expect(
-          result,
-          equals(
-              'Tel Aviv Museum of Art is a major art museum in Tel Aviv, Israel.'));
+        result,
+        equals(
+          'Tel Aviv Museum of Art is a major art museum in Tel Aviv, Israel.',
+        ),
+      );
     });
 
     test('should handle description fetch failure gracefully', () async {
@@ -124,8 +126,10 @@ void main() {
       mockClient.setResponse('extracts', descriptionResponse);
 
       // Act
-      final result =
-          await service.fetchNearbyWithDescriptions(32.0741, 34.7924);
+      final result = await service.fetchNearbyWithDescriptions(
+        32.0741,
+        34.7924,
+      );
 
       // Assert
       expect(result, hasLength(1));
@@ -137,16 +141,17 @@ void main() {
     });
 
     test(
-        'should use default mock responses when no specific response configured',
-        () async {
-      // Act
-      final result = await service.fetchNearbyPois(32.0741, 34.7924);
+      'should use default mock responses when no specific response configured',
+      () async {
+        // Act
+        final result = await service.fetchNearbyPois(32.0741, 34.7924);
 
-      // Assert
-      expect(result, hasLength(2));
-      expect(result[0].title, equals('Test Location 1'));
-      expect(result[1].title, equals('Test Location 2'));
-    });
+        // Assert
+        expect(result, hasLength(2));
+        expect(result[0].title, equals('Test Location 1'));
+        expect(result[1].title, equals('Test Location 2'));
+      },
+    );
 
     test('should fetch intelligent POIs in bounds', () async {
       // Arrange
@@ -183,8 +188,10 @@ void main() {
       // Assert
       expect(result, isNotEmpty);
       // Museum should score higher and appear first
-      final museum = result.firstWhere((poi) => poi.title.contains('Museum'),
-          orElse: () => result.first);
+      final museum = result.firstWhere(
+        (poi) => poi.title.contains('Museum'),
+        orElse: () => result.first,
+      );
       expect(museum.interestScore, greaterThan(10.0));
       expect(museum.category.name, equals('museum'));
       // Descriptions should not be loaded in intelligent bounds fetching
@@ -227,10 +234,14 @@ void main() {
       await service.enrichPoiWithDescription(poi);
 
       // Assert
-      expect(poi.description,
-          equals('This is a detailed description loaded on demand.'));
       expect(
-          poi.interestScore, greaterThan(0.0)); // Score should be recalculated
+        poi.description,
+        equals('This is a detailed description loaded on demand.'),
+      );
+      expect(
+        poi.interestScore,
+        greaterThan(0.0),
+      ); // Score should be recalculated
     });
 
     test('should skip enrichment if description already exists', () async {
@@ -246,8 +257,10 @@ void main() {
       await service.enrichPoiWithDescription(poi);
 
       // Assert
-      expect(poi.description,
-          equals('Existing description')); // Should remain unchanged
+      expect(
+        poi.description,
+        equals('Existing description'),
+      ); // Should remain unchanged
     });
   });
 }

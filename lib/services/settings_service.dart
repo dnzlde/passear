@@ -55,12 +55,14 @@ class SettingsService {
   /// Update a specific category setting
   Future<void> updateCategoryEnabled(PoiCategory category, bool enabled) async {
     final currentSettings = await loadSettings();
-    final updatedCategories =
-        Map<PoiCategory, bool>.from(currentSettings.enabledCategories);
+    final updatedCategories = Map<PoiCategory, bool>.from(
+      currentSettings.enabledCategories,
+    );
     updatedCategories[category] = enabled;
 
-    final updatedSettings =
-        currentSettings.copyWith(enabledCategories: updatedCategories);
+    final updatedSettings = currentSettings.copyWith(
+      enabledCategories: updatedCategories,
+    );
     await saveSettings(updatedSettings);
   }
 

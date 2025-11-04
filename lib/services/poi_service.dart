@@ -56,10 +56,16 @@ class PoiService {
   }
 
   /// Legacy method for backward compatibility
-  Future<List<Poi>> fetchNearby(double lat, double lon,
-      {int radius = 1000}) async {
-    final wikiPois = await _wikiService.fetchNearbyWithDescriptions(lat, lon,
-        radius: radius);
+  Future<List<Poi>> fetchNearby(
+    double lat,
+    double lon, {
+    int radius = 1000,
+  }) async {
+    final wikiPois = await _wikiService.fetchNearbyWithDescriptions(
+      lat,
+      lon,
+      radius: radius,
+    );
 
     return wikiPois.map((wikiPoi) {
       return Poi(
