@@ -4,10 +4,12 @@ import 'poi.dart';
 class AppSettings {
   final Map<PoiCategory, bool> enabledCategories;
   final int maxPoiCount;
+  final bool voiceGuidanceEnabled;
 
   AppSettings({
     Map<PoiCategory, bool>? enabledCategories,
     this.maxPoiCount = 20,
+    this.voiceGuidanceEnabled = true,
   }) : enabledCategories = enabledCategories ?? _defaultEnabledCategories();
 
   static Map<PoiCategory, bool> _defaultEnabledCategories() {
@@ -17,10 +19,12 @@ class AppSettings {
   AppSettings copyWith({
     Map<PoiCategory, bool>? enabledCategories,
     int? maxPoiCount,
+    bool? voiceGuidanceEnabled,
   }) {
     return AppSettings(
       enabledCategories: enabledCategories ?? this.enabledCategories,
       maxPoiCount: maxPoiCount ?? this.maxPoiCount,
+      voiceGuidanceEnabled: voiceGuidanceEnabled ?? this.voiceGuidanceEnabled,
     );
   }
 
@@ -37,6 +41,7 @@ class AppSettings {
     return AppSettings(
       enabledCategories: enabledCategories,
       maxPoiCount: json['maxPoiCount'] as int? ?? 20,
+      voiceGuidanceEnabled: json['voiceGuidanceEnabled'] as bool? ?? true,
     );
   }
 
@@ -47,6 +52,7 @@ class AppSettings {
           entry.key.name: entry.value,
       },
       'maxPoiCount': maxPoiCount,
+      'voiceGuidanceEnabled': voiceGuidanceEnabled,
     };
   }
 

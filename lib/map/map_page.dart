@@ -12,6 +12,7 @@ import '../models/route.dart';
 import '../services/poi_service.dart';
 import '../services/routing_service.dart';
 import '../services/local_tts_service.dart';
+import '../services/settings_service.dart';
 import '../settings/settings_page.dart';
 import 'wiki_poi_detail.dart';
 
@@ -26,6 +27,7 @@ class _MapPageState extends State<MapPage> {
   List<Poi> _pois = [];
   final PoiService _poiService = PoiService();
   final RoutingService _routingService = RoutingService();
+  final SettingsService _settingsService = SettingsService.instance;
   late final LocalTtsService _ttsService;
   LatLng _mapCenter = const LatLng(32.0741, 34.7924); // fallback: Azrieli
   final MapController _mapController = MapController();
@@ -48,6 +50,7 @@ class _MapPageState extends State<MapPage> {
   LatLng? _destinationMarker;
   bool _isLoadingRoute = false;
   int _currentInstructionIndex = 0;
+  bool _voiceGuidanceEnabled = true; // Cache for performance
 
   @override
   void initState() {
@@ -55,6 +58,7 @@ class _MapPageState extends State<MapPage> {
     _ttsService = LocalTtsService();
     _initMap();
     _startLocationTracking();
+    _loadVoiceGuidanceSetting();
   }
 
   @override
@@ -62,6 +66,15 @@ class _MapPageState extends State<MapPage> {
     _locationSubscription?.cancel();
     _ttsService.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadVoiceGuidanceSetting() async {
+    final settings = await _settingsService.loadSettings();
+    if (mounted) {
+      setState(() {
+        _voiceGuidanceEnabled = settings.voiceGuidanceEnabled;
+      });
+    }
   }
 
   Future<LatLng?> _getCurrentLocation() async {
@@ -312,11 +325,13 @@ class _MapPageState extends State<MapPage> {
         // Fit the map to show the entire route
         if (route != null && route.waypoints.isNotEmpty) {
           _fitMapToRoute(route);
-          // Announce route summary
-          _ttsService.speak(
-            'Route calculated. Distance: ${route.formattedDistance}. '
-            'Estimated time: ${route.formattedDuration}',
-          );
+          // Announce route summary if voice guidance is enabled
+          if (_voiceGuidanceEnabled) {
+            _ttsService.speak(
+              'Route calculated. Distance: ${route.formattedDistance}. '
+              'Estimated time: ${route.formattedDuration}',
+            );
+          }
         }
       }
     } catch (e) {
@@ -365,6 +380,11 @@ class _MapPageState extends State<MapPage> {
   }
 
   void _announceInstruction(RouteInstruction instruction, double distance) {
+    // Check if voice guidance is enabled (using cached value for performance)
+    if (!_voiceGuidanceEnabled) {
+      return; // Voice guidance is disabled, skip announcement
+    }
+
     String announcement;
     if (instruction.type == 10) {
       // Arrival instruction
@@ -459,8 +479,9 @@ class _MapPageState extends State<MapPage> {
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsPage()),
               );
-              // Reload POIs after settings change
+              // Reload POIs and voice guidance setting after settings change
               _loadPoisInView();
+              _loadVoiceGuidanceSetting();
             },
           ),
         ],
@@ -626,6 +647,23 @@ class _MapPageState extends State<MapPage> {
                             ),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          _voiceGuidanceEnabled
+                              ? Icons.volume_up
+                              : Icons.volume_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _voiceGuidanceEnabled = !_voiceGuidanceEnabled;
+                          });
+                          _settingsService.updateVoiceGuidanceEnabled(
+                              _voiceGuidanceEnabled);
+                        },
+                        tooltip: _voiceGuidanceEnabled
+                            ? 'Voice guidance on'
+                            : 'Voice guidance off',
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
