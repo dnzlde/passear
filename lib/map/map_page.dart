@@ -649,6 +649,23 @@ class _MapPageState extends State<MapPage> {
                         ),
                       ),
                       IconButton(
+                        icon: Icon(
+                          _voiceGuidanceEnabled
+                              ? Icons.volume_up
+                              : Icons.volume_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _voiceGuidanceEnabled = !_voiceGuidanceEnabled;
+                          });
+                          _settingsService.updateVoiceGuidanceEnabled(
+                              _voiceGuidanceEnabled);
+                        },
+                        tooltip: _voiceGuidanceEnabled
+                            ? 'Voice guidance on'
+                            : 'Voice guidance off',
+                      ),
+                      IconButton(
                         icon: const Icon(Icons.close),
                         onPressed: _stopNavigation,
                         tooltip: 'Stop navigation',
