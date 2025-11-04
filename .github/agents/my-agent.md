@@ -1,9 +1,9 @@
 ---
 name: Passear agent
-description:
+description: Copilot agent to work on Passear tasks
 ---
 
-# My Agent
+# Passear Agent
 
 1) Task is incomplete if CI/CD is broken
 2) 
