@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audio_session/audio_session.dart';
 import 'tts_service.dart';
@@ -46,8 +47,7 @@ class LocalTtsService implements TtsService {
     } catch (e) {
       // Silently handle audio session configuration errors
       // This prevents the app from failing if audio configuration is not supported
-      // ignore: avoid_print
-      print('Failed to configure audio session: $e');
+      debugPrint('Failed to configure audio session: $e');
     }
   }
 
