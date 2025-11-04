@@ -20,7 +20,7 @@ void main() {
 
     test('should save and load voice guidance setting', () async {
       final settingsService = SettingsService.instance;
-      
+
       // Update voice guidance setting
       await settingsService.updateVoiceGuidanceEnabled(false);
 
@@ -29,64 +29,77 @@ void main() {
       expect(settings.voiceGuidanceEnabled, false);
     });
 
-    test('should update voice guidance setting without affecting other settings',
-        () async {
-      final settingsService = SettingsService.instance;
-      
-      // Set initial state
-      await settingsService.updateMaxPoiCount(30);
-      await settingsService.updateVoiceGuidanceEnabled(true);
+    test(
+      'should update voice guidance setting without affecting other settings',
+      () async {
+        final settingsService = SettingsService.instance;
 
-      // Update only voice guidance
-      await settingsService.updateVoiceGuidanceEnabled(false);
+        // Set initial state
+        await settingsService.updateMaxPoiCount(30);
+        await settingsService.updateVoiceGuidanceEnabled(true);
 
-      // Verify both settings
-      final settings = await settingsService.loadSettings();
-      expect(settings.voiceGuidanceEnabled, false);
-      expect(settings.maxPoiCount, 30);
-    });
+        // Update only voice guidance
+        await settingsService.updateVoiceGuidanceEnabled(false);
 
-    test('should serialize and deserialize voice guidance setting correctly',
-        () async {
-      final settingsService = SettingsService.instance;
-      final originalSettings = AppSettings(
-        voiceGuidanceEnabled: false,
-        maxPoiCount: 25,
-      );
+        // Verify both settings
+        final settings = await settingsService.loadSettings();
+        expect(settings.voiceGuidanceEnabled, false);
+        expect(settings.maxPoiCount, 30);
+      },
+    );
 
-      // Save settings
-      await settingsService.saveSettings(originalSettings);
+    test(
+      'should serialize and deserialize voice guidance setting correctly',
+      () async {
+        final settingsService = SettingsService.instance;
+        final originalSettings = AppSettings(
+          voiceGuidanceEnabled: false,
+          maxPoiCount: 25,
+        );
 
-      // Reload from storage
-      final loadedSettings = await settingsService.loadSettings();
+        // Save settings
+        await settingsService.saveSettings(originalSettings);
 
-      expect(loadedSettings.voiceGuidanceEnabled, false);
-      expect(loadedSettings.maxPoiCount, 25);
-    });
+        // Reload from storage
+        final loadedSettings = await settingsService.loadSettings();
 
-    test('AppSettings should have correct default for voiceGuidanceEnabled',
-        () {
-      final settings = AppSettings();
-      expect(settings.voiceGuidanceEnabled, true);
-    });
+        expect(loadedSettings.voiceGuidanceEnabled, false);
+        expect(loadedSettings.maxPoiCount, 25);
+      },
+    );
 
-    test('AppSettings copyWith should work correctly for voiceGuidanceEnabled',
-        () {
-      final settings = AppSettings(voiceGuidanceEnabled: true);
-      final updated = settings.copyWith(voiceGuidanceEnabled: false);
+    test(
+      'AppSettings should have correct default for voiceGuidanceEnabled',
+      () {
+        final settings = AppSettings();
+        expect(settings.voiceGuidanceEnabled, true);
+      },
+    );
 
-      expect(updated.voiceGuidanceEnabled, false);
-      expect(settings.voiceGuidanceEnabled, true); // Original unchanged
-    });
+    test(
+      'AppSettings copyWith should work correctly for voiceGuidanceEnabled',
+      () {
+        final settings = AppSettings(voiceGuidanceEnabled: true);
+        final updated = settings.copyWith(voiceGuidanceEnabled: false);
 
-    test('AppSettings toJson and fromJson should preserve voiceGuidanceEnabled',
-        () {
-      final original = AppSettings(voiceGuidanceEnabled: false, maxPoiCount: 30);
-      final json = original.toJson();
-      final restored = AppSettings.fromJson(json);
+        expect(updated.voiceGuidanceEnabled, false);
+        expect(settings.voiceGuidanceEnabled, true); // Original unchanged
+      },
+    );
 
-      expect(restored.voiceGuidanceEnabled, false);
-      expect(restored.maxPoiCount, 30);
-    });
+    test(
+      'AppSettings toJson and fromJson should preserve voiceGuidanceEnabled',
+      () {
+        final original = AppSettings(
+          voiceGuidanceEnabled: false,
+          maxPoiCount: 30,
+        );
+        final json = original.toJson();
+        final restored = AppSettings.fromJson(json);
+
+        expect(restored.voiceGuidanceEnabled, false);
+        expect(restored.maxPoiCount, 30);
+      },
+    );
   });
 }

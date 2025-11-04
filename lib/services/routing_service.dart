@@ -17,9 +17,9 @@ class RoutingService {
     RoutingProvider? primaryProvider,
     RoutingProvider? fallbackProvider,
     ApiClient? apiClient,
-  })  : _primaryProvider =
-            primaryProvider ?? OsrmRoutingProvider(apiClient: apiClient),
-        _fallbackProvider = fallbackProvider ?? FallbackRoutingProvider();
+  }) : _primaryProvider =
+           primaryProvider ?? OsrmRoutingProvider(apiClient: apiClient),
+       _fallbackProvider = fallbackProvider ?? FallbackRoutingProvider();
 
   /// Get the current primary routing provider name
   String get currentProviderName => _primaryProvider.providerName;
