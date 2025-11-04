@@ -72,4 +72,13 @@ class SettingsService {
     final updatedSettings = currentSettings.copyWith(maxPoiCount: count);
     await saveSettings(updatedSettings);
   }
+
+  /// Update voice guidance enabled setting
+  Future<void> updateVoiceGuidanceEnabled(bool enabled) async {
+    final currentSettings = await loadSettings();
+    final updatedSettings = currentSettings.copyWith(
+      voiceGuidanceEnabled: enabled,
+    );
+    await saveSettings(updatedSettings);
+  }
 }

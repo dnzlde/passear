@@ -58,6 +58,13 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  Future<void> _updateVoiceGuidanceEnabled(bool enabled) async {
+    await _settingsService.updateVoiceGuidanceEnabled(enabled);
+    setState(() {
+      _settings = _settings.copyWith(voiceGuidanceEnabled: enabled);
+    });
+  }
+
   String _getCategoryDisplayName(PoiCategory category) {
     switch (category) {
       case PoiCategory.museum:
@@ -178,6 +185,36 @@ class _SettingsPageState extends State<SettingsPage> {
                   Text(
                     'Current: ${_settings.maxPoiCount} POIs',
                     style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Voice Guidance Setting
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Navigation Settings',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    title: const Text('Voice Guidance'),
+                    subtitle: const Text(
+                      'Enable voice instructions during navigation',
+                    ),
+                    secondary: const Icon(Icons.volume_up),
+                    value: _settings.voiceGuidanceEnabled,
+                    onChanged: (value) {
+                      _updateVoiceGuidanceEnabled(value);
+                    },
                   ),
                 ],
               ),
