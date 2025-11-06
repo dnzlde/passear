@@ -6,14 +6,17 @@ import 'tts_service.dart';
 
 class LocalTtsService implements TtsService {
   final FlutterTts _tts = FlutterTts();
+  bool _audioSessionInitialized = false;
 
   LocalTtsService() {
-    _initAudioSession();
     _tts.setLanguage("en-US");
     _tts.setSpeechRate(0.5);
   }
 
   Future<void> _initAudioSession() async {
+    if (_audioSessionInitialized) return;
+    _audioSessionInitialized = true;
+
     try {
       if (Platform.isIOS) {
         // Configure iOS to duck other audio instead of stopping it
@@ -52,7 +55,10 @@ class LocalTtsService implements TtsService {
   }
 
   @override
-  Future<void> speak(String text) => _tts.speak(text);
+  Future<void> speak(String text) async {
+    await _initAudioSession();
+    return _tts.speak(text);
+  }
 
   @override
   Future<void> stop() => _tts.stop();
