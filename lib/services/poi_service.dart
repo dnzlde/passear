@@ -9,7 +9,7 @@ class PoiService {
   final SettingsService _settingsService = SettingsService.instance;
 
   PoiService({ApiClient? apiClient})
-      : _wikiService = WikipediaPoiService(apiClient: apiClient);
+    : _wikiService = WikipediaPoiService(apiClient: apiClient);
 
   /// Fetch POIs within rectangular bounds using intelligent scoring
   Future<List<Poi>> fetchInBounds({

@@ -31,21 +31,24 @@ class LocalTtsService implements TtsService {
       } else if (Platform.isAndroid) {
         // Configure Android audio session for ducking
         final session = await AudioSession.instance;
-        await session.configure(const AudioSessionConfiguration(
-          avAudioSessionCategory: AVAudioSessionCategory.playback,
-          avAudioSessionCategoryOptions:
-              AVAudioSessionCategoryOptions.duckOthers,
-          avAudioSessionMode: AVAudioSessionMode.spokenAudio,
-          avAudioSessionRouteSharingPolicy:
-              AVAudioSessionRouteSharingPolicy.defaultPolicy,
-          avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
-          androidAudioAttributes: AndroidAudioAttributes(
-            contentType: AndroidAudioContentType.speech,
-            usage: AndroidAudioUsage.assistanceNavigationGuidance,
+        await session.configure(
+          const AudioSessionConfiguration(
+            avAudioSessionCategory: AVAudioSessionCategory.playback,
+            avAudioSessionCategoryOptions:
+                AVAudioSessionCategoryOptions.duckOthers,
+            avAudioSessionMode: AVAudioSessionMode.spokenAudio,
+            avAudioSessionRouteSharingPolicy:
+                AVAudioSessionRouteSharingPolicy.defaultPolicy,
+            avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
+            androidAudioAttributes: AndroidAudioAttributes(
+              contentType: AndroidAudioContentType.speech,
+              usage: AndroidAudioUsage.assistanceNavigationGuidance,
+            ),
+            androidAudioFocusGainType:
+                AndroidAudioFocusGainType.gainTransientMayDuck,
+            androidWillPauseWhenDucked: false,
           ),
-          androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
-          androidWillPauseWhenDucked: false,
-        ));
+        );
       }
     } catch (e) {
       // Silently handle audio session configuration errors

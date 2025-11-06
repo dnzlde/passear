@@ -33,7 +33,7 @@ class WikipediaPoiService {
   final Map<String, List<WikipediaPoi>> _searchCache = {};
 
   WikipediaPoiService({this.lang = 'en', ApiClient? apiClient})
-      : _apiClient = apiClient ?? HttpApiClient(http.Client());
+    : _apiClient = apiClient ?? HttpApiClient(http.Client());
 
   /// Fetch POIs within rectangular bounds (north, south, east, west)
   Future<List<WikipediaPoi>> fetchPoisInBounds({
@@ -173,8 +173,9 @@ class WikipediaPoiService {
     );
 
     // Apply additional intelligent filtering
-    final highQualityPois =
-        pois.where((poi) => poi.interestScore >= 10.0).toList();
+    final highQualityPois = pois
+        .where((poi) => poi.interestScore >= 10.0)
+        .toList();
 
     // If we have enough high-quality POIs, return them
     if (highQualityPois.length >= maxResults) {
