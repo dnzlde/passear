@@ -1,4 +1,3 @@
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audio_session/audio_session.dart';
@@ -18,38 +17,30 @@ class LocalTtsService implements TtsService {
     _audioSessionInitialized = true;
 
     try {
-      if (Platform.isIOS) {
-        // Configure iOS to duck other audio instead of stopping it
-        await _tts.setIosAudioCategory(
-          IosTextToSpeechAudioCategory.playback,
-          [
-            IosTextToSpeechAudioCategoryOptions.duckOthers,
-            IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
-          ],
-          IosTextToSpeechAudioMode.voicePrompt,
-        );
-      } else if (Platform.isAndroid) {
-        // Configure Android audio session for ducking
-        final session = await AudioSession.instance;
-        await session.configure(
-          const AudioSessionConfiguration(
-            avAudioSessionCategory: AVAudioSessionCategory.playback,
-            avAudioSessionCategoryOptions:
-                AVAudioSessionCategoryOptions.duckOthers,
-            avAudioSessionMode: AVAudioSessionMode.spokenAudio,
-            avAudioSessionRouteSharingPolicy:
-                AVAudioSessionRouteSharingPolicy.defaultPolicy,
-            avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
-            androidAudioAttributes: AndroidAudioAttributes(
-              contentType: AndroidAudioContentType.speech,
-              usage: AndroidAudioUsage.assistanceNavigationGuidance,
-            ),
-            androidAudioFocusGainType:
-                AndroidAudioFocusGainType.gainTransientMayDuck,
-            androidWillPauseWhenDucked: false,
+      // Use audio_session for both iOS and Android for consistent behavior
+      final session = await AudioSession.instance;
+      await session.configure(
+        AudioSessionConfiguration(
+          avAudioSessionCategory: AVAudioSessionCategory.playback,
+          avAudioSessionCategoryOptions:
+              AVAudioSessionCategoryOptions.duckOthers |
+                  AVAudioSessionCategoryOptions.mixWithOthers,
+          avAudioSessionMode: AVAudioSessionMode.spokenAudio,
+          avAudioSessionRouteSharingPolicy:
+              AVAudioSessionRouteSharingPolicy.defaultPolicy,
+          avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
+          androidAudioAttributes: const AndroidAudioAttributes(
+            contentType: AndroidAudioContentType.speech,
+            usage: AndroidAudioUsage.assistanceNavigationGuidance,
           ),
-        );
-      }
+          androidAudioFocusGainType:
+              AndroidAudioFocusGainType.gainTransientMayDuck,
+          androidWillPauseWhenDucked: false,
+        ),
+      );
+
+      // Activate the audio session
+      await session.setActive(true);
     } catch (e) {
       // Silently handle audio session configuration errors
       // This prevents the app from failing if audio configuration is not supported

@@ -14,30 +14,32 @@ void main() {
     // Mock flutter_tts method calls
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          switch (methodCall.method) {
-            case 'setLanguage':
-            case 'setSpeechRate':
-            case 'setIosAudioCategory':
-            case 'speak':
-            case 'stop':
-              return null;
-            default:
-              return null;
-          }
-        });
+      switch (methodCall.method) {
+        case 'setLanguage':
+        case 'setSpeechRate':
+        case 'setIosAudioCategory':
+        case 'speak':
+        case 'stop':
+          return null;
+        default:
+          return null;
+      }
+    });
 
     // Mock audio_session method calls
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(audioChannel, (MethodCall methodCall) async {
-          switch (methodCall.method) {
-            case 'getConfiguration':
-              return null;
-            case 'setConfiguration':
-              return null;
-            default:
-              return null;
-          }
-        });
+      switch (methodCall.method) {
+        case 'getConfiguration':
+          return null;
+        case 'setConfiguration':
+          return null;
+        case 'setActive':
+          return null;
+        default:
+          return null;
+      }
+    });
   });
 
   tearDown(() {
@@ -52,11 +54,12 @@ void main() {
       expect(() => LocalTtsService(), returnsNormally);
     });
 
-    test('should implement TtsService interface', () {
+    test('should implement TtsService interface', () async {
       final ttsService = LocalTtsService();
-      expect(ttsService.speak('test'), isA<Future<void>>());
-      expect(ttsService.stop(), isA<Future<void>>());
-      expect(ttsService.dispose(), isA<Future<void>>());
+      // Verify methods return Future<void>
+      await expectLater(ttsService.speak('test'), completes);
+      await expectLater(ttsService.stop(), completes);
+      await expectLater(ttsService.dispose(), completes);
     });
 
     test('should handle speak method call', () async {
