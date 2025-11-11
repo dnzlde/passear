@@ -1,0 +1,22 @@
+#!/bin/sh
+# Pre-commit hook to automatically format Dart files
+# This prevents formatting issues from reaching CI/CD
+
+echo "Running Dart formatter on staged files..."
+
+# Get all staged .dart files
+STAGED_DART_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.dart$')
+
+if [ -n "$STAGED_DART_FILES" ]; then
+    echo "Formatting Dart files..."
+    dart format $STAGED_DART_FILES
+    
+    # Re-add formatted files to staging area
+    git add $STAGED_DART_FILES
+    
+    echo "✓ Dart files formatted successfully"
+else
+    echo "No Dart files to format"
+fi
+
+exit 0

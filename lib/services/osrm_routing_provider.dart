@@ -17,7 +17,7 @@ class OsrmRoutingProvider implements RoutingProvider {
   static const String _baseUrl = 'routing.openstreetmap.de';
 
   OsrmRoutingProvider({ApiClient? apiClient})
-      : _apiClient = apiClient ?? HttpApiClient(null);
+    : _apiClient = apiClient ?? HttpApiClient(null);
 
   @override
   String get providerName => 'OSRM';
@@ -78,8 +78,9 @@ class OsrmRoutingProvider implements RoutingProvider {
               final maneuver = step['maneuver'];
 
               String instruction = _getInstructionText(maneuver, step);
-              final location =
-                  waypoints.length > i ? waypoints[i] : waypoints[0];
+              final location = waypoints.length > i
+                  ? waypoints[i]
+                  : waypoints[0];
 
               instructions.add(
                 RouteInstruction(
