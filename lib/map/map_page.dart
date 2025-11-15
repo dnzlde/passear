@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/poi.dart';
 import '../models/route.dart';
+import '../models/settings.dart';
 import '../services/poi_service.dart';
 import '../services/routing_service.dart';
 import '../services/local_tts_service.dart';
@@ -39,6 +40,9 @@ class _MapPageState extends State<MapPage> {
   double _mapRotation = 0.0; // Track current map rotation for compass display
   bool _hasPerformedInitialLoad =
       false; // Flag to ensure initial load happens only once
+
+  // Provider settings
+  MapProvider _mapProvider = MapProvider.openStreetMap;
 
   // User location tracking
   LatLng? _userLocation;
@@ -73,6 +77,7 @@ class _MapPageState extends State<MapPage> {
     if (mounted) {
       setState(() {
         _voiceGuidanceEnabled = settings.voiceGuidanceEnabled;
+        _mapProvider = settings.mapProvider;
       });
     }
   }
@@ -467,6 +472,25 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
+  /// Get tile layer configuration based on selected map provider
+  TileLayer _getTileLayer() {
+    switch (_mapProvider) {
+      case MapProvider.openStreetMap:
+        return TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.example.passear',
+        );
+      case MapProvider.googleMaps:
+        // Note: Google Maps tiles require an API key
+        // This is a placeholder - in production, you would use google_maps_flutter plugin
+        return TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.example.passear',
+          // TODO: Implement Google Maps tiles integration
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -515,10 +539,7 @@ class _MapPageState extends State<MapPage> {
               },
             ),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.passear',
-              ),
+              _getTileLayer(),
               MarkerLayer(
                 markers: _pois
                     .map(
