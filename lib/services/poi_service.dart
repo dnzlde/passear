@@ -1,15 +1,30 @@
 // lib/services/poi_service.dart
 import '../models/poi.dart';
+import '../models/settings.dart';
 import 'wikipedia_poi_service.dart';
 import 'api_client.dart';
 import 'settings_service.dart';
 
 class PoiService {
-  final WikipediaPoiService _wikiService;
+  WikipediaPoiService? _wikiService;
   final SettingsService _settingsService = SettingsService.instance;
+  final ApiClient? _apiClient;
+  PoiProvider _currentProvider = PoiProvider.wikipedia;
 
-  PoiService({ApiClient? apiClient})
-    : _wikiService = WikipediaPoiService(apiClient: apiClient);
+  PoiService({ApiClient? apiClient}) : _apiClient = apiClient;
+
+  /// Get or create the appropriate POI service based on current provider
+  WikipediaPoiService _getWikiService() {
+    _wikiService ??= WikipediaPoiService(apiClient: _apiClient);
+    return _wikiService!;
+  }
+
+  /// Update the POI provider
+  void updateProvider(PoiProvider provider) {
+    _currentProvider = provider;
+    // Clear cache when changing providers
+    clearCaches();
+  }
 
   /// Fetch POIs within rectangular bounds using intelligent scoring
   Future<List<Poi>> fetchInBounds({
@@ -23,28 +38,46 @@ class PoiService {
     final settings = await _settingsService.loadSettings();
     final effectiveMaxResults = maxResults ?? settings.maxPoiCount;
 
-    final wikiPois = await _wikiService.fetchIntelligentPoisInBounds(
-      north: north,
-      south: south,
-      east: east,
-      west: west,
-      maxResults: effectiveMaxResults * 2, // Fetch more to allow for filtering
-    );
+    List<Poi> allPois;
 
-    final allPois = wikiPois.map((wikiPoi) {
-      return Poi(
-        id: wikiPoi.title, // используем title как ID
-        name: wikiPoi.title,
-        lat: wikiPoi.lat,
-        lon: wikiPoi.lon,
-        description: wikiPoi.description ?? '',
-        audio: '', // will be generated/added later
-        interestScore: wikiPoi.interestScore,
-        category: wikiPoi.category,
-        interestLevel: wikiPoi.interestLevel,
-        isDescriptionLoaded: wikiPoi.description != null,
-      );
-    }).toList();
+    switch (_currentProvider) {
+      case PoiProvider.wikipedia:
+        final wikiPois = await _getWikiService().fetchIntelligentPoisInBounds(
+          north: north,
+          south: south,
+          east: east,
+          west: west,
+          maxResults:
+              effectiveMaxResults * 2, // Fetch more to allow for filtering
+        );
+        allPois = wikiPois.map((wikiPoi) {
+          return Poi(
+            id: wikiPoi.title, // используем title как ID
+            name: wikiPoi.title,
+            lat: wikiPoi.lat,
+            lon: wikiPoi.lon,
+            description: wikiPoi.description ?? '',
+            audio: '', // will be generated/added later
+            interestScore: wikiPoi.interestScore,
+            category: wikiPoi.category,
+            interestLevel: wikiPoi.interestLevel,
+            isDescriptionLoaded: wikiPoi.description != null,
+          );
+        }).toList();
+        break;
+
+      case PoiProvider.overpass:
+        // TODO: Implement Overpass API (OpenStreetMap POIs)
+        // For now, fall back to Wikipedia
+        allPois = [];
+        break;
+
+      case PoiProvider.googlePlaces:
+        // TODO: Implement Google Places API
+        // For now, fall back to Wikipedia
+        allPois = [];
+        break;
+    }
 
     // Filter POIs based on enabled categories
     final filteredPois = allPois
@@ -61,7 +94,7 @@ class PoiService {
     double lon, {
     int radius = 1000,
   }) async {
-    final wikiPois = await _wikiService.fetchNearbyWithDescriptions(
+    final wikiPois = await _getWikiService().fetchNearbyWithDescriptions(
       lat,
       lon,
       radius: radius,
@@ -90,7 +123,7 @@ class PoiService {
     }
 
     try {
-      final description = await _wikiService.fetchDescription(poi.name);
+      final description = await _getWikiService().fetchDescription(poi.name);
       if (description != null && description.isNotEmpty) {
         return poi.copyWithDescription(description);
       }
@@ -104,6 +137,6 @@ class PoiService {
 
   /// Clear caches
   void clearCaches() {
-    _wikiService.clearCaches();
+    _wikiService?.clearCaches();
   }
 }

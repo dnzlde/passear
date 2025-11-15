@@ -79,6 +79,9 @@ class _MapPageState extends State<MapPage> {
         _voiceGuidanceEnabled = settings.voiceGuidanceEnabled;
         _mapProvider = settings.mapProvider;
       });
+      // Update routing and POI providers (outside setState since they don't affect UI state)
+      _routingService.updateProvider(settings.routingProvider);
+      _poiService.updateProvider(settings.poiProvider);
     }
   }
 
