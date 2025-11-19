@@ -2,11 +2,13 @@
 import '../models/poi.dart';
 import '../models/settings.dart';
 import 'wikipedia_poi_service.dart';
+import 'overpass_poi_service.dart';
 import 'api_client.dart';
 import 'settings_service.dart';
 
 class PoiService {
   WikipediaPoiService? _wikiService;
+  OverpassPoiService? _overpassService;
   final SettingsService _settingsService = SettingsService.instance;
   final ApiClient? _apiClient;
   PoiProvider _currentProvider = PoiProvider.wikipedia;
@@ -17,6 +19,12 @@ class PoiService {
   WikipediaPoiService _getWikiService() {
     _wikiService ??= WikipediaPoiService(apiClient: _apiClient);
     return _wikiService!;
+  }
+
+  /// Get or create the Overpass POI service
+  OverpassPoiService _getOverpassService() {
+    _overpassService ??= OverpassPoiService(apiClient: _apiClient);
+    return _overpassService!;
   }
 
   /// Update the POI provider
@@ -67,9 +75,15 @@ class PoiService {
         break;
 
       case PoiProvider.overpass:
-        // TODO: Implement Overpass API (OpenStreetMap POIs)
-        // For now, fall back to Wikipedia
-        allPois = [];
+        // Use Overpass API (OpenStreetMap POIs)
+        final overpassPois = await _getOverpassService().fetchPoisInBounds(
+          north: north,
+          south: south,
+          east: east,
+          west: west,
+          maxResults: effectiveMaxResults * 2,
+        );
+        allPois = overpassPois;
         break;
 
       case PoiProvider.googlePlaces:
