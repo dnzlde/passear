@@ -197,9 +197,9 @@ out center $limit;
   }
 
   /// Get interest level from score
-  InterestLevel _getInterestLevel(double score) {
-    if (score >= 0.75) return InterestLevel.high;
-    if (score >= 0.5) return InterestLevel.medium;
-    return InterestLevel.low;
+  PoiInterestLevel _getInterestLevel(double score) {
+    if (score >= 0.75) return PoiInterestLevel.high;
+    if (score >= 0.5) return PoiInterestLevel.medium;
+    return PoiInterestLevel.low;
   }
 }
