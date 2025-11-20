@@ -65,6 +65,27 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  Future<void> _updateMapProvider(MapProvider provider) async {
+    await _settingsService.updateMapProvider(provider);
+    setState(() {
+      _settings = _settings.copyWith(mapProvider: provider);
+    });
+  }
+
+  Future<void> _updateRoutingProvider(RoutingProvider provider) async {
+    await _settingsService.updateRoutingProvider(provider);
+    setState(() {
+      _settings = _settings.copyWith(routingProvider: provider);
+    });
+  }
+
+  Future<void> _updatePoiProvider(PoiProvider provider) async {
+    await _settingsService.updatePoiProvider(provider);
+    setState(() {
+      _settings = _settings.copyWith(poiProvider: provider);
+    });
+  }
+
   String _getCategoryDisplayName(PoiCategory category) {
     switch (category) {
       case PoiCategory.museum:
@@ -129,7 +150,7 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('POI Settings'), elevation: 0),
+      appBar: AppBar(title: const Text('Settings'), elevation: 0),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
@@ -216,6 +237,221 @@ class _SettingsPageState extends State<SettingsPage> {
                       _updateVoiceGuidanceEnabled(value);
                     },
                   ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Map Provider Selection
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Map Provider',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Choose which map tiles to display',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 16),
+                  ...MapProvider.values.map((provider) {
+                    return RadioListTile<MapProvider>(
+                      title: Text(provider.displayName),
+                      subtitle: Row(
+                        children: [
+                          Text(provider.description),
+                          if (provider.isFree) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green[100],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'FREE',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.green[800],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      value: provider,
+                      // ignore: deprecated_member_use
+                      groupValue: _settings.mapProvider,
+                      // ignore: deprecated_member_use
+                      onChanged: (value) {
+                        if (value != null) {
+                          _updateMapProvider(value);
+                        }
+                      },
+                      secondary: Icon(
+                        provider == MapProvider.openStreetMap
+                            ? Icons.map
+                            : Icons.satellite,
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Routing Provider Selection
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Navigation/Routing Provider',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Choose which service to use for route calculation',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 16),
+                  ...RoutingProvider.values.map((provider) {
+                    return RadioListTile<RoutingProvider>(
+                      title: Text(provider.displayName),
+                      subtitle: Row(
+                        children: [
+                          Text(provider.description),
+                          if (provider.isFree) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green[100],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'FREE',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.green[800],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      value: provider,
+                      // ignore: deprecated_member_use
+                      groupValue: _settings.routingProvider,
+                      // ignore: deprecated_member_use
+                      onChanged: (value) {
+                        if (value != null) {
+                          _updateRoutingProvider(value);
+                        }
+                      },
+                      secondary: Icon(
+                        provider == RoutingProvider.osrm
+                            ? Icons.directions
+                            : Icons.navigation,
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // POI Provider Selection
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'POI Provider',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Choose which service to use for Points of Interest',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 16),
+                  ...PoiProvider.values.map((provider) {
+                    return RadioListTile<PoiProvider>(
+                      title: Text(provider.displayName),
+                      subtitle: Row(
+                        children: [
+                          Flexible(child: Text(provider.description)),
+                          if (provider.isFree) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green[100],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'FREE',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.green[800],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      value: provider,
+                      // ignore: deprecated_member_use
+                      groupValue: _settings.poiProvider,
+                      // ignore: deprecated_member_use
+                      onChanged: (value) {
+                        if (value != null) {
+                          _updatePoiProvider(value);
+                        }
+                      },
+                      secondary: Icon(
+                        provider == PoiProvider.wikipedia
+                            ? Icons.menu_book
+                            : provider == PoiProvider.overpass
+                                ? Icons.location_on
+                                : Icons.place,
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),

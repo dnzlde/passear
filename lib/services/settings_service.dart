@@ -81,4 +81,25 @@ class SettingsService {
     );
     await saveSettings(updatedSettings);
   }
+
+  /// Update map provider
+  Future<void> updateMapProvider(MapProvider provider) async {
+    final currentSettings = await loadSettings();
+    final updatedSettings = currentSettings.copyWith(mapProvider: provider);
+    await saveSettings(updatedSettings);
+  }
+
+  /// Update routing provider
+  Future<void> updateRoutingProvider(RoutingProvider provider) async {
+    final currentSettings = await loadSettings();
+    final updatedSettings = currentSettings.copyWith(routingProvider: provider);
+    await saveSettings(updatedSettings);
+  }
+
+  /// Update POI provider
+  Future<void> updatePoiProvider(PoiProvider provider) async {
+    final currentSettings = await loadSettings();
+    final updatedSettings = currentSettings.copyWith(poiProvider: provider);
+    await saveSettings(updatedSettings);
+  }
 }
