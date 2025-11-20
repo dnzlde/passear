@@ -29,32 +29,29 @@ class OverpassPoiService {
 
       debugPrint('Overpass API query: $query');
 
-      final response = await _apiClient.get(
+      // Build the URI with query parameters
+      final uri = Uri.https(
         _baseUrl,
         '/api/interpreter',
-        queryParameters: {'data': query},
+        {'data': query},
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final elements = data['elements'] as List<dynamic>? ?? [];
+      final responseBody = await _apiClient.get(uri);
+      final data = jsonDecode(responseBody) as Map<String, dynamic>;
+      final elements = data['elements'] as List<dynamic>? ?? [];
 
-        final pois = <Poi>[];
-        for (final element in elements) {
-          if (element is Map<String, dynamic>) {
-            final poi = _parsePoi(element);
-            if (poi != null) {
-              pois.add(poi);
-            }
+      final pois = <Poi>[];
+      for (final element in elements) {
+        if (element is Map<String, dynamic>) {
+          final poi = _parsePoi(element);
+          if (poi != null) {
+            pois.add(poi);
           }
         }
-
-        debugPrint('Overpass API returned ${pois.length} POIs');
-        return pois;
-      } else {
-        debugPrint('Overpass API error: ${response.statusCode}');
-        return [];
       }
+
+      debugPrint('Overpass API returned ${pois.length} POIs');
+      return pois;
     } catch (e) {
       debugPrint('Error fetching Overpass POIs: $e');
       return [];
@@ -73,12 +70,12 @@ class OverpassPoiService {
     return '''
 [out:json][timeout:25];
 (
-  node["tourism"~"museum|attraction|viewpoint|artwork|gallery"](${south},${west},${north},${east});
-  node["historic"~"monument|memorial|archaeological_site|castle|ruins"](${south},${west},${north},${east});
-  node["amenity"~"theatre|arts_centre"](${south},${west},${north},${east});
-  way["tourism"~"museum|attraction|viewpoint|artwork|gallery"](${south},${west},${north},${east});
-  way["historic"~"monument|memorial|archaeological_site|castle|ruins"](${south},${west},${north},${east});
-  way["amenity"~"theatre|arts_centre"](${south},${west},${north},${east});
+  node["tourism"~"museum|attraction|viewpoint|artwork|gallery"]($south,$west,$north,$east);
+  node["historic"~"monument|memorial|archaeological_site|castle|ruins"]($south,$west,$north,$east);
+  node["amenity"~"theatre|arts_centre"]($south,$west,$north,$east);
+  way["tourism"~"museum|attraction|viewpoint|artwork|gallery"]($south,$west,$north,$east);
+  way["historic"~"monument|memorial|archaeological_site|castle|ruins"]($south,$west,$north,$east);
+  way["amenity"~"theatre|arts_centre"]($south,$west,$north,$east);
 );
 out center $limit;
 ''';
