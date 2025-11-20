@@ -293,7 +293,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                       value: provider,
+                      // ignore: deprecated_member_use
                       groupValue: _settings.mapProvider,
+                      // ignore: deprecated_member_use
                       onChanged: (value) {
                         if (value != null) {
                           _updateMapProvider(value);
@@ -362,7 +364,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                       value: provider,
+                      // ignore: deprecated_member_use
                       groupValue: _settings.routingProvider,
+                      // ignore: deprecated_member_use
                       onChanged: (value) {
                         if (value != null) {
                           _updateRoutingProvider(value);
@@ -431,7 +435,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                       value: provider,
+                      // ignore: deprecated_member_use
                       groupValue: _settings.poiProvider,
+                      // ignore: deprecated_member_use
                       onChanged: (value) {
                         if (value != null) {
                           _updatePoiProvider(value);
