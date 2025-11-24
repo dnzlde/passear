@@ -4,8 +4,6 @@
 # This script runs all the CI checks locally before committing code
 # It mirrors the checks performed in .github/workflows/ci.yml
 
-set -e  # Exit on first error
-
 echo "=================================="
 echo "Running CI Validation Checks"
 echo "=================================="
@@ -14,7 +12,6 @@ echo ""
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Track overall success
