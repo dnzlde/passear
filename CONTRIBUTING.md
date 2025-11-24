@@ -70,10 +70,27 @@ Run the analyzer to catch potential issues:
 flutter analyze
 ```
 
+## CI Validation
+
+Before committing, run the CI validation script to ensure all checks pass:
+
+```bash
+./validate_ci.sh
+```
+
+This script runs all CI checks locally:
+- Dependency installation
+- Code analysis
+- Tests
+- Code formatting
+
+**The script must pass before you submit a PR.** Fix any issues it reports and run it again until it succeeds.
+
 ## Pull Request Checklist
 
 Before submitting a PR, ensure:
 
+- [ ] CI validation script passes (`./validate_ci.sh`)
 - [ ] All tests pass (`flutter test`)
 - [ ] Code is properly formatted (`dart format .`)
 - [ ] No analyzer warnings (`flutter analyze`)
@@ -84,9 +101,9 @@ Before submitting a PR, ensure:
 
 1. Create a feature branch from `main`
 2. Make your changes
-3. Run formatter: `dart format .`
-4. Run tests: `flutter test`
-5. Run analyzer: `flutter analyze`
+3. Run CI validation: `./validate_ci.sh`
+4. Fix any issues reported by the script
+5. Repeat step 3-4 until the script passes
 6. Commit your changes
 7. Push and create a PR
 

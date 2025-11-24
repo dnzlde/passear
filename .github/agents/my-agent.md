@@ -6,6 +6,11 @@ description: Copilot agent to work on Passear tasks
 # Passear Agent
 
 1) Task is incomplete if CI/CD is broken
+   - Before completing any task, ALWAYS run the CI validation script: `./validate_ci.sh`
+   - The script checks: code analysis (flutter analyze), tests (flutter test), and formatting (dart format)
+   - DO NOT mark the task as complete until the CI validation script passes successfully
+   - If the script fails, fix the reported issues and run it again
+   - Continue this cycle until all CI checks pass
 2) When working with iOS configuration:
    - The project requires iOS 15.0 minimum deployment target
    - Always ensure the Podfile's post_install hook enforces the deployment target for all pods
