@@ -187,6 +187,8 @@
    - Tests (`flutter test`)
    - Code formatting (`dart format --set-exit-if-changed .`)
    
+   **Note**: The script is already executable in the repository. If you cloned the repository and see a permission error, run: `chmod +x validate_ci.sh`
+   
    **Important**: Do not commit code until this script passes successfully. It helps catch issues early before pushing to the repository.
 
 ### 🔄 CI/CD Pipeline
