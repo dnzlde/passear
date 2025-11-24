@@ -7,6 +7,8 @@
 # Note: We intentionally do NOT use 'set -e' here because we want to run all checks
 # even if some fail, providing a complete picture of all issues.
 
+set -u  # Exit on undefined variables
+
 echo "=================================="
 echo "Running CI Validation Checks"
 echo "=================================="
@@ -22,7 +24,7 @@ OVERALL_SUCCESS=true
 
 # Function to print colored status
 print_status() {
-    if [ $1 -eq 0 ]; then
+    if [[ $1 -eq 0 ]]; then
         echo -e "${GREEN}✓ $2 passed${NC}"
     else
         echo -e "${RED}✗ $2 failed${NC}"
@@ -62,7 +64,7 @@ echo ""
 echo "=================================="
 echo "CI Validation Summary"
 echo "=================================="
-if [ "$OVERALL_SUCCESS" = true ]; then
+if [[ "$OVERALL_SUCCESS" = true ]]; then
     echo -e "${GREEN}✓ All CI checks passed!${NC}"
     echo ""
     echo "Your code is ready to be committed and pushed."
