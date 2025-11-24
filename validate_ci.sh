@@ -3,6 +3,9 @@
 # CI Validation Script
 # This script runs all the CI checks locally before committing code
 # It mirrors the checks performed in .github/workflows/ci.yml
+#
+# Note: We intentionally do NOT use 'set -e' here because we want to run all checks
+# even if some fail, providing a complete picture of all issues.
 
 echo "=================================="
 echo "Running CI Validation Checks"
@@ -30,7 +33,8 @@ print_status() {
 # 1. Get Flutter dependencies
 echo "Step 1: Getting Flutter dependencies..."
 flutter pub get
-print_status $? "Flutter pub get"
+PUB_GET_RESULT=$?
+print_status $PUB_GET_RESULT "Flutter pub get"
 echo ""
 
 # 2. Run code analysis
