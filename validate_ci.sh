@@ -43,6 +43,11 @@ echo ""
 echo "Step 2: Running code analysis..."
 flutter analyze
 ANALYZE_RESULT=$?
+if [[ $ANALYZE_RESULT -ne 0 ]]; then
+    echo ""
+    echo -e "${RED}Code analysis failed!${NC}"
+    echo "Fix the analyzer warnings above, then run this script again."
+fi
 print_status $ANALYZE_RESULT "Flutter analyze"
 echo ""
 
@@ -50,6 +55,11 @@ echo ""
 echo "Step 3: Running tests..."
 flutter test
 TEST_RESULT=$?
+if [[ $TEST_RESULT -ne 0 ]]; then
+    echo ""
+    echo -e "${RED}Tests failed!${NC}"
+    echo "Fix the failing tests above, then run this script again."
+fi
 print_status $TEST_RESULT "Flutter test"
 echo ""
 
@@ -57,6 +67,12 @@ echo ""
 echo "Step 4: Checking code formatting..."
 dart format --set-exit-if-changed .
 FORMAT_RESULT=$?
+if [[ $FORMAT_RESULT -ne 0 ]]; then
+    echo ""
+    echo -e "${RED}Code formatting check failed!${NC}"
+    echo "Some files are not properly formatted."
+    echo "Run 'dart format .' to format all files, then run this script again."
+fi
 print_status $FORMAT_RESULT "Dart format check"
 echo ""
 

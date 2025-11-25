@@ -86,6 +86,27 @@ This script runs all CI checks locally:
 
 **The script must pass before you submit a PR.** Fix any issues it reports and run it again until it succeeds.
 
+### Fixing Common Issues
+
+If the **code formatting check fails**:
+```bash
+# Format all Dart files automatically
+dart format .
+
+# Then run validation again
+./validate_ci.sh
+```
+
+If **code analysis fails**:
+- Review the analyzer warnings shown in the output
+- Fix the reported issues in your code
+- Run `./validate_ci.sh` again
+
+If **tests fail**:
+- Review the test failure messages
+- Fix the failing tests or the code they test
+- Run `./validate_ci.sh` again
+
 ## Pull Request Checklist
 
 Before submitting a PR, ensure:
