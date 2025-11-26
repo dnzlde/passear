@@ -447,8 +447,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         provider == PoiProvider.wikipedia
                             ? Icons.menu_book
                             : provider == PoiProvider.overpass
-                                ? Icons.location_on
-                                : Icons.place,
+                            ? Icons.location_on
+                            : Icons.place,
                       ),
                     );
                   }),
