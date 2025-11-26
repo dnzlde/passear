@@ -24,7 +24,7 @@ class LocalTtsService implements TtsService {
           avAudioSessionCategory: AVAudioSessionCategory.playback,
           avAudioSessionCategoryOptions:
               AVAudioSessionCategoryOptions.duckOthers |
-              AVAudioSessionCategoryOptions.mixWithOthers,
+                  AVAudioSessionCategoryOptions.mixWithOthers,
           avAudioSessionMode: AVAudioSessionMode.spokenAudio,
           avAudioSessionRouteSharingPolicy:
               AVAudioSessionRouteSharingPolicy.defaultPolicy,

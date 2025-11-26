@@ -13,7 +13,7 @@ class OverpassPoiService {
   static const String _baseUrl = 'overpass-api.de';
 
   OverpassPoiService({ApiClient? apiClient})
-    : _apiClient = apiClient ?? HttpApiClient(null);
+      : _apiClient = apiClient ?? HttpApiClient(null);
 
   /// Fetch POIs within bounds using Overpass API
   Future<List<Poi>> fetchPoisInBounds({
