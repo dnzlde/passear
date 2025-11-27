@@ -737,6 +737,7 @@ class _MapPageState extends State<MapPage> {
                       child: WikiPoiDetail(
                         poi: _selectedPoi!,
                         scrollController: scrollController,
+                        nearbyPois: _pois,
                         onNavigate: (destination) {
                           _hidePoiDetails();
                           _startNavigation(destination);

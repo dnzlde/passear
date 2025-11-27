@@ -2,17 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/local_tts_service.dart';
 import '../services/poi_service.dart';
+import '../services/ai_tour_guide_service.dart';
+import '../services/settings_service.dart';
 import '../models/poi.dart';
 
 class WikiPoiDetail extends StatefulWidget {
   final Poi poi;
   final ScrollController? scrollController;
   final Function(LatLng)? onNavigate;
+  final List<Poi>? nearbyPois;
   const WikiPoiDetail({
     super.key,
     required this.poi,
     this.scrollController,
     this.onNavigate,
+    this.nearbyPois,
   });
 
   @override
@@ -22,19 +26,36 @@ class WikiPoiDetail extends StatefulWidget {
 class _WikiPoiDetailState extends State<WikiPoiDetail> {
   late final LocalTtsService tts;
   late final PoiService poiService;
+  late final AiTourGuideService aiTourGuideService;
+  late final SettingsService settingsService;
   late Poi currentPoi;
   bool isLoadingDescription = false;
+  bool isGeneratingAiNarration = false;
+  bool aiTourGuidingEnabled = false;
+  String? aiNarration;
 
   @override
   void initState() {
     super.initState();
     tts = LocalTtsService();
     poiService = PoiService();
+    aiTourGuideService = MockAiTourGuideService();
+    settingsService = SettingsService.instance;
     currentPoi = widget.poi;
 
-    // Load description if not already loaded
+    // Load settings and description
+    _loadSettings();
     if (!currentPoi.isDescriptionLoaded) {
       _loadDescription();
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    final settings = await settingsService.loadSettings();
+    if (mounted) {
+      setState(() {
+        aiTourGuidingEnabled = settings.aiTourGuidingEnabled;
+      });
     }
   }
 
@@ -59,9 +80,42 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     }
   }
 
+  Future<void> _generateAiNarration() async {
+    if (isGeneratingAiNarration) return;
+
+    setState(() {
+      isGeneratingAiNarration = true;
+    });
+
+    try {
+      final narration = await aiTourGuideService.generateNarration(
+        poi: currentPoi,
+        nearbyPois: widget.nearbyPois,
+      );
+      if (mounted) {
+        setState(() {
+          aiNarration = narration;
+          isGeneratingAiNarration = false;
+        });
+        // Automatically speak the narration
+        tts.speak(narration);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isGeneratingAiNarration = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to generate AI narration')),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     tts.dispose();
+    aiTourGuideService.dispose();
     super.dispose();
   }
 
@@ -152,31 +206,120 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
               ),
             const SizedBox(height: 16),
             // Action buttons
-            if (description.isNotEmpty && !isLoadingDescription)
-              Row(
+            if (!isLoadingDescription)
+              Column(
                 children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => tts.speak(description),
-                      icon: const Icon(Icons.volume_up),
-                      label: const Text("Listen"),
-                    ),
+                  Row(
+                    children: [
+                      if (description.isNotEmpty)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => tts.speak(description),
+                            icon: const Icon(Icons.volume_up),
+                            label: const Text("Listen"),
+                          ),
+                        ),
+                      if (description.isNotEmpty) const SizedBox(width: 8),
+                      if (widget.onNavigate != null)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              widget.onNavigate!(LatLng(poi.lat, poi.lon));
+                            },
+                            icon: const Icon(Icons.directions_walk),
+                            label: const Text("Navigate"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  if (widget.onNavigate != null)
-                    Expanded(
+                  // AI Tour Guide button
+                  if (aiTourGuidingEnabled) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          widget.onNavigate!(LatLng(poi.lat, poi.lon));
-                        },
-                        icon: const Icon(Icons.directions_walk),
-                        label: const Text("Navigate"),
+                        onPressed: isGeneratingAiNarration
+                            ? null
+                            : _generateAiNarration,
+                        icon: isGeneratingAiNarration
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.smart_toy),
+                        label: Text(
+                          isGeneratingAiNarration
+                              ? "Generating..."
+                              : "AI Tour Guide",
+                        ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
+                          backgroundColor: Colors.deepPurple,
                           foregroundColor: Colors.white,
                         ),
                       ),
                     ),
+                  ],
+                  // Show AI narration if available
+                  if (aiNarration != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.deepPurple.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.smart_toy,
+                                size: 16,
+                                color: Colors.deepPurple,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'AI Tour Guide',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.deepPurple,
+                                ),
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                icon: const Icon(Icons.replay, size: 18),
+                                onPressed: () => tts.speak(aiNarration!),
+                                tooltip: 'Listen again',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            aiNarration!,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             // Add extra padding at bottom for comfortable scrolling
