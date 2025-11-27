@@ -30,11 +30,7 @@ class OverpassPoiService {
       debugPrint('Overpass API query: $query');
 
       // Build the URI with query parameters
-      final uri = Uri.https(
-        _baseUrl,
-        '/api/interpreter',
-        {'data': query},
-      );
+      final uri = Uri.https(_baseUrl, '/api/interpreter', {'data': query});
 
       final responseBody = await _apiClient.get(uri);
       final data = jsonDecode(responseBody) as Map<String, dynamic>;
@@ -144,7 +140,8 @@ out center $limit;
       return PoiCategory.gallery;
     } else if (historic == 'monument' || historic == 'memorial') {
       return PoiCategory.monument;
-    } else if (historic == 'castle' || historic == 'ruins' ||
+    } else if (historic == 'castle' ||
+        historic == 'ruins' ||
         historic == 'archaeological_site') {
       return PoiCategory.historicalSite;
     } else if (amenity == 'theatre') {

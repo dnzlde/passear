@@ -174,6 +174,23 @@
    dart format .    # Code formatting
    ```
 
+5. **CI Validation Script**
+   
+   Before committing your changes, run the CI validation script to ensure all checks pass:
+   ```bash
+   ./validate_ci.sh
+   ```
+   
+   This script runs all the same checks that GitHub Actions will perform:
+   - Flutter dependency installation (`flutter pub get`)
+   - Code analysis (`flutter analyze`)
+   - Tests (`flutter test`)
+   - Code formatting (`dart format --set-exit-if-changed .`)
+   
+   **Note**: The script is already executable in the repository. If you cloned the repository and see a permission error, run: `chmod +x validate_ci.sh`
+   
+   **Important**: Do not commit code until this script passes successfully. It helps catch issues early before pushing to the repository.
+
 ### 🔄 CI/CD Pipeline
 
 Our GitHub Actions workflow automatically:
