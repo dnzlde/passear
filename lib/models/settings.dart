@@ -20,6 +20,12 @@ enum PoiProvider {
   googlePlaces, // Requires API key
 }
 
+/// AI Tour Guide provider options
+enum AiTourGuideProvider {
+  mock, // Built-in mock implementation (free)
+  openAi, // OpenAI API (requires API key)
+}
+
 class AppSettings {
   final Map<PoiCategory, bool> enabledCategories;
   final int maxPoiCount;
@@ -27,6 +33,8 @@ class AppSettings {
   final MapProvider mapProvider;
   final RoutingProvider routingProvider;
   final PoiProvider poiProvider;
+  final bool aiTourGuidingEnabled;
+  final AiTourGuideProvider aiTourGuideProvider;
 
   AppSettings({
     Map<PoiCategory, bool>? enabledCategories,
@@ -35,6 +43,8 @@ class AppSettings {
     this.mapProvider = MapProvider.openStreetMap,
     this.routingProvider = RoutingProvider.osrm,
     this.poiProvider = PoiProvider.wikipedia,
+    this.aiTourGuidingEnabled = false,
+    this.aiTourGuideProvider = AiTourGuideProvider.mock,
   }) : enabledCategories = enabledCategories ?? _defaultEnabledCategories();
 
   static Map<PoiCategory, bool> _defaultEnabledCategories() {
@@ -48,6 +58,8 @@ class AppSettings {
     MapProvider? mapProvider,
     RoutingProvider? routingProvider,
     PoiProvider? poiProvider,
+    bool? aiTourGuidingEnabled,
+    AiTourGuideProvider? aiTourGuideProvider,
   }) {
     return AppSettings(
       enabledCategories: enabledCategories ?? this.enabledCategories,
@@ -56,6 +68,8 @@ class AppSettings {
       mapProvider: mapProvider ?? this.mapProvider,
       routingProvider: routingProvider ?? this.routingProvider,
       poiProvider: poiProvider ?? this.poiProvider,
+      aiTourGuidingEnabled: aiTourGuidingEnabled ?? this.aiTourGuidingEnabled,
+      aiTourGuideProvider: aiTourGuideProvider ?? this.aiTourGuideProvider,
     );
   }
 
@@ -85,6 +99,11 @@ class AppSettings {
         (e) => e.name == json['poiProvider'],
         orElse: () => PoiProvider.wikipedia,
       ),
+      aiTourGuidingEnabled: json['aiTourGuidingEnabled'] as bool? ?? false,
+      aiTourGuideProvider: AiTourGuideProvider.values.firstWhere(
+        (e) => e.name == json['aiTourGuideProvider'],
+        orElse: () => AiTourGuideProvider.mock,
+      ),
     );
   }
 
@@ -99,6 +118,8 @@ class AppSettings {
       'mapProvider': mapProvider.name,
       'routingProvider': routingProvider.name,
       'poiProvider': poiProvider.name,
+      'aiTourGuidingEnabled': aiTourGuidingEnabled,
+      'aiTourGuideProvider': aiTourGuideProvider.name,
     };
   }
 
@@ -193,6 +214,28 @@ extension PoiProviderExtension on PoiProvider {
       case PoiProvider.overpass:
         return 'Free, OpenStreetMap data';
       case PoiProvider.googlePlaces:
+        return 'Requires API key';
+    }
+  }
+}
+
+extension AiTourGuideProviderExtension on AiTourGuideProvider {
+  String get displayName {
+    switch (this) {
+      case AiTourGuideProvider.mock:
+        return 'Built-in Guide';
+      case AiTourGuideProvider.openAi:
+        return 'OpenAI';
+    }
+  }
+
+  bool get isFree => this == AiTourGuideProvider.mock;
+
+  String get description {
+    switch (this) {
+      case AiTourGuideProvider.mock:
+        return 'Free, contextual narrations';
+      case AiTourGuideProvider.openAi:
         return 'Requires API key';
     }
   }

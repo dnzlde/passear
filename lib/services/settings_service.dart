@@ -102,4 +102,22 @@ class SettingsService {
     final updatedSettings = currentSettings.copyWith(poiProvider: provider);
     await saveSettings(updatedSettings);
   }
+
+  /// Update AI tour guiding enabled setting
+  Future<void> updateAiTourGuidingEnabled(bool enabled) async {
+    final currentSettings = await loadSettings();
+    final updatedSettings = currentSettings.copyWith(
+      aiTourGuidingEnabled: enabled,
+    );
+    await saveSettings(updatedSettings);
+  }
+
+  /// Update AI tour guide provider
+  Future<void> updateAiTourGuideProvider(AiTourGuideProvider provider) async {
+    final currentSettings = await loadSettings();
+    final updatedSettings = currentSettings.copyWith(
+      aiTourGuideProvider: provider,
+    );
+    await saveSettings(updatedSettings);
+  }
 }

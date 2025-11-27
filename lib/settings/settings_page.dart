@@ -86,6 +86,20 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  Future<void> _updateAiTourGuidingEnabled(bool enabled) async {
+    await _settingsService.updateAiTourGuidingEnabled(enabled);
+    setState(() {
+      _settings = _settings.copyWith(aiTourGuidingEnabled: enabled);
+    });
+  }
+
+  Future<void> _updateAiTourGuideProvider(AiTourGuideProvider provider) async {
+    await _settingsService.updateAiTourGuideProvider(provider);
+    setState(() {
+      _settings = _settings.copyWith(aiTourGuideProvider: provider);
+    });
+  }
+
   String _getCategoryDisplayName(PoiCategory category) {
     switch (category) {
       case PoiCategory.museum:
@@ -237,6 +251,91 @@ class _SettingsPageState extends State<SettingsPage> {
                       _updateVoiceGuidanceEnabled(value);
                     },
                   ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // AI Tour Guiding Section
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AI Tour Guide',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    title: const Text('AI Tour Guiding'),
+                    subtitle: const Text(
+                      'Get personalized, contextual tour narrations',
+                    ),
+                    secondary: const Icon(Icons.smart_toy),
+                    value: _settings.aiTourGuidingEnabled,
+                    onChanged: (value) {
+                      _updateAiTourGuidingEnabled(value);
+                    },
+                  ),
+                  if (_settings.aiTourGuidingEnabled) ...[
+                    const Divider(),
+                    Text(
+                      'AI Provider',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 8),
+                    ...AiTourGuideProvider.values.map((provider) {
+                      return RadioListTile<AiTourGuideProvider>(
+                        title: Text(provider.displayName),
+                        subtitle: Row(
+                          children: [
+                            Text(provider.description),
+                            if (provider.isFree) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green[100],
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'FREE',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.green[800],
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        value: provider,
+                        // ignore: deprecated_member_use
+                        groupValue: _settings.aiTourGuideProvider,
+                        // ignore: deprecated_member_use
+                        onChanged: (value) {
+                          if (value != null) {
+                            _updateAiTourGuideProvider(value);
+                          }
+                        },
+                        secondary: Icon(
+                          provider == AiTourGuideProvider.mock
+                              ? Icons.smart_toy
+                              : Icons.psychology,
+                        ),
+                      );
+                    }),
+                  ],
                 ],
               ),
             ),
