@@ -27,6 +27,9 @@ class AppSettings {
   final MapProvider mapProvider;
   final RoutingProvider routingProvider;
   final PoiProvider poiProvider;
+  final String llmApiKey;
+  final String llmApiEndpoint;
+  final String llmModel;
 
   AppSettings({
     Map<PoiCategory, bool>? enabledCategories,
@@ -35,6 +38,9 @@ class AppSettings {
     this.mapProvider = MapProvider.openStreetMap,
     this.routingProvider = RoutingProvider.osrm,
     this.poiProvider = PoiProvider.wikipedia,
+    this.llmApiKey = '',
+    this.llmApiEndpoint = 'https://api.openai.com/v1/chat/completions',
+    this.llmModel = 'gpt-3.5-turbo',
   }) : enabledCategories = enabledCategories ?? _defaultEnabledCategories();
 
   static Map<PoiCategory, bool> _defaultEnabledCategories() {
@@ -48,6 +54,9 @@ class AppSettings {
     MapProvider? mapProvider,
     RoutingProvider? routingProvider,
     PoiProvider? poiProvider,
+    String? llmApiKey,
+    String? llmApiEndpoint,
+    String? llmModel,
   }) {
     return AppSettings(
       enabledCategories: enabledCategories ?? this.enabledCategories,
@@ -56,6 +65,9 @@ class AppSettings {
       mapProvider: mapProvider ?? this.mapProvider,
       routingProvider: routingProvider ?? this.routingProvider,
       poiProvider: poiProvider ?? this.poiProvider,
+      llmApiKey: llmApiKey ?? this.llmApiKey,
+      llmApiEndpoint: llmApiEndpoint ?? this.llmApiEndpoint,
+      llmModel: llmModel ?? this.llmModel,
     );
   }
 
@@ -85,6 +97,10 @@ class AppSettings {
         (e) => e.name == json['poiProvider'],
         orElse: () => PoiProvider.wikipedia,
       ),
+      llmApiKey: json['llmApiKey'] as String? ?? '',
+      llmApiEndpoint: json['llmApiEndpoint'] as String? ??
+          'https://api.openai.com/v1/chat/completions',
+      llmModel: json['llmModel'] as String? ?? 'gpt-3.5-turbo',
     );
   }
 
@@ -99,6 +115,9 @@ class AppSettings {
       'mapProvider': mapProvider.name,
       'routingProvider': routingProvider.name,
       'poiProvider': poiProvider.name,
+      'llmApiKey': llmApiKey,
+      'llmApiEndpoint': llmApiEndpoint,
+      'llmModel': llmModel,
     };
   }
 
@@ -124,6 +143,9 @@ class AppSettings {
   /// Check if all providers are free
   bool get areAllProvidersFree =>
       isMapProviderFree && isRoutingProviderFree && isPoiProviderFree;
+
+  /// Check if LLM is configured
+  bool get isLlmConfigured => llmApiKey.isNotEmpty && llmApiEndpoint.isNotEmpty;
 }
 
 /// Extension methods for provider enums

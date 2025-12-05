@@ -102,4 +102,26 @@ class SettingsService {
     final updatedSettings = currentSettings.copyWith(poiProvider: provider);
     await saveSettings(updatedSettings);
   }
+
+  /// Update LLM API key
+  Future<void> updateLlmApiKey(String apiKey) async {
+    final currentSettings = await loadSettings();
+    final updatedSettings = currentSettings.copyWith(llmApiKey: apiKey);
+    await saveSettings(updatedSettings);
+  }
+
+  /// Update LLM API endpoint
+  Future<void> updateLlmApiEndpoint(String apiEndpoint) async {
+    final currentSettings = await loadSettings();
+    final updatedSettings =
+        currentSettings.copyWith(llmApiEndpoint: apiEndpoint);
+    await saveSettings(updatedSettings);
+  }
+
+  /// Update LLM model
+  Future<void> updateLlmModel(String model) async {
+    final currentSettings = await loadSettings();
+    final updatedSettings = currentSettings.copyWith(llmModel: model);
+    await saveSettings(updatedSettings);
+  }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/local_tts_service.dart';
 import '../services/poi_service.dart';
+import '../services/llm_service.dart';
+import '../services/settings_service.dart';
 import '../models/poi.dart';
 
 class WikiPoiDetail extends StatefulWidget {
@@ -22,19 +24,41 @@ class WikiPoiDetail extends StatefulWidget {
 class _WikiPoiDetailState extends State<WikiPoiDetail> {
   late final LocalTtsService tts;
   late final PoiService poiService;
+  late final SettingsService settingsService;
   late Poi currentPoi;
   bool isLoadingDescription = false;
+  bool isGeneratingStory = false;
+  String? aiStory;
+  LlmService? llmService;
+  StoryStyle currentStyle = StoryStyle.neutral;
 
   @override
   void initState() {
     super.initState();
     tts = LocalTtsService();
     poiService = PoiService();
+    settingsService = SettingsService.instance;
     currentPoi = widget.poi;
 
     // Load description if not already loaded
     if (!currentPoi.isDescriptionLoaded) {
       _loadDescription();
+    }
+
+    // Initialize LLM service
+    _initializeLlmService();
+  }
+
+  Future<void> _initializeLlmService() async {
+    final settings = await settingsService.loadSettings();
+    if (settings.isLlmConfigured) {
+      llmService = LlmService(
+        config: LlmConfig(
+          apiEndpoint: settings.llmApiEndpoint,
+          apiKey: settings.llmApiKey,
+          model: settings.llmModel,
+        ),
+      );
     }
   }
 
@@ -59,9 +83,72 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     }
   }
 
+  Future<void> _generateAiStory() async {
+    if (llmService == null) {
+      _showLlmNotConfiguredDialog();
+      return;
+    }
+
+    if (currentPoi.description.isEmpty) {
+      _showSnackBar('Please wait for the description to load first.');
+      return;
+    }
+
+    setState(() {
+      isGeneratingStory = true;
+      aiStory = null;
+    });
+
+    try {
+      final story = await llmService!.generateStory(
+        poiName: currentPoi.name,
+        poiDescription: currentPoi.description,
+        style: currentStyle,
+      );
+
+      setState(() {
+        aiStory = story;
+        isGeneratingStory = false;
+      });
+
+      // Automatically play the story via TTS
+      await tts.speak(story);
+    } catch (e) {
+      setState(() {
+        isGeneratingStory = false;
+      });
+      _showSnackBar('Failed to generate AI story: ${e.toString()}');
+    }
+  }
+
+  void _showLlmNotConfiguredDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('LLM Not Configured'),
+        content: const Text(
+          'To use AI-generated stories, please configure your LLM API key in the app settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   void dispose() {
     tts.dispose();
+    llmService?.dispose();
     super.dispose();
   }
 
@@ -151,6 +238,94 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                 ),
               ),
             const SizedBox(height: 16),
+            // AI Story section
+            if (!isLoadingDescription && description.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: isGeneratingStory ? null : _generateAiStory,
+                    icon: isGeneratingStory
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_awesome),
+                    label: const Text('AI Story'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  if (isGeneratingStory)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        'Generating AI story...',
+                        style: TextStyle(
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  if (aiStory != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.purple.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.auto_awesome,
+                                size: 16,
+                                color: Colors.purple,
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                'AI-Generated Story',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.purple,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            aiStory!,
+                            style: const TextStyle(fontSize: 16, height: 1.5),
+                          ),
+                          const SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed: () => tts.speak(aiStory!),
+                            icon: const Icon(Icons.volume_up, size: 16),
+                            label: const Text('Play Again'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                ],
+              ),
             // Action buttons
             if (description.isNotEmpty && !isLoadingDescription)
               Row(
