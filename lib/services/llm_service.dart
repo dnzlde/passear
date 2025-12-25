@@ -115,6 +115,7 @@ Generate a compelling 2-3 paragraph story that:
 - Highlights the most interesting aspects
 - Engages the listener
 - Is concise but informative (around 150-200 words)
+- When possible, includes information about the time period and circumstances of its creation or establishment
 
 Story:''';
   }
