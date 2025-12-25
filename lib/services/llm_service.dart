@@ -110,12 +110,13 @@ class LlmService {
 Based on the following information:
 $poiDescription
 
-Generate a compelling 3-5 paragraph story that:
+Generate a compelling story that:
 - Is suitable for text-to-speech
-- Highlights the most interesting aspects
-- Engages the listener
-- Is informative and detailed (around 250-400 words)
+- Highlights only the most interesting and significant aspects
+- Engages the listener with quality content, avoiding filler or repetitive information
+- Should be 3-5 paragraphs if there is rich content (250-400 words), but can be shorter (2-3 paragraphs) if the landmark has limited notable features - quality over quantity
 - When possible, includes information about the time period and circumstances of its creation or establishment
+- Focuses on what makes this place truly special and worth visiting
 
 Story:''';
   }
