@@ -42,6 +42,15 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     settingsService = SettingsService.instance;
     currentPoi = widget.poi;
 
+    // Set up TTS completion callback
+    tts.setCompletionCallback(() {
+      if (mounted) {
+        setState(() {
+          isPlayingAudio = false;
+        });
+      }
+    });
+
     // Load description if not already loaded
     if (!currentPoi.isDescriptionLoaded) {
       _loadDescription();
@@ -146,15 +155,6 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     });
     
     await tts.speak(text);
-    
-    // Check periodically if still playing
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted && !tts.isPlaying) {
-        setState(() {
-          isPlayingAudio = false;
-        });
-      }
-    });
   }
 
   Future<void> _stopAudio() async {

@@ -7,25 +7,33 @@ class LocalTtsService implements TtsService {
   final FlutterTts _tts = FlutterTts();
   bool _audioSessionInitialized = false;
   bool _isPlaying = false;
+  void Function()? _completionCallback;
 
   LocalTtsService() {
     _tts.setLanguage("en-US");
     _tts.setSpeechRate(0.5);
-    
-    // Set up completion handler
-    _tts.setCompletionHandler(() {
-      _isPlaying = false;
-    });
-    
-    // Set up error handler
-    _tts.setErrorHandler((msg) {
-      _isPlaying = false;
-    });
+  }
+
+  @override
+  void setCompletionCallback(void Function() callback) {
+    _completionCallback = callback;
   }
 
   Future<void> _initAudioSession() async {
     if (_audioSessionInitialized) return;
     _audioSessionInitialized = true;
+
+    // Set up completion handler
+    _tts.setCompletionHandler(() {
+      _isPlaying = false;
+      _completionCallback?.call();
+    });
+    
+    // Set up error handler
+    _tts.setErrorHandler((msg) {
+      _isPlaying = false;
+      _completionCallback?.call();
+    });
 
     try {
       // Use audio_session for both iOS and Android for consistent behavior
