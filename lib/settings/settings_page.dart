@@ -89,6 +89,13 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  Future<void> _updateTourAudioEnabled(bool enabled) async {
+    await _settingsService.updateTourAudioEnabled(enabled);
+    setState(() {
+      _settings = _settings.copyWith(tourAudioEnabled: enabled);
+    });
+  }
+
   Future<void> _updateMapProvider(MapProvider provider) async {
     await _settingsService.updateMapProvider(provider);
     setState(() {
@@ -267,7 +274,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Navigation Settings',
+                    'Audio Settings',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
@@ -276,10 +283,22 @@ class _SettingsPageState extends State<SettingsPage> {
                     subtitle: const Text(
                       'Enable voice instructions during navigation',
                     ),
-                    secondary: const Icon(Icons.volume_up),
+                    secondary: const Icon(Icons.directions_walk),
                     value: _settings.voiceGuidanceEnabled,
                     onChanged: (value) {
                       _updateVoiceGuidanceEnabled(value);
+                    },
+                  ),
+                  const Divider(),
+                  SwitchListTile(
+                    title: const Text('Tour Audio'),
+                    subtitle: const Text(
+                      'Enable audio playback for POI descriptions',
+                    ),
+                    secondary: const Icon(Icons.volume_up),
+                    value: _settings.tourAudioEnabled,
+                    onChanged: (value) {
+                      _updateTourAudioEnabled(value);
                     },
                   ),
                 ],

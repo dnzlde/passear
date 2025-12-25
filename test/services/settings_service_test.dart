@@ -15,7 +15,19 @@ void main() {
       final settings = await settingsService.loadSettings();
 
       expect(settings.voiceGuidanceEnabled, true);
+      expect(settings.tourAudioEnabled, true);
       expect(settings.maxPoiCount, 20);
+    });
+
+    test('should save and load tour audio setting', () async {
+      final settingsService = SettingsService.instance;
+
+      // Update tour audio setting
+      await settingsService.updateTourAudioEnabled(false);
+
+      // Load settings and verify
+      final settings = await settingsService.loadSettings();
+      expect(settings.tourAudioEnabled, false);
     });
 
     test('should save and load voice guidance setting', () async {
@@ -69,36 +81,68 @@ void main() {
     );
 
     test(
-      'AppSettings should have correct default for voiceGuidanceEnabled',
+      'AppSettings should have correct defaults for audio settings',
       () {
         final settings = AppSettings();
         expect(settings.voiceGuidanceEnabled, true);
+        expect(settings.tourAudioEnabled, true);
       },
     );
 
     test(
-      'AppSettings copyWith should work correctly for voiceGuidanceEnabled',
+      'AppSettings copyWith should work correctly for audio settings',
       () {
-        final settings = AppSettings(voiceGuidanceEnabled: true);
-        final updated = settings.copyWith(voiceGuidanceEnabled: false);
+        final settings = AppSettings(
+          voiceGuidanceEnabled: true,
+          tourAudioEnabled: true,
+        );
+        final updated = settings.copyWith(
+          voiceGuidanceEnabled: false,
+          tourAudioEnabled: false,
+        );
 
         expect(updated.voiceGuidanceEnabled, false);
+        expect(updated.tourAudioEnabled, false);
         expect(settings.voiceGuidanceEnabled, true); // Original unchanged
+        expect(settings.tourAudioEnabled, true); // Original unchanged
       },
     );
 
     test(
-      'AppSettings toJson and fromJson should preserve voiceGuidanceEnabled',
+      'AppSettings toJson and fromJson should preserve audio settings',
       () {
         final original = AppSettings(
           voiceGuidanceEnabled: false,
+          tourAudioEnabled: false,
           maxPoiCount: 30,
         );
         final json = original.toJson();
         final restored = AppSettings.fromJson(json);
 
         expect(restored.voiceGuidanceEnabled, false);
+        expect(restored.tourAudioEnabled, false);
         expect(restored.maxPoiCount, 30);
+      },
+    );
+
+    test(
+      'should update tour audio setting without affecting other settings',
+      () async {
+        final settingsService = SettingsService.instance;
+
+        // Set initial state
+        await settingsService.updateMaxPoiCount(30);
+        await settingsService.updateVoiceGuidanceEnabled(true);
+        await settingsService.updateTourAudioEnabled(true);
+
+        // Update only tour audio
+        await settingsService.updateTourAudioEnabled(false);
+
+        // Verify all settings
+        final settings = await settingsService.loadSettings();
+        expect(settings.tourAudioEnabled, false);
+        expect(settings.voiceGuidanceEnabled, true);
+        expect(settings.maxPoiCount, 30);
       },
     );
   });

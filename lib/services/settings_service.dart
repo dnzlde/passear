@@ -82,6 +82,15 @@ class SettingsService {
     await saveSettings(updatedSettings);
   }
 
+  /// Update tour audio enabled setting
+  Future<void> updateTourAudioEnabled(bool enabled) async {
+    final currentSettings = await loadSettings();
+    final updatedSettings = currentSettings.copyWith(
+      tourAudioEnabled: enabled,
+    );
+    await saveSettings(updatedSettings);
+  }
+
   /// Update map provider
   Future<void> updateMapProvider(MapProvider provider) async {
     final currentSettings = await loadSettings();

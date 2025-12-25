@@ -24,6 +24,7 @@ class AppSettings {
   final Map<PoiCategory, bool> enabledCategories;
   final int maxPoiCount;
   final bool voiceGuidanceEnabled;
+  final bool tourAudioEnabled;
   final MapProvider mapProvider;
   final RoutingProvider routingProvider;
   final PoiProvider poiProvider;
@@ -35,6 +36,7 @@ class AppSettings {
     Map<PoiCategory, bool>? enabledCategories,
     this.maxPoiCount = 20,
     this.voiceGuidanceEnabled = true,
+    this.tourAudioEnabled = true,
     this.mapProvider = MapProvider.openStreetMap,
     this.routingProvider = RoutingProvider.osrm,
     this.poiProvider = PoiProvider.wikipedia,
@@ -51,6 +53,7 @@ class AppSettings {
     Map<PoiCategory, bool>? enabledCategories,
     int? maxPoiCount,
     bool? voiceGuidanceEnabled,
+    bool? tourAudioEnabled,
     MapProvider? mapProvider,
     RoutingProvider? routingProvider,
     PoiProvider? poiProvider,
@@ -62,6 +65,7 @@ class AppSettings {
       enabledCategories: enabledCategories ?? this.enabledCategories,
       maxPoiCount: maxPoiCount ?? this.maxPoiCount,
       voiceGuidanceEnabled: voiceGuidanceEnabled ?? this.voiceGuidanceEnabled,
+      tourAudioEnabled: tourAudioEnabled ?? this.tourAudioEnabled,
       mapProvider: mapProvider ?? this.mapProvider,
       routingProvider: routingProvider ?? this.routingProvider,
       poiProvider: poiProvider ?? this.poiProvider,
@@ -85,6 +89,7 @@ class AppSettings {
       enabledCategories: enabledCategories,
       maxPoiCount: json['maxPoiCount'] as int? ?? 20,
       voiceGuidanceEnabled: json['voiceGuidanceEnabled'] as bool? ?? true,
+      tourAudioEnabled: json['tourAudioEnabled'] as bool? ?? true,
       mapProvider: MapProvider.values.firstWhere(
         (e) => e.name == json['mapProvider'],
         orElse: () => MapProvider.openStreetMap,
@@ -112,6 +117,7 @@ class AppSettings {
       },
       'maxPoiCount': maxPoiCount,
       'voiceGuidanceEnabled': voiceGuidanceEnabled,
+      'tourAudioEnabled': tourAudioEnabled,
       'mapProvider': mapProvider.name,
       'routingProvider': routingProvider.name,
       'poiProvider': poiProvider.name,
