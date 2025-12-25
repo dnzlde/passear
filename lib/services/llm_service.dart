@@ -110,11 +110,11 @@ class LlmService {
 Based on the following information:
 $poiDescription
 
-Generate a compelling 2-3 paragraph story that:
+Generate a compelling 3-5 paragraph story that:
 - Is suitable for text-to-speech
 - Highlights the most interesting aspects
 - Engages the listener
-- Is concise but informative (around 150-200 words)
+- Is informative and detailed (around 250-400 words)
 - When possible, includes information about the time period and circumstances of its creation or establishment
 
 Story:''';
@@ -130,7 +130,7 @@ Story:''';
         {'role': 'user', 'content': prompt}
       ],
       'temperature': 0.7,
-      'max_tokens': 300,
+      'max_tokens': 600,
     };
 
     final response = await _client!.post(
