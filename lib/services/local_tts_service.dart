@@ -6,10 +6,21 @@ import 'tts_service.dart';
 class LocalTtsService implements TtsService {
   final FlutterTts _tts = FlutterTts();
   bool _audioSessionInitialized = false;
+  bool _isPlaying = false;
 
   LocalTtsService() {
     _tts.setLanguage("en-US");
     _tts.setSpeechRate(0.5);
+    
+    // Set up completion handler
+    _tts.setCompletionHandler(() {
+      _isPlaying = false;
+    });
+    
+    // Set up error handler
+    _tts.setErrorHandler((msg) {
+      _isPlaying = false;
+    });
   }
 
   Future<void> _initAudioSession() async {
@@ -51,12 +62,28 @@ class LocalTtsService implements TtsService {
   @override
   Future<void> speak(String text) async {
     await _initAudioSession();
+    _isPlaying = true;
     return _tts.speak(text);
   }
 
   @override
-  Future<void> stop() => _tts.stop();
+  Future<void> stop() {
+    _isPlaying = false;
+    return _tts.stop();
+  }
 
   @override
-  Future<void> dispose() => _tts.stop();
+  Future<void> pause() {
+    _isPlaying = false;
+    return _tts.pause();
+  }
+
+  @override
+  bool get isPlaying => _isPlaying;
+
+  @override
+  Future<void> dispose() {
+    _isPlaying = false;
+    return _tts.stop();
+  }
 }

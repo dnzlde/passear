@@ -28,6 +28,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   late Poi currentPoi;
   bool isLoadingDescription = false;
   bool isGeneratingStory = false;
+  bool isPlayingAudio = false;
+  bool tourAudioEnabled = true;
   String? aiStory;
   LlmService? llmService;
   StoryStyle currentStyle = StoryStyle.neutral;
@@ -45,8 +47,18 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       _loadDescription();
     }
 
-    // Initialize LLM service
+    // Initialize LLM service and load settings
     _initializeLlmService();
+    _loadTourAudioSetting();
+  }
+
+  Future<void> _loadTourAudioSetting() async {
+    final settings = await settingsService.loadSettings();
+    if (mounted) {
+      setState(() {
+        tourAudioEnabled = settings.tourAudioEnabled;
+      });
+    }
   }
 
   Future<void> _initializeLlmService() async {
@@ -111,13 +123,46 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         isGeneratingStory = false;
       });
 
-      // Automatically play the story via TTS
-      await tts.speak(story);
+      // Automatically play the story via TTS if audio is enabled
+      if (tourAudioEnabled) {
+        await _playAudio(story);
+      }
     } catch (e) {
       setState(() {
         isGeneratingStory = false;
       });
       _showSnackBar('Failed to generate AI story: ${e.toString()}');
+    }
+  }
+
+  Future<void> _playAudio(String text) async {
+    if (!tourAudioEnabled) {
+      _showSnackBar('Tour audio is disabled. Enable it in Settings.');
+      return;
+    }
+    
+    setState(() {
+      isPlayingAudio = true;
+    });
+    
+    await tts.speak(text);
+    
+    // Check periodically if still playing
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted && !tts.isPlaying) {
+        setState(() {
+          isPlayingAudio = false;
+        });
+      }
+    });
+  }
+
+  Future<void> _stopAudio() async {
+    await tts.stop();
+    if (mounted) {
+      setState(() {
+        isPlayingAudio = false;
+      });
     }
   }
 
@@ -192,6 +237,37 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
               ],
             ),
             const SizedBox(height: 8),
+            // Audio status indicator
+            if (!tourAudioEnabled)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: Colors.orange.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.volume_off,
+                      size: 14,
+                      color: Colors.orange[700],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Tour audio is disabled',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (poi.category != PoiCategory.generic)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
@@ -307,9 +383,13 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                           ),
                           const SizedBox(height: 8),
                           ElevatedButton.icon(
-                            onPressed: () => tts.speak(aiStory!),
+                            onPressed: tourAudioEnabled 
+                              ? () => _playAudio(aiStory!)
+                              : null,
                             icon: const Icon(Icons.volume_up, size: 16),
-                            label: const Text('Play Again'),
+                            label: Text(tourAudioEnabled 
+                              ? 'Play Again' 
+                              : 'Audio Disabled'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.purple,
                               foregroundColor: Colors.white,
@@ -332,9 +412,25 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => tts.speak(description),
-                      icon: const Icon(Icons.volume_up),
-                      label: const Text("Listen"),
+                      onPressed: isPlayingAudio
+                          ? _stopAudio
+                          : (tourAudioEnabled 
+                              ? () => _playAudio(description)
+                              : null),
+                      icon: Icon(isPlayingAudio 
+                          ? Icons.stop 
+                          : Icons.volume_up),
+                      label: Text(isPlayingAudio 
+                          ? "Stop" 
+                          : (tourAudioEnabled ? "Listen" : "Audio Disabled")),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isPlayingAudio 
+                            ? Colors.red 
+                            : null,
+                        foregroundColor: isPlayingAudio 
+                            ? Colors.white 
+                            : null,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
