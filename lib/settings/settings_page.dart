@@ -15,11 +15,27 @@ class _SettingsPageState extends State<SettingsPage> {
   final SettingsService _settingsService = SettingsService.instance;
   late AppSettings _settings;
   bool _isLoading = true;
+  
+  // Controllers for LLM settings
+  late final TextEditingController _llmApiKeyController;
+  late final TextEditingController _llmApiEndpointController;
+  late final TextEditingController _llmModelController;
 
   @override
   void initState() {
     super.initState();
+    _llmApiKeyController = TextEditingController();
+    _llmApiEndpointController = TextEditingController();
+    _llmModelController = TextEditingController();
     _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _llmApiKeyController.dispose();
+    _llmApiEndpointController.dispose();
+    _llmModelController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {
@@ -28,11 +44,19 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _settings = settings;
         _isLoading = false;
+        // Update controllers with loaded settings
+        _llmApiKeyController.text = settings.llmApiKey;
+        _llmApiEndpointController.text = settings.llmApiEndpoint;
+        _llmModelController.text = settings.llmModel;
       });
     } catch (e) {
       setState(() {
         _settings = AppSettings();
         _isLoading = false;
+        // Update controllers with default settings
+        _llmApiKeyController.text = _settings.llmApiKey;
+        _llmApiEndpointController.text = _settings.llmApiEndpoint;
+        _llmModelController.text = _settings.llmModel;
       });
     }
   }
@@ -83,6 +107,27 @@ class _SettingsPageState extends State<SettingsPage> {
     await _settingsService.updatePoiProvider(provider);
     setState(() {
       _settings = _settings.copyWith(poiProvider: provider);
+    });
+  }
+
+  Future<void> _updateLlmApiKey(String apiKey) async {
+    await _settingsService.updateLlmApiKey(apiKey);
+    setState(() {
+      _settings = _settings.copyWith(llmApiKey: apiKey);
+    });
+  }
+
+  Future<void> _updateLlmApiEndpoint(String endpoint) async {
+    await _settingsService.updateLlmApiEndpoint(endpoint);
+    setState(() {
+      _settings = _settings.copyWith(llmApiEndpoint: endpoint);
+    });
+  }
+
+  Future<void> _updateLlmModel(String model) async {
+    await _settingsService.updateLlmModel(model);
+    setState(() {
+      _settings = _settings.copyWith(llmModel: model);
     });
   }
 
@@ -236,6 +281,148 @@ class _SettingsPageState extends State<SettingsPage> {
                     onChanged: (value) {
                       _updateVoiceGuidanceEnabled(value);
                     },
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // AI Story (LLM) Configuration
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.auto_awesome, color: Colors.purple[400]),
+                      const SizedBox(width: 8),
+                      Text(
+                        'AI Story Configuration',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Configure LLM API for AI-generated POI stories',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 16),
+                  // Status badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _settings.isLlmConfigured
+                          ? Colors.green[100]
+                          : Colors.orange[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _settings.isLlmConfigured
+                              ? Icons.check_circle
+                              : Icons.info,
+                          size: 16,
+                          color: _settings.isLlmConfigured
+                              ? Colors.green[800]
+                              : Colors.orange[800],
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _settings.isLlmConfigured
+                              ? 'LLM Configured'
+                              : 'LLM Not Configured',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _settings.isLlmConfigured
+                                ? Colors.green[800]
+                                : Colors.orange[800],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // API Key field
+                  TextField(
+                    controller: _llmApiKeyController,
+                    decoration: const InputDecoration(
+                      labelText: 'API Key',
+                      hintText: 'Enter your LLM API key',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.vpn_key),
+                    ),
+                    obscureText: true,
+                    onChanged: (value) {
+                      _updateLlmApiKey(value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // API Endpoint field
+                  TextField(
+                    controller: _llmApiEndpointController,
+                    decoration: const InputDecoration(
+                      labelText: 'API Endpoint',
+                      hintText: 'https://api.openai.com/v1/chat/completions',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.link),
+                    ),
+                    onChanged: (value) {
+                      _updateLlmApiEndpoint(value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Model field
+                  TextField(
+                    controller: _llmModelController,
+                    decoration: const InputDecoration(
+                      labelText: 'Model',
+                      hintText: 'gpt-3.5-turbo',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.model_training),
+                    ),
+                    onChanged: (value) {
+                      _updateLlmModel(value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Help text
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue[200]!),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 20, color: Colors.blue[700]),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'To get AI-generated stories for POI, configure your OpenAI API key or compatible LLM endpoint. Get your API key from platform.openai.com',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue[900],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
