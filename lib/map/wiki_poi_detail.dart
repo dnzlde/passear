@@ -29,7 +29,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   bool isLoadingDescription = false;
   bool isGeneratingStory = false;
   bool isPlayingAudio = false;
+  bool isPausedAudio = false;
   bool tourAudioEnabled = true;
+  String? currentAudioText; // Store current audio text for resume
   String? aiStory;
   LlmService? llmService;
   StoryStyle currentStyle = StoryStyle.neutral;
@@ -47,6 +49,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       if (mounted) {
         setState(() {
           isPlayingAudio = false;
+          isPausedAudio = false;
+          currentAudioText = null;
         });
       }
     });
@@ -152,9 +156,31 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     
     setState(() {
       isPlayingAudio = true;
+      isPausedAudio = false;
+      currentAudioText = text;
     });
     
     await tts.speak(text);
+  }
+
+  Future<void> _pauseAudio() async {
+    await tts.pause();
+    if (mounted) {
+      setState(() {
+        isPlayingAudio = false;
+        isPausedAudio = true;
+      });
+    }
+  }
+
+  Future<void> _resumeAudio() async {
+    if (currentAudioText != null) {
+      setState(() {
+        isPlayingAudio = true;
+        isPausedAudio = false;
+      });
+      await tts.speak(currentAudioText!);
+    }
   }
 
   Future<void> _stopAudio() async {
@@ -162,6 +188,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     if (mounted) {
       setState(() {
         isPlayingAudio = false;
+        isPausedAudio = false;
+        currentAudioText = null;
       });
     }
   }
@@ -413,21 +441,27 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: isPlayingAudio
-                          ? _stopAudio
-                          : (tourAudioEnabled 
-                              ? () => _playAudio(description)
-                              : null),
+                          ? _pauseAudio
+                          : (isPausedAudio
+                              ? _resumeAudio
+                              : (tourAudioEnabled 
+                                  ? () => _playAudio(description)
+                                  : null)),
                       icon: Icon(isPlayingAudio 
-                          ? Icons.stop 
-                          : Icons.volume_up),
+                          ? Icons.pause 
+                          : (isPausedAudio 
+                              ? Icons.play_arrow
+                              : Icons.volume_up)),
                       label: Text(isPlayingAudio 
-                          ? "Stop" 
-                          : (tourAudioEnabled ? "Listen" : "Audio Disabled")),
+                          ? "Pause" 
+                          : (isPausedAudio 
+                              ? "Resume"
+                              : (tourAudioEnabled ? "Listen" : "Audio Disabled"))),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isPlayingAudio 
-                            ? Colors.red 
-                            : null,
-                        foregroundColor: isPlayingAudio 
+                            ? Colors.orange 
+                            : (isPausedAudio ? Colors.green : null),
+                        foregroundColor: (isPlayingAudio || isPausedAudio)
                             ? Colors.white 
                             : null,
                       ),

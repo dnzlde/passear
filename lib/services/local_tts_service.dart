@@ -7,6 +7,7 @@ class LocalTtsService implements TtsService {
   final FlutterTts _tts = FlutterTts();
   bool _audioSessionInitialized = false;
   bool _isPlaying = false;
+  bool _isPaused = false;
   void Function()? _completionCallback;
 
   LocalTtsService() {
@@ -71,17 +72,20 @@ class LocalTtsService implements TtsService {
   Future<void> speak(String text) async {
     await _initAudioSession();
     _isPlaying = true;
+    _isPaused = false;
     return _tts.speak(text);
   }
 
   @override
   Future<void> stop() {
     _isPlaying = false;
+    _isPaused = false;
     return _tts.stop();
   }
 
   @override
   Future<void> pause() {
+    _isPaused = true;
     _isPlaying = false;
     return _tts.pause();
   }
@@ -90,8 +94,12 @@ class LocalTtsService implements TtsService {
   bool get isPlaying => _isPlaying;
 
   @override
+  bool get isPaused => _isPaused;
+
+  @override
   Future<void> dispose() {
     _isPlaying = false;
+    _isPaused = false;
     return _tts.stop();
   }
 }
