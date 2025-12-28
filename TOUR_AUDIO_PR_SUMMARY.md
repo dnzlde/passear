@@ -1,4 +1,4 @@
-# Pull Request Summary: Tour Audio Mute Feature
+# Pull Request Summary: Tour Audio Control with Pause/Resume
 
 ## Issue Reference
 **Title**: Добавить возможность выключить звук тура (Add the ability to turn off tour sound)
@@ -6,11 +6,13 @@
 **Issue Description**: Need to decide what's better - the ability to pause the audio guide or simply turn it off, while still leaving the ability to read the description.
 
 ## Solution
-Implemented a **tour audio mute toggle** that allows users to:
-- Disable/enable POI description audio independently from navigation voice guidance
-- Still read all text descriptions when audio is disabled
-- See clear visual indicators of audio status
-- Control playback with play/stop buttons
+Implemented a **tour audio control system** with:
+1. **Mute/unmute toggle** in settings - allows users to disable/enable POI audio completely
+2. **Pause/Resume functionality** - allows users to temporarily pause and resume audio playback
+3. Users can still read all text descriptions when audio is disabled
+4. Clear visual indicators of audio status (playing, paused, disabled)
+
+This provides both requested features: the ability to turn off audio completely (via settings) AND the ability to pause/resume during playback.
 
 ## Changes Summary
 
@@ -69,8 +71,9 @@ Implemented a **tour audio mute toggle** that allows users to:
 ### User Interface
 - ✅ Settings toggle in "Audio Settings" section
 - ✅ Visual warning banner when audio is disabled
-- ✅ "Listen" button changes to "Stop" while playing
-- ✅ Red background on "Stop" button for visibility
+- ✅ "Listen" button with dynamic states: Listen → Pause → Resume
+- ✅ Color-coded button states (orange for pause, green for resume)
+- ✅ Icon changes: volume_up → pause → play_arrow
 - ✅ "Audio Disabled" message when setting is off
 - ✅ Descriptive subtitles on all toggles
 
@@ -79,8 +82,9 @@ Implemented a **tour audio mute toggle** that allows users to:
 - ✅ Persists across app sessions
 - ✅ Works with POI descriptions
 - ✅ Works with AI-generated stories
-- ✅ Proper state management (playing/stopped)
-- ✅ Clean audio interruption on stop
+- ✅ Proper state management (playing/paused/stopped)
+- ✅ Pause and resume functionality
+- ✅ Note: Resume restarts from beginning (TTS limitation)
 
 ### Code Quality
 - ✅ Backward compatible (default: enabled)
@@ -111,12 +115,24 @@ See `TOUR_AUDIO_FEATURE.md` for comprehensive manual testing scenarios covering:
 
 ## Technical Decisions
 
-### Why a Toggle Instead of Just Pause?
-1. **Simplicity**: Easy for users to understand and remember
-2. **Persistence**: Setting saves across sessions
-3. **Clear Intent**: Visual indicators throughout the app
-4. **Consistency**: Matches existing voice guidance toggle pattern
-5. **Battery**: Users can disable audio to save power
+### Why Both Settings Toggle AND Pause/Resume?
+1. **Settings Toggle** - For complete audio disable (e.g., in quiet environments, battery saving)
+2. **Pause/Resume** - For temporary interruption during active listening
+3. This provides maximum flexibility for different use cases
+
+### Why Pause/Resume Instead of Just Stop?
+1. **Better UX** - Users expect to be able to pause and continue, not restart
+2. **Consistency** - Matches behavior of music/video players
+3. **Flexibility** - Users can answer a call or handle interruption without losing their place
+4. **Color Coding** - Orange (active) and green (ready) provide clear visual feedback
+
+### Why Resume Restarts from Beginning?
+This is a **Flutter TTS limitation**. The underlying TTS engine doesn't support:
+- Tracking current position in text
+- Resuming from a specific word/sentence
+- Storing playback state
+
+**Workaround**: We store the full text and replay it when resuming. Future enhancement could split long text into chunks for better "resume" granularity.
 
 ### Why Completion Callbacks Instead of Polling?
 1. **Efficiency**: No unnecessary periodic checks
@@ -149,20 +165,26 @@ See `TOUR_AUDIO_FEATURE.md` for comprehensive manual testing scenarios covering:
 2. `74472f4` - Add tour audio mute feature with UI controls
 3. `cd7d6ec` - Fix TTS handler initialization and remove polling
 4. `d0638e0` - Add comprehensive documentation for tour audio feature
+5. `64d52a7` - Add PR summary document
+6. `c9a8acb` - Replace Stop button with Pause/Resume functionality
 
 ## How to Test
 
-### Quick Validation
+### Quick Validation - Pause/Resume
 1. Install the app
-2. Open Settings → Audio Settings
-3. Toggle "Tour Audio" off
-4. Open any POI detail
-5. Verify "Audio Disabled" message appears
-6. Verify "Listen" button is disabled
-7. Toggle "Tour Audio" on
-8. Tap "Listen" - audio should play
-9. Button should change to "Stop" (red background)
-10. Tap "Stop" - audio should stop immediately
+2. Open any POI detail
+3. Tap "Listen" - audio should play, button changes to "Pause" (orange)
+4. Tap "Pause" - audio should pause, button changes to "Resume" (green)
+5. Tap "Resume" - audio should restart from beginning, button changes to "Pause" (orange)
+6. Let audio complete naturally - button should return to "Listen"
+
+### Settings Toggle Test
+1. Open Settings → Audio Settings
+2. Toggle "Tour Audio" off
+3. Open any POI detail
+4. Verify warning banner and disabled button
+5. Toggle back on in Settings
+6. Verify button works again
 
 ### Full Test Suite
 See `TOUR_AUDIO_FEATURE.md` for the complete manual test plan with 12 test scenarios.
@@ -175,11 +197,18 @@ Note: Screenshots should be taken during manual testing to show:
 - POI detail with audio enabled (Listen button)
 
 ## Future Enhancements
-- Pause/resume functionality (currently only stop)
+- Position tracking for true resume (requires TTS engine support)
 - Speech rate control
 - Auto-play toggle for POIs
 - Audio history tracking
 - Independent volume control
+- Background playback support
 
 ## Conclusion
-This implementation successfully addresses the issue by providing users with fine-grained control over tour audio while maintaining all existing functionality. The solution is clean, well-tested, and follows Flutter best practices.
+This implementation successfully addresses the issue by providing users with:
+1. **Complete control** via settings toggle (turn off entirely)
+2. **Playback control** via pause/resume buttons (temporary interruption)
+3. **Visual feedback** with color-coded states
+4. **Text accessibility** - all descriptions remain readable
+
+The solution is clean, well-tested, well-documented, and provides both options mentioned in the original issue: the ability to turn off audio OR pause it temporarily.

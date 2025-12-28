@@ -31,9 +31,11 @@ The "Audio Settings" section contains two independent toggles:
 1. **POI Descriptions**:
    - Tap any POI marker on the map
    - Tap the "Listen" button to play the description
-   - Button changes to "Stop" (with red background) while audio is playing
-   - Tap "Stop" to interrupt playback
-   - Audio automatically stops when complete, button returns to "Listen" state
+   - Button changes to "Pause" (with orange background) while audio is playing
+   - Tap "Pause" to temporarily stop playback
+   - Button changes to "Resume" (with green background) when paused
+   - Tap "Resume" to continue playing (restarts from beginning due to TTS limitation)
+   - Audio automatically completes, button returns to "Listen" state
 
 2. **AI-Generated Stories**:
    - Generate an AI story in the POI detail view
@@ -191,20 +193,24 @@ See `TOUR_AUDIO_FEATURE_TEST_PLAN.md` for comprehensive manual test scenarios
 
 Potential improvements for future versions:
 
-1. **Pause/Resume**: Add pause button instead of just stop
+1. **Position Tracking**: Track position in audio to enable true resume (requires TTS engine support)
 2. **Speed Control**: Allow users to adjust TTS speech rate
 3. **Auto-Play Toggle**: Option to automatically play POI audio when selected
 4. **Audio History**: Track which POIs have been listened to
 5. **Volume Control**: Independent volume slider for tour audio
-6. **Audio Bookmarks**: Resume long descriptions from where you left off
+6. **Audio Bookmarks**: Save position in long descriptions for later
+7. **Background Playback**: Continue audio in background while navigating map
 
 ## Troubleshooting
 
 ### Issue: Tour audio toggle doesn't save
 **Solution**: Check app permissions for storage. Try force-closing and reopening the app.
 
-### Issue: "Listen" button stays in "Stop" state
-**Solution**: Audio may have failed to complete. Tap "Stop" manually or close and reopen the POI detail.
+### Issue: "Listen" button stays in "Pause" state
+**Solution**: Audio may have failed to complete. Tap "Pause" manually or close and reopen the POI detail to reset state.
+
+### Issue: Resume doesn't continue from pause position
+**Solution**: This is expected behavior. Due to Flutter TTS limitations, "Resume" restarts audio from the beginning rather than continuing from the exact pause point. This is a technical limitation of the text-to-speech engine.
 
 ### Issue: No audio plays even when enabled
 **Solution**: 
