@@ -169,8 +169,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   }
 
   Future<void> _pauseAudio() async {
-    // Stop TTS completely instead of pause to avoid audio session issues
-    await tts.stop();
+    // Use pause to allow potential resume (though Flutter TTS will restart on speak)
+    await tts.pause();
     if (mounted) {
       setState(() {
         isPlayingAudio = false;
@@ -182,16 +182,14 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   Future<void> _resumeAudio() async {
     if (currentAudioText == null) return;
     
-    // Stop any existing audio first to ensure clean state
-    if (isPlayingAudio) {
-      await tts.stop();
-    }
-    
+    // Note: Flutter TTS doesn't support true resume - it will restart from beginning
+    // But we keep the pause/resume pattern for better UX
     setState(() {
       isPlayingAudio = true;
       isPausedAudio = false;
     });
     
+    // Restart audio (Flutter TTS limitation - no true resume)
     await tts.speak(currentAudioText!);
   }
 
