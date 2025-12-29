@@ -154,6 +154,11 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       return;
     }
     
+    // Stop any currently playing audio first
+    if (isPlayingAudio || isPausedAudio) {
+      await tts.stop();
+    }
+    
     setState(() {
       isPlayingAudio = true;
       isPausedAudio = false;
@@ -164,7 +169,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   }
 
   Future<void> _pauseAudio() async {
-    await tts.pause();
+    // Stop TTS completely instead of pause to avoid audio session issues
+    await tts.stop();
     if (mounted) {
       setState(() {
         isPlayingAudio = false;
