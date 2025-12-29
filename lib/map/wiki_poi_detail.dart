@@ -180,13 +180,19 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   }
 
   Future<void> _resumeAudio() async {
-    if (currentAudioText != null) {
-      setState(() {
-        isPlayingAudio = true;
-        isPausedAudio = false;
-      });
-      await tts.speak(currentAudioText!);
+    if (currentAudioText == null) return;
+    
+    // Stop any existing audio first to ensure clean state
+    if (isPlayingAudio) {
+      await tts.stop();
     }
+    
+    setState(() {
+      isPlayingAudio = true;
+      isPausedAudio = false;
+    });
+    
+    await tts.speak(currentAudioText!);
   }
 
   Future<void> _stopAudio() async {
