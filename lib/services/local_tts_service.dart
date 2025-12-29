@@ -6,20 +6,47 @@ import 'tts_service.dart';
 class LocalTtsService implements TtsService {
   final FlutterTts _tts = FlutterTts();
   bool _audioSessionInitialized = false;
+  bool _isPlaying = false;
+  bool _isPaused = false;
+  void Function()? _completionCallback;
+  AudioSession? _audioSession;
 
   LocalTtsService() {
     _tts.setLanguage("en-US");
     _tts.setSpeechRate(0.5);
   }
 
+  @override
+  void setCompletionCallback(void Function() callback) {
+    _completionCallback = callback;
+  }
+
   Future<void> _initAudioSession() async {
     if (_audioSessionInitialized) return;
     _audioSessionInitialized = true;
 
+    // Set up completion handler
+    _tts.setCompletionHandler(() {
+      _isPlaying = false;
+      _completionCallback?.call();
+      
+      // Deactivate audio session when audio completes
+      _deactivateAudioSession();
+    });
+    
+    // Set up error handler
+    _tts.setErrorHandler((msg) {
+      _isPlaying = false;
+      _completionCallback?.call();
+      
+      // Deactivate audio session on error
+      _deactivateAudioSession();
+    });
+
     try {
       // Use audio_session for both iOS and Android for consistent behavior
-      final session = await AudioSession.instance;
-      await session.configure(
+      _audioSession = await AudioSession.instance;
+      await _audioSession!.configure(
         AudioSessionConfiguration(
           avAudioSessionCategory: AVAudioSessionCategory.playback,
           avAudioSessionCategoryOptions:
@@ -39,8 +66,7 @@ class LocalTtsService implements TtsService {
         ),
       );
 
-      // Activate the audio session
-      await session.setActive(true);
+      // Don't activate the audio session here - only activate when actually speaking
     } catch (e) {
       // Silently handle audio session configuration errors
       // This prevents the app from failing if audio configuration is not supported
@@ -48,15 +74,76 @@ class LocalTtsService implements TtsService {
     }
   }
 
+  /// Helper method to deactivate audio session and release audio focus
+  Future<void> _deactivateAudioSession() async {
+    if (_audioSession != null) {
+      try {
+        // On iOS, use notifyOthersOnDeactivation to allow other audio to resume
+        await _audioSession!.setActive(
+          false,
+          avAudioSessionSetActiveOptions:
+              AVAudioSessionSetActiveOptions.notifyOthersOnDeactivation,
+        );
+        debugPrint('Audio session deactivated successfully');
+      } catch (e) {
+        debugPrint('Failed to deactivate audio session: $e');
+      }
+    }
+  }
+
   @override
   Future<void> speak(String text) async {
     await _initAudioSession();
+    
+    // Activate audio session before speaking
+    try {
+      if (_audioSession != null) {
+        await _audioSession!.setActive(true);
+        debugPrint('Audio session activated for speaking');
+      }
+    } catch (e) {
+      debugPrint('Failed to activate audio session: $e');
+    }
+    
+    _isPlaying = true;
+    _isPaused = false;
     return _tts.speak(text);
   }
 
   @override
-  Future<void> stop() => _tts.stop();
+  Future<void> stop() async {
+    _isPlaying = false;
+    _isPaused = false;
+    await _tts.stop();
+    
+    // Deactivate audio session to release audio focus
+    await _deactivateAudioSession();
+  }
 
   @override
-  Future<void> dispose() => _tts.stop();
+  Future<void> pause() async {
+    _isPaused = true;
+    _isPlaying = false;
+    await _tts.pause();
+    
+    // Deactivate audio session to release audio focus and restore other audio to normal volume
+    debugPrint('Pausing audio and deactivating session...');
+    await _deactivateAudioSession();
+  }
+
+  @override
+  bool get isPlaying => _isPlaying;
+
+  @override
+  bool get isPaused => _isPaused;
+
+  @override
+  Future<void> dispose() async {
+    _isPlaying = false;
+    _isPaused = false;
+    await _tts.stop();
+    
+    // Deactivate audio session on dispose
+    await _deactivateAudioSession();
+  }
 }
