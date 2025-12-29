@@ -66,8 +66,7 @@ class LocalTtsService implements TtsService {
         ),
       );
 
-      // Activate the audio session
-      await _audioSession!.setActive(true);
+      // Don't activate the audio session here - only activate when actually speaking
     } catch (e) {
       // Silently handle audio session configuration errors
       // This prevents the app from failing if audio configuration is not supported
@@ -76,11 +75,19 @@ class LocalTtsService implements TtsService {
   }
 
   /// Helper method to deactivate audio session and release audio focus
-  void _deactivateAudioSession() {
+  Future<void> _deactivateAudioSession() async {
     if (_audioSession != null) {
-      _audioSession!.setActive(false).catchError((e) {
+      try {
+        // On iOS, use notifyOthersOnDeactivation to allow other audio to resume
+        await _audioSession!.setActive(
+          false,
+          avAudioSessionSetActiveOptions:
+              AVAudioSessionSetActiveOptions.notifyOthersOnDeactivation,
+        );
+        debugPrint('Audio session deactivated successfully');
+      } catch (e) {
         debugPrint('Failed to deactivate audio session: $e');
-      });
+      }
     }
   }
 
@@ -88,13 +95,14 @@ class LocalTtsService implements TtsService {
   Future<void> speak(String text) async {
     await _initAudioSession();
     
-    // Reactivate audio session if it was deactivated (e.g., after pause)
+    // Activate audio session before speaking
     try {
       if (_audioSession != null) {
         await _audioSession!.setActive(true);
+        debugPrint('Audio session activated for speaking');
       }
     } catch (e) {
-      debugPrint('Failed to reactivate audio session: $e');
+      debugPrint('Failed to activate audio session: $e');
     }
     
     _isPlaying = true;
@@ -109,13 +117,7 @@ class LocalTtsService implements TtsService {
     await _tts.stop();
     
     // Deactivate audio session to release audio focus
-    try {
-      if (_audioSession != null) {
-        await _audioSession!.setActive(false);
-      }
-    } catch (e) {
-      debugPrint('Failed to deactivate audio session on stop: $e');
-    }
+    await _deactivateAudioSession();
   }
 
   @override
@@ -125,13 +127,8 @@ class LocalTtsService implements TtsService {
     await _tts.pause();
     
     // Deactivate audio session to release audio focus and restore other audio to normal volume
-    try {
-      if (_audioSession != null) {
-        await _audioSession!.setActive(false);
-      }
-    } catch (e) {
-      debugPrint('Failed to deactivate audio session on pause: $e');
-    }
+    debugPrint('Pausing audio and deactivating session...');
+    await _deactivateAudioSession();
   }
 
   @override
@@ -147,12 +144,6 @@ class LocalTtsService implements TtsService {
     await _tts.stop();
     
     // Deactivate audio session on dispose
-    try {
-      if (_audioSession != null) {
-        await _audioSession!.setActive(false);
-      }
-    } catch (e) {
-      debugPrint('Failed to deactivate audio session on dispose: $e');
-    }
+    await _deactivateAudioSession();
   }
 }
