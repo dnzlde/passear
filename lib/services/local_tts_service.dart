@@ -9,6 +9,7 @@ class LocalTtsService implements TtsService {
   bool _isPlaying = false;
   bool _isPaused = false;
   void Function()? _completionCallback;
+  AudioSession? _audioSession;
 
   LocalTtsService() {
     _tts.setLanguage("en-US");
@@ -28,18 +29,24 @@ class LocalTtsService implements TtsService {
     _tts.setCompletionHandler(() {
       _isPlaying = false;
       _completionCallback?.call();
+      
+      // Deactivate audio session when audio completes
+      _deactivateAudioSession();
     });
     
     // Set up error handler
     _tts.setErrorHandler((msg) {
       _isPlaying = false;
       _completionCallback?.call();
+      
+      // Deactivate audio session on error
+      _deactivateAudioSession();
     });
 
     try {
       // Use audio_session for both iOS and Android for consistent behavior
-      final session = await AudioSession.instance;
-      await session.configure(
+      _audioSession = await AudioSession.instance;
+      await _audioSession!.configure(
         AudioSessionConfiguration(
           avAudioSessionCategory: AVAudioSessionCategory.playback,
           avAudioSessionCategoryOptions:
@@ -60,7 +67,7 @@ class LocalTtsService implements TtsService {
       );
 
       // Activate the audio session
-      await session.setActive(true);
+      await _audioSession!.setActive(true);
     } catch (e) {
       // Silently handle audio session configuration errors
       // This prevents the app from failing if audio configuration is not supported
@@ -68,26 +75,63 @@ class LocalTtsService implements TtsService {
     }
   }
 
+  /// Helper method to deactivate audio session and release audio focus
+  void _deactivateAudioSession() {
+    if (_audioSession != null) {
+      _audioSession!.setActive(false).catchError((e) {
+        debugPrint('Failed to deactivate audio session: $e');
+      });
+    }
+  }
+
   @override
   Future<void> speak(String text) async {
     await _initAudioSession();
+    
+    // Reactivate audio session if it was deactivated (e.g., after pause)
+    try {
+      if (_audioSession != null) {
+        await _audioSession!.setActive(true);
+      }
+    } catch (e) {
+      debugPrint('Failed to reactivate audio session: $e');
+    }
+    
     _isPlaying = true;
     _isPaused = false;
     return _tts.speak(text);
   }
 
   @override
-  Future<void> stop() {
+  Future<void> stop() async {
     _isPlaying = false;
     _isPaused = false;
-    return _tts.stop();
+    await _tts.stop();
+    
+    // Deactivate audio session to release audio focus
+    try {
+      if (_audioSession != null) {
+        await _audioSession!.setActive(false);
+      }
+    } catch (e) {
+      debugPrint('Failed to deactivate audio session on stop: $e');
+    }
   }
 
   @override
-  Future<void> pause() {
+  Future<void> pause() async {
     _isPaused = true;
     _isPlaying = false;
-    return _tts.pause();
+    await _tts.pause();
+    
+    // Deactivate audio session to release audio focus and restore other audio to normal volume
+    try {
+      if (_audioSession != null) {
+        await _audioSession!.setActive(false);
+      }
+    } catch (e) {
+      debugPrint('Failed to deactivate audio session on pause: $e');
+    }
   }
 
   @override
@@ -97,9 +141,18 @@ class LocalTtsService implements TtsService {
   bool get isPaused => _isPaused;
 
   @override
-  Future<void> dispose() {
+  Future<void> dispose() async {
     _isPlaying = false;
     _isPaused = false;
-    return _tts.stop();
+    await _tts.stop();
+    
+    // Deactivate audio session on dispose
+    try {
+      if (_audioSession != null) {
+        await _audioSession!.setActive(false);
+      }
+    } catch (e) {
+      debugPrint('Failed to deactivate audio session on dispose: $e');
+    }
   }
 }
