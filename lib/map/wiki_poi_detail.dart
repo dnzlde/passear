@@ -153,18 +153,18 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       _showSnackBar('Tour audio is disabled. Enable it in Settings.');
       return;
     }
-    
+
     // Stop any currently playing audio first
     if (isPlayingAudio || isPausedAudio) {
       await tts.stop();
     }
-    
+
     setState(() {
       isPlayingAudio = true;
       isPausedAudio = false;
       currentAudioText = text;
     });
-    
+
     await tts.speak(text);
   }
 
@@ -181,14 +181,14 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
 
   Future<void> _resumeAudio() async {
     if (currentAudioText == null) return;
-    
+
     // Note: Flutter TTS doesn't support true resume - it will restart from beginning
     // But we keep the pause/resume pattern for better UX
     setState(() {
       isPlayingAudio = true;
       isPausedAudio = false;
     });
-    
+
     // Restart audio (Flutter TTS limitation - no true resume)
     await tts.speak(currentAudioText!);
   }
@@ -421,13 +421,13 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                           ),
                           const SizedBox(height: 8),
                           ElevatedButton.icon(
-                            onPressed: tourAudioEnabled 
-                              ? () => _playAudio(aiStory!)
-                              : null,
+                            onPressed: tourAudioEnabled
+                                ? () => _playAudio(aiStory!)
+                                : null,
                             icon: const Icon(Icons.volume_up, size: 16),
-                            label: Text(tourAudioEnabled 
-                              ? 'Play Again' 
-                              : 'Audio Disabled'),
+                            label: Text(tourAudioEnabled
+                                ? 'Play Again'
+                                : 'Audio Disabled'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.purple,
                               foregroundColor: Colors.white,
@@ -454,25 +454,27 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                           ? _pauseAudio
                           : (isPausedAudio
                               ? _resumeAudio
-                              : (tourAudioEnabled 
+                              : (tourAudioEnabled
                                   ? () => _playAudio(description)
                                   : null)),
-                      icon: Icon(isPlayingAudio 
-                          ? Icons.pause 
-                          : (isPausedAudio 
+                      icon: Icon(isPlayingAudio
+                          ? Icons.pause
+                          : (isPausedAudio
                               ? Icons.play_arrow
                               : Icons.volume_up)),
-                      label: Text(isPlayingAudio 
-                          ? "Pause" 
-                          : (isPausedAudio 
+                      label: Text(isPlayingAudio
+                          ? "Pause"
+                          : (isPausedAudio
                               ? "Resume"
-                              : (tourAudioEnabled ? "Listen" : "Audio Disabled"))),
+                              : (tourAudioEnabled
+                                  ? "Listen"
+                                  : "Audio Disabled"))),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isPlayingAudio 
-                            ? Colors.orange 
+                        backgroundColor: isPlayingAudio
+                            ? Colors.orange
                             : (isPausedAudio ? Colors.green : null),
                         foregroundColor: (isPlayingAudio || isPausedAudio)
-                            ? Colors.white 
+                            ? Colors.white
                             : null,
                       ),
                     ),

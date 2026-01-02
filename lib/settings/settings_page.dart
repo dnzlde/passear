@@ -15,7 +15,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final SettingsService _settingsService = SettingsService.instance;
   late AppSettings _settings;
   bool _isLoading = true;
-  
+
   // Controllers for LLM settings
   late final TextEditingController _llmApiKeyController;
   late final TextEditingController _llmApiEndpointController;
