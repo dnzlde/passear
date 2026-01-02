@@ -11,10 +11,13 @@ void main() {
 
     setUp(() {
       // Set up method channel mock
-      const MethodChannel('flutter_tts')
-          .setMockMethodCallHandler((MethodCall methodCall) async {
-        return null;
-      });
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('flutter_tts'),
+        (MethodCall methodCall) async {
+          return null;
+        },
+      );
 
       engine = PiperTtsEngine();
     });
