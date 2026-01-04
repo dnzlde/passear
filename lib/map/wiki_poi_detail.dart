@@ -62,7 +62,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     if (mounted) {
       setState(() {
         tts = TtsOrchestrator(
-          openAiApiKey: settings.openAiTtsApiKey,
+          openAiApiKey: settings.llmApiKey,
           ttsVoice: settings.ttsVoice,
         );
         

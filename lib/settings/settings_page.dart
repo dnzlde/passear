@@ -22,7 +22,6 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _llmModelController;
   
   // Controllers for TTS settings
-  late final TextEditingController _openAiTtsApiKeyController;
   late final TextEditingController _ttsVoiceController;
 
   @override
@@ -31,7 +30,6 @@ class _SettingsPageState extends State<SettingsPage> {
     _llmApiKeyController = TextEditingController();
     _llmApiEndpointController = TextEditingController();
     _llmModelController = TextEditingController();
-    _openAiTtsApiKeyController = TextEditingController();
     _ttsVoiceController = TextEditingController();
     _loadSettings();
   }
@@ -41,7 +39,6 @@ class _SettingsPageState extends State<SettingsPage> {
     _llmApiKeyController.dispose();
     _llmApiEndpointController.dispose();
     _llmModelController.dispose();
-    _openAiTtsApiKeyController.dispose();
     _ttsVoiceController.dispose();
     super.dispose();
   }
@@ -56,7 +53,6 @@ class _SettingsPageState extends State<SettingsPage> {
         _llmApiKeyController.text = settings.llmApiKey;
         _llmApiEndpointController.text = settings.llmApiEndpoint;
         _llmModelController.text = settings.llmModel;
-        _openAiTtsApiKeyController.text = settings.openAiTtsApiKey;
         _ttsVoiceController.text = settings.ttsVoice;
       });
     } catch (e) {
@@ -67,7 +63,6 @@ class _SettingsPageState extends State<SettingsPage> {
         _llmApiKeyController.text = _settings.llmApiKey;
         _llmApiEndpointController.text = _settings.llmApiEndpoint;
         _llmModelController.text = _settings.llmModel;
-        _openAiTtsApiKeyController.text = _settings.openAiTtsApiKey;
         _ttsVoiceController.text = _settings.ttsVoice;
       });
     }
@@ -147,14 +142,6 @@ class _SettingsPageState extends State<SettingsPage> {
     await _settingsService.updateLlmModel(model);
     setState(() {
       _settings = _settings.copyWith(llmModel: model);
-    });
-  }
-
-  Future<void> _updateOpenAiTtsApiKey(String apiKey) async {
-    final updatedSettings = _settings.copyWith(openAiTtsApiKey: apiKey);
-    await _settingsService.saveSettings(updatedSettings);
-    setState(() {
-      _settings = updatedSettings;
     });
   }
 
@@ -490,14 +477,14 @@ class _SettingsPageState extends State<SettingsPage> {
                       Icon(Icons.record_voice_over, color: Colors.blue[400]),
                       const SizedBox(width: 8),
                       Text(
-                        'Text-to-Speech Configuration',
+                        'Text-to-Speech Voice',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Configure OpenAI TTS for high-quality multilingual speech',
+                    'Choose voice for TTS. Uses the same OpenAI API key as AI stories above.',
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
@@ -510,7 +497,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _settings.openAiTtsApiKey.isNotEmpty
+                      color: _settings.llmApiKey.isNotEmpty
                           ? Colors.green[100]
                           : Colors.orange[100],
                       borderRadius: BorderRadius.circular(8),
@@ -519,23 +506,23 @@ class _SettingsPageState extends State<SettingsPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          _settings.openAiTtsApiKey.isNotEmpty
+                          _settings.llmApiKey.isNotEmpty
                               ? Icons.check_circle
                               : Icons.info,
                           size: 16,
-                          color: _settings.openAiTtsApiKey.isNotEmpty
+                          color: _settings.llmApiKey.isNotEmpty
                               ? Colors.green[800]
                               : Colors.orange[800],
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          _settings.openAiTtsApiKey.isNotEmpty
-                              ? 'OpenAI TTS Configured'
-                              : 'Using Fallback TTS',
+                          _settings.llmApiKey.isNotEmpty
+                              ? 'OpenAI TTS Enabled'
+                              : 'Using Offline TTS',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: _settings.openAiTtsApiKey.isNotEmpty
+                            color: _settings.llmApiKey.isNotEmpty
                                 ? Colors.green[800]
                                 : Colors.orange[800],
                           ),
@@ -544,21 +531,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // API Key field
-                  TextField(
-                    controller: _openAiTtsApiKeyController,
-                    decoration: const InputDecoration(
-                      labelText: 'OpenAI TTS API Key',
-                      hintText: 'Enter your OpenAI API key for TTS',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.vpn_key),
-                    ),
-                    obscureText: true,
-                    onChanged: (value) {
-                      _updateOpenAiTtsApiKey(value);
-                    },
-                  ),
-                  const SizedBox(height: 12),
                   // Voice field
                   TextField(
                     controller: _ttsVoiceController,
@@ -589,7 +561,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'OpenAI TTS provides natural, multilingual speech synthesis with automatic language detection. Get your API key from platform.openai.com. Without a key, the app uses offline TTS.',
+                            'TTS uses the OpenAI API key configured above for high-quality multilingual speech. Without a key, offline TTS is used automatically. Choose from voices: alloy (neutral), echo (male), fable (expressive), onyx (deep male), nova (female), shimmer (gentle female).',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.blue[900],

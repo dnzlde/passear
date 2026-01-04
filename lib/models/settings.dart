@@ -31,7 +31,6 @@ class AppSettings {
   final String llmApiKey;
   final String llmApiEndpoint;
   final String llmModel;
-  final String openAiTtsApiKey;
   final String ttsVoice;
 
   AppSettings({
@@ -45,7 +44,6 @@ class AppSettings {
     this.llmApiKey = '',
     this.llmApiEndpoint = 'https://api.openai.com/v1/chat/completions',
     this.llmModel = 'gpt-3.5-turbo',
-    this.openAiTtsApiKey = '',
     this.ttsVoice = 'alloy',
   }) : enabledCategories = enabledCategories ?? _defaultEnabledCategories();
 
@@ -64,7 +62,6 @@ class AppSettings {
     String? llmApiKey,
     String? llmApiEndpoint,
     String? llmModel,
-    String? openAiTtsApiKey,
     String? ttsVoice,
   }) {
     return AppSettings(
@@ -78,7 +75,6 @@ class AppSettings {
       llmApiKey: llmApiKey ?? this.llmApiKey,
       llmApiEndpoint: llmApiEndpoint ?? this.llmApiEndpoint,
       llmModel: llmModel ?? this.llmModel,
-      openAiTtsApiKey: openAiTtsApiKey ?? this.openAiTtsApiKey,
       ttsVoice: ttsVoice ?? this.ttsVoice,
     );
   }
@@ -114,7 +110,6 @@ class AppSettings {
       llmApiEndpoint: json['llmApiEndpoint'] as String? ??
           'https://api.openai.com/v1/chat/completions',
       llmModel: json['llmModel'] as String? ?? 'gpt-3.5-turbo',
-      openAiTtsApiKey: json['openAiTtsApiKey'] as String? ?? '',
       ttsVoice: json['ttsVoice'] as String? ?? 'alloy',
     );
   }
@@ -134,7 +129,6 @@ class AppSettings {
       'llmApiKey': llmApiKey,
       'llmApiEndpoint': llmApiEndpoint,
       'llmModel': llmModel,
-      'openAiTtsApiKey': openAiTtsApiKey,
       'ttsVoice': ttsVoice,
     };
   }

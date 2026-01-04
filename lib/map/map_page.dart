@@ -71,7 +71,7 @@ class _MapPageState extends State<MapPage> {
     if (mounted) {
       setState(() {
         _ttsService = TtsOrchestrator(
-          openAiApiKey: settings.openAiTtsApiKey,
+          openAiApiKey: settings.llmApiKey,
           ttsVoice: settings.ttsVoice,
         );
       });

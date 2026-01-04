@@ -213,7 +213,8 @@ class TtsOrchestrator implements TtsService {
       // For Piper fallback with empty bytes, use flutter_tts directly
       debugPrint(
           'TtsOrchestrator: No audio bytes, using flutter_tts for playback');
-      // This is handled by PiperTtsEngine internally
+      // Call the Piper engine to speak directly
+      await _piperEngine.speakDirect(run.text);
     }
   }
 

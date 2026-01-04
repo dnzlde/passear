@@ -68,6 +68,13 @@ class PiperTtsEngine implements TtsEngine {
     }
   }
 
+  /// Speak text directly using flutter_tts (for when no audio bytes are available)
+  Future<void> speakDirect(String text) async {
+    await _initialize();
+    debugPrint('$engineName: Speaking directly: "$text"');
+    await _tts.speak(text);
+  }
+
   /// Map BCP-47 language code to flutter_tts locale
   String _mapLanguageToLocale(String language) {
     // Common language mappings
