@@ -25,8 +25,12 @@ class TtsOrchestrator implements TtsService {
   bool _isSynthesizing = false;
   int _currentQueueIndex = 0;
   void Function()? _completionCallback;
+  void Function(int current, int total)? _progressCallback;
   AudioSession? _audioSession;
   bool _audioSessionInitialized = false;
+
+  // Audio cache: text hash -> list of queue items
+  final Map<String, List<_QueueItem>> _audioCache = {};
 
   late final OpenAiTtsEngine _openAiEngine;
   late final PiperTtsEngine _piperEngine;
@@ -140,10 +144,25 @@ class TtsOrchestrator implements TtsService {
 
     _isPlaying = true;
     _isPaused = false;
-    _isSynthesizing = true;
 
     final systemLang = _getSystemLanguage();
     debugPrint('TtsOrchestrator: System language: $systemLang');
+
+    // Check cache first
+    final cacheKey = text.hashCode.toString();
+    if (_audioCache.containsKey(cacheKey)) {
+      debugPrint('TtsOrchestrator: Using cached audio for this text');
+      _audioQueue.addAll(_audioCache[cacheKey]!);
+      _isSynthesizing = false;
+      
+      // Start playing the queue immediately
+      if (_audioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
+        await _playQueue();
+      }
+      return;
+    }
+
+    _isSynthesizing = true;
 
     // Split text into runs by language
     final runs = TextRunSplitter.split(text, systemLang);
@@ -162,6 +181,12 @@ class TtsOrchestrator implements TtsService {
       await _synthesizeAllRuns(runs);
       _isSynthesizing = false;
       
+      // Cache the synthesized audio
+      if (_audioQueue.isNotEmpty) {
+        _audioCache[cacheKey] = List.from(_audioQueue);
+        debugPrint('TtsOrchestrator: Cached audio for future playback');
+      }
+      
       // Start playing the queue
       if (_audioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
         await _playQueue();
@@ -176,6 +201,8 @@ class TtsOrchestrator implements TtsService {
   }
 
   Future<void> _synthesizeAllRuns(List<TextRun> runs) async {
+    int synthesizedCount = 0;
+    
     // For better performance, synthesize in parallel when using OpenAI (unless forced offline)
     if (openAiApiKey.isNotEmpty && !forceOfflineMode) {
       // Synthesize up to 3 runs in parallel to avoid overwhelming the API
@@ -191,6 +218,8 @@ class TtsOrchestrator implements TtsService {
         for (final result in results) {
           if (result != null && !_cancellationToken.isCancelled) {
             _audioQueue.add(result);
+            synthesizedCount++;
+            _progressCallback?.call(synthesizedCount, runs.length);
           }
         }
       }
@@ -201,6 +230,8 @@ class TtsOrchestrator implements TtsService {
         final result = await _synthesizeRun(run);
         if (result != null) {
           _audioQueue.add(result);
+          synthesizedCount++;
+          _progressCallback?.call(synthesizedCount, runs.length);
         }
       }
     }
@@ -425,8 +456,16 @@ class TtsOrchestrator implements TtsService {
   bool get isPaused => _isPaused;
 
   @override
+  bool get isSynthesizing => _isSynthesizing;
+
+  @override
   void setCompletionCallback(void Function() callback) {
     _completionCallback = callback;
+  }
+
+  @override
+  void setProgressCallback(void Function(int current, int total) callback) {
+    _progressCallback = callback;
   }
 
   @override

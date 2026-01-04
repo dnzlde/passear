@@ -19,10 +19,11 @@ class PiperTtsEngine implements TtsEngine {
   Future<void> _initialize() async {
     if (_isInitialized) return;
 
-    // Speech rate: on iOS/Android, values typically range 0.0-1.0 where 0.5 is normal
-    // But this varies by platform. Let's use 0.5 as a middle ground.
-    // If speech is too fast, this might be the issue - platform interprets it differently
-    await _tts.setSpeechRate(0.5);
+    // Speech rate varies by platform:
+    // Android: 0.0-1.0 (but 1.0 is actually 2x speed on some devices)
+    // iOS: 0.0-1.0 where 0.5 is typically normal
+    // For Android, try 0.4-0.6 range. Using 0.4 to be safer.
+    await _tts.setSpeechRate(0.4);
     await _tts.setVolume(1.0);
     await _tts.setPitch(1.0);
     _isInitialized = true;

@@ -31,6 +31,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   bool isGeneratingStory = false;
   bool isPlayingAudio = false;
   bool isPausedAudio = false;
+  bool isSynthesizingAudio = false; // Track synthesis progress
+  int synthesisProgress = 0; // Current progress
+  int synthesisTotal = 0; // Total chunks
   bool tourAudioEnabled = true;
   String? currentAudioText; // Store current audio text for resume
   String? aiStory;
@@ -73,7 +76,21 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
             setState(() {
               isPlayingAudio = false;
               isPausedAudio = false;
+              isSynthesizingAudio = false;
               currentAudioText = null;
+              synthesisProgress = 0;
+              synthesisTotal = 0;
+            });
+          }
+        });
+        
+        // Set up TTS progress callback
+        tts!.setProgressCallback((current, total) {
+          if (mounted) {
+            setState(() {
+              synthesisProgress = current;
+              synthesisTotal = total;
+              isSynthesizingAudio = tts!.isSynthesizing;
             });
           }
         });
@@ -180,7 +197,10 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     setState(() {
       isPlayingAudio = true;
       isPausedAudio = false;
+      isSynthesizingAudio = true;
       currentAudioText = text;
+      synthesisProgress = 0;
+      synthesisTotal = 0;
     });
 
     await tts!.speak(text);
@@ -469,54 +489,92 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
               ),
             // Action buttons
             if (description.isNotEmpty && !isLoadingDescription)
-              Row(
+              Column(
                 children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: isPlayingAudio
-                          ? _pauseAudio
-                          : (isPausedAudio
-                              ? _resumeAudio
-                              : (tourAudioEnabled
-                                  ? () => _playAudio(description)
-                                  : null)),
-                      icon: Icon(isPlayingAudio
-                          ? Icons.pause
-                          : (isPausedAudio
-                              ? Icons.play_arrow
-                              : Icons.volume_up)),
-                      label: Text(isPlayingAudio
-                          ? "Pause"
-                          : (isPausedAudio
-                              ? "Resume"
-                              : (tourAudioEnabled
-                                  ? "Listen"
-                                  : "Audio Disabled"))),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isPlayingAudio
-                            ? Colors.orange
-                            : (isPausedAudio ? Colors.green : null),
-                        foregroundColor: (isPlayingAudio || isPausedAudio)
-                            ? Colors.white
-                            : null,
+                  // Progress indicator during synthesis
+                  if (isSynthesizingAudio && synthesisTotal > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Column(
+                        children: [
+                          LinearProgressIndicator(
+                            value: synthesisProgress / synthesisTotal,
+                            backgroundColor: Colors.grey[300],
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.blue,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Preparing audio: $synthesisProgress/$synthesisTotal',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (widget.onNavigate != null)
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          widget.onNavigate!(LatLng(poi.lat, poi.lon));
-                        },
-                        icon: const Icon(Icons.directions_walk),
-                        label: const Text("Navigate"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: isSynthesizingAudio
+                              ? null // Disable during synthesis
+                              : (isPlayingAudio
+                                  ? _pauseAudio
+                                  : (isPausedAudio
+                                      ? _resumeAudio
+                                      : (tourAudioEnabled
+                                          ? () => _playAudio(description)
+                                          : null))),
+                          icon: Icon(
+                            isSynthesizingAudio
+                                ? Icons.hourglass_empty
+                                : (isPlayingAudio
+                                    ? Icons.pause
+                                    : (isPausedAudio
+                                        ? Icons.play_arrow
+                                        : Icons.volume_up)),
+                          ),
+                          label: Text(
+                            isSynthesizingAudio
+                                ? "Preparing..."
+                                : (isPlayingAudio
+                                    ? "Pause"
+                                    : (isPausedAudio
+                                        ? "Resume"
+                                        : (tourAudioEnabled
+                                            ? "Listen"
+                                            : "Audio Disabled"))),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isPlayingAudio
+                                ? Colors.orange
+                                : (isPausedAudio ? Colors.green : null),
+                            foregroundColor: (isPlayingAudio || isPausedAudio)
+                                ? Colors.white
+                                : null,
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      if (widget.onNavigate != null)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              widget.onNavigate!(LatLng(poi.lat, poi.lon));
+                            },
+                            icon: const Icon(Icons.directions_walk),
+                            label: const Text("Navigate"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             // Add extra padding at bottom for comfortable scrolling
