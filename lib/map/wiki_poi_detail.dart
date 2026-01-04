@@ -62,38 +62,40 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
 
   Future<void> _initializeTts() async {
     final settings = await settingsService.loadSettings();
+    if (!mounted) return;
+    
+    final ttsInstance = TtsOrchestrator(
+      openAiApiKey: settings.llmApiKey,
+      ttsVoice: settings.ttsVoice,
+      forceOfflineMode: settings.ttsOfflineMode,
+    );
+    
+    // Set up TTS completion callback with mounted check
+    ttsInstance.setCompletionCallback(() {
+      if (!mounted) return;
+      setState(() {
+        isPlayingAudio = false;
+        isPausedAudio = false;
+        isSynthesizingAudio = false;
+        currentAudioText = null;
+        synthesisProgress = 0;
+        synthesisTotal = 0;
+      });
+    });
+    
+    // Set up TTS progress callback with mounted check
+    ttsInstance.setProgressCallback((current, total) {
+      if (!mounted) return;
+      setState(() {
+        synthesisProgress = current;
+        synthesisTotal = total;
+        isSynthesizingAudio = ttsInstance.isSynthesizing;
+      });
+    });
+    
     if (mounted) {
       setState(() {
-        tts = TtsOrchestrator(
-          openAiApiKey: settings.llmApiKey,
-          ttsVoice: settings.ttsVoice,
-          forceOfflineMode: settings.ttsOfflineMode,
-        );
-        
-        // Set up TTS completion callback
-        tts!.setCompletionCallback(() {
-          if (mounted) {
-            setState(() {
-              isPlayingAudio = false;
-              isPausedAudio = false;
-              isSynthesizingAudio = false;
-              currentAudioText = null;
-              synthesisProgress = 0;
-              synthesisTotal = 0;
-            });
-          }
-        });
-        
-        // Set up TTS progress callback
-        tts!.setProgressCallback((current, total) {
-          if (mounted) {
-            setState(() {
-              synthesisProgress = current;
-              synthesisTotal = total;
-              isSynthesizingAudio = tts!.isSynthesizing;
-            });
-          }
-        });
+        tts = ttsInstance;
       });
     }
   }
