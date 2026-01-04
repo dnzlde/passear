@@ -32,6 +32,7 @@ class AppSettings {
   final String llmApiEndpoint;
   final String llmModel;
   final String ttsVoice;
+  final bool ttsOfflineMode; // Force offline TTS for testing
 
   AppSettings({
     Map<PoiCategory, bool>? enabledCategories,
@@ -45,6 +46,7 @@ class AppSettings {
     this.llmApiEndpoint = 'https://api.openai.com/v1/chat/completions',
     this.llmModel = 'gpt-3.5-turbo',
     this.ttsVoice = 'alloy',
+    this.ttsOfflineMode = false,
   }) : enabledCategories = enabledCategories ?? _defaultEnabledCategories();
 
   static Map<PoiCategory, bool> _defaultEnabledCategories() {
@@ -63,6 +65,7 @@ class AppSettings {
     String? llmApiEndpoint,
     String? llmModel,
     String? ttsVoice,
+    bool? ttsOfflineMode,
   }) {
     return AppSettings(
       enabledCategories: enabledCategories ?? this.enabledCategories,
@@ -76,6 +79,7 @@ class AppSettings {
       llmApiEndpoint: llmApiEndpoint ?? this.llmApiEndpoint,
       llmModel: llmModel ?? this.llmModel,
       ttsVoice: ttsVoice ?? this.ttsVoice,
+      ttsOfflineMode: ttsOfflineMode ?? this.ttsOfflineMode,
     );
   }
 
@@ -111,6 +115,7 @@ class AppSettings {
           'https://api.openai.com/v1/chat/completions',
       llmModel: json['llmModel'] as String? ?? 'gpt-3.5-turbo',
       ttsVoice: json['ttsVoice'] as String? ?? 'alloy',
+      ttsOfflineMode: json['ttsOfflineMode'] as bool? ?? false,
     );
   }
 
@@ -130,6 +135,7 @@ class AppSettings {
       'llmApiEndpoint': llmApiEndpoint,
       'llmModel': llmModel,
       'ttsVoice': ttsVoice,
+      'ttsOfflineMode': ttsOfflineMode,
     };
   }
 

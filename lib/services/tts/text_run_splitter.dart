@@ -23,14 +23,32 @@ class TextRunSplitter {
       }
     }
 
-    // Second pass: merge single-character runs with adjacent runs
+    // Second pass: merge runs intelligently
+    // 1. Merge whitespace/punctuation with adjacent non-default language runs
+    // 2. Merge single-character runs with adjacent runs
     final mergedRuns = <_CharRun>[];
     for (int i = 0; i < runs.length; i++) {
       final run = runs[i];
       final text = run.chars.join();
+      final isWhitespaceOrPunct = text.trim().isEmpty || 
+          text.length == 1 && RegExp(r'[\s\p{P}]', unicode: true).hasMatch(text);
+
+      // If this is whitespace/punctuation and matches default language
+      if (isWhitespaceOrPunct && run.language == defaultLang) {
+        // Try to merge with previous non-default run if exists
+        if (mergedRuns.isNotEmpty && mergedRuns.last.language != defaultLang) {
+          mergedRuns.last.chars.add(text);
+          continue;
+        }
+        // Otherwise try to merge with next non-default run
+        else if (i + 1 < runs.length && runs[i + 1].language != defaultLang) {
+          runs[i + 1].chars.insert(0, text);
+          continue;
+        }
+      }
 
       // If single character and not the only run, try to merge
-      if (text.length == 1 && runs.length > 1) {
+      if (text.length == 1 && runs.length > 1 && !isWhitespaceOrPunct) {
         if (mergedRuns.isNotEmpty) {
           // Merge with previous run
           mergedRuns.last.chars.add(text);

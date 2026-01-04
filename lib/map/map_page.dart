@@ -73,6 +73,7 @@ class _MapPageState extends State<MapPage> {
         _ttsService = TtsOrchestrator(
           openAiApiKey: settings.llmApiKey,
           ttsVoice: settings.ttsVoice,
+          forceOfflineMode: settings.ttsOfflineMode,
         );
       });
     }

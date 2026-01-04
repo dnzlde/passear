@@ -153,6 +153,14 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  Future<void> _updateTtsOfflineMode(bool offlineMode) async {
+    final updatedSettings = _settings.copyWith(ttsOfflineMode: offlineMode);
+    await _settingsService.saveSettings(updatedSettings);
+    setState(() {
+      _settings = updatedSettings;
+    });
+  }
+
   String _getCategoryDisplayName(PoiCategory category) {
     switch (category) {
       case PoiCategory.museum:
@@ -543,6 +551,19 @@ class _SettingsPageState extends State<SettingsPage> {
                     onChanged: (value) {
                       _updateTtsVoice(value);
                     },
+                  ),
+                  const SizedBox(height: 16),
+                  // Offline mode checkbox for testing
+                  CheckboxListTile(
+                    title: const Text('Force Offline Mode (Testing)'),
+                    subtitle: const Text(
+                      'Test Piper offline TTS without disabling internet. AI features will still work.',
+                    ),
+                    value: _settings.ttsOfflineMode,
+                    onChanged: (value) {
+                      _updateTtsOfflineMode(value ?? false);
+                    },
+                    controlAffinity: ListTileControlAffinity.leading,
                   ),
                   const SizedBox(height: 12),
                   // Help text

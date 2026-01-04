@@ -14,12 +14,16 @@ import 'tts_models.dart';
 class TtsOrchestrator implements TtsService {
   final String openAiApiKey;
   final String ttsVoice;
+  final bool forceOfflineMode; // For testing Piper without disabling internet
   final AudioPlayer _audioPlayer = AudioPlayer();
   final CancellationToken _cancellationToken = CancellationToken();
   final List<String> _tempFiles = [];
+  final List<String> _audioQueue = []; // Queue of synthesized audio file paths
 
   bool _isPlaying = false;
   bool _isPaused = false;
+  bool _isSynthesizing = false;
+  int _currentQueueIndex = 0;
   void Function()? _completionCallback;
   AudioSession? _audioSession;
   bool _audioSessionInitialized = false;
@@ -30,6 +34,7 @@ class TtsOrchestrator implements TtsService {
   TtsOrchestrator({
     required this.openAiApiKey,
     this.ttsVoice = 'alloy',
+    this.forceOfflineMode = false,
   }) {
     _openAiEngine = OpenAiTtsEngine(apiKey: openAiApiKey);
     _piperEngine = PiperTtsEngine();
@@ -116,6 +121,10 @@ class TtsOrchestrator implements TtsService {
 
     // Reset cancellation token for new request
     _cancellationToken.reset();
+    
+    // Clear audio queue
+    _audioQueue.clear();
+    _currentQueueIndex = 0;
 
     await _initAudioSession();
 
@@ -131,6 +140,7 @@ class TtsOrchestrator implements TtsService {
 
     _isPlaying = true;
     _isPaused = false;
+    _isSynthesizing = true;
 
     final systemLang = _getSystemLanguage();
     debugPrint('TtsOrchestrator: System language: $systemLang');
@@ -142,29 +152,61 @@ class TtsOrchestrator implements TtsService {
     if (runs.isEmpty) {
       debugPrint('TtsOrchestrator: No text to synthesize');
       _isPlaying = false;
+      _isSynthesizing = false;
       _completionCallback?.call();
       return;
     }
 
     try {
-      // Synthesize and play each run sequentially
-      for (final run in runs) {
-        if (_cancellationToken.isCancelled) {
-          debugPrint('TtsOrchestrator: Synthesis cancelled');
-          break;
-        }
-
-        await _synthesizeAndPlayRun(run);
+      // Synthesize all runs in parallel (for OpenAI) or sequentially (for Piper)
+      await _synthesizeAllRuns(runs);
+      _isSynthesizing = false;
+      
+      // Start playing the queue
+      if (_audioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
+        await _playQueue();
       }
     } catch (e) {
       debugPrint('TtsOrchestrator: Error during synthesis: $e');
       _isPlaying = false;
+      _isSynthesizing = false;
       _completionCallback?.call();
       await _deactivateAudioSession();
     }
   }
 
-  Future<void> _synthesizeAndPlayRun(TextRun run) async {
+  Future<void> _synthesizeAllRuns(List<TextRun> runs) async {
+    // For better performance, synthesize in parallel when using OpenAI (unless forced offline)
+    if (openAiApiKey.isNotEmpty && !forceOfflineMode) {
+      // Synthesize up to 3 runs in parallel to avoid overwhelming the API
+      final batchSize = 3;
+      for (int i = 0; i < runs.length; i += batchSize) {
+        if (_cancellationToken.isCancelled) break;
+        
+        final batch = runs.skip(i).take(batchSize).toList();
+        final futures = batch.map((run) => _synthesizeRun(run)).toList();
+        final results = await Future.wait(futures);
+        
+        // Add successful results to queue in order
+        for (final result in results) {
+          if (result != null && !_cancellationToken.isCancelled) {
+            _audioQueue.add(result);
+          }
+        }
+      }
+    } else {
+      // For Piper fallback, synthesize sequentially
+      for (final run in runs) {
+        if (_cancellationToken.isCancelled) break;
+        final result = await _synthesizeRun(run);
+        if (result != null) {
+          _audioQueue.add(result);
+        }
+      }
+    }
+  }
+
+  Future<String?> _synthesizeRun(TextRun run) async {
     debugPrint(
         'TtsOrchestrator: Synthesizing run in ${run.language}: "${run.text}"');
 
@@ -177,8 +219,8 @@ class TtsOrchestrator implements TtsService {
     TtsAudio? audio;
     String engineUsed = '';
 
-    // Try OpenAI first
-    if (openAiApiKey.isNotEmpty) {
+    // Try OpenAI first (unless forced offline mode)
+    if (openAiApiKey.isNotEmpty && !forceOfflineMode) {
       try {
         audio = await _openAiEngine.synthesize(
           request,
@@ -200,55 +242,78 @@ class TtsOrchestrator implements TtsService {
         engineUsed = _piperEngine.engineName;
       } catch (e) {
         debugPrint('Piper TTS failed: $e');
-        throw Exception('Both TTS engines failed');
+        return null;
       }
     }
 
     debugPrint('TtsOrchestrator: Using engine: $engineUsed');
 
-    // Play audio if we have bytes
+    // Save audio to file if we have bytes
     if (audio.bytes.isNotEmpty) {
-      await _playAudio(audio);
+      try {
+        final tempDir = await getTemporaryDirectory();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final extension = audio.mimeType == 'audio/mpeg' ? 'mp3' : 'wav';
+        final tempFile = File('${tempDir.path}/tts_$timestamp.$extension');
+
+        await tempFile.writeAsBytes(audio.bytes);
+        _tempFiles.add(tempFile.path);
+        
+        debugPrint(
+            'TtsOrchestrator: Saved audio file: ${tempFile.path} (${audio.bytes.length} bytes)');
+        
+        return tempFile.path;
+      } catch (e) {
+        debugPrint('TtsOrchestrator: Error saving audio: $e');
+        return null;
+      }
     } else {
-      // For Piper fallback with empty bytes, use flutter_tts directly
+      // For Piper fallback with empty bytes, speak directly
       debugPrint(
           'TtsOrchestrator: No audio bytes, using flutter_tts for playback');
-      // Call the Piper engine to speak directly
       await _piperEngine.speakDirect(run.text);
+      return null; // Return null to indicate no file was created
     }
   }
 
-  Future<void> _playAudio(TtsAudio audio) async {
-    if (_cancellationToken.isCancelled) {
-      return;
+  Future<void> _playQueue() async {
+    while (_currentQueueIndex < _audioQueue.length && !_cancellationToken.isCancelled) {
+      if (_isPaused) {
+        // Wait while paused
+        await Future.delayed(const Duration(milliseconds: 100));
+        continue;
+      }
+
+      final audioPath = _audioQueue[_currentQueueIndex];
+      debugPrint('TtsOrchestrator: Playing audio ${_currentQueueIndex + 1}/${_audioQueue.length}: $audioPath');
+
+      try {
+        await _audioPlayer.setFilePath(audioPath);
+        await _audioPlayer.play();
+
+        // Wait for playback to complete or cancellation
+        await _audioPlayer.playerStateStream.firstWhere(
+          (state) =>
+              state.processingState == ProcessingState.completed ||
+              _cancellationToken.isCancelled ||
+              _isPaused,
+        );
+
+        if (!_isPaused && !_cancellationToken.isCancelled) {
+          _currentQueueIndex++;
+        }
+      } catch (e) {
+        debugPrint('TtsOrchestrator: Error playing audio: $e');
+        _currentQueueIndex++;
+      }
     }
 
-    try {
-      // Save audio to temporary file
-      final tempDir = await getTemporaryDirectory();
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final extension = audio.mimeType == 'audio/mpeg' ? 'mp3' : 'wav';
-      final tempFile = File('${tempDir.path}/tts_$timestamp.$extension');
-
-      await tempFile.writeAsBytes(audio.bytes);
-      _tempFiles.add(tempFile.path);
-
-      debugPrint(
-          'TtsOrchestrator: Playing audio file: ${tempFile.path} (${audio.bytes.length} bytes)');
-
-      // Play audio
-      await _audioPlayer.setFilePath(tempFile.path);
-      await _audioPlayer.play();
-
-      // Wait for playback to complete
-      await _audioPlayer.playerStateStream.firstWhere(
-        (state) =>
-            state.processingState == ProcessingState.completed ||
-            _cancellationToken.isCancelled,
-      );
-    } catch (e) {
-      debugPrint('TtsOrchestrator: Error playing audio: $e');
-      rethrow;
+    // All done
+    if (_currentQueueIndex >= _audioQueue.length && !_cancellationToken.isCancelled && !_isPaused) {
+      _isPlaying = false;
+      _completionCallback?.call();
+      await _deactivateAudioSession();
+      await _cleanupTempFiles();
     }
   }
 
@@ -257,6 +322,9 @@ class TtsOrchestrator implements TtsService {
     _cancellationToken.cancel();
     _isPlaying = false;
     _isPaused = false;
+    _isSynthesizing = false;
+    _audioQueue.clear();
+    _currentQueueIndex = 0;
 
     try {
       await _audioPlayer.stop();
@@ -282,6 +350,35 @@ class TtsOrchestrator implements TtsService {
     }
 
     await _deactivateAudioSession();
+  }
+
+  /// Resume playback from where it was paused
+  Future<void> resume() async {
+    if (!_isPaused) return;
+
+    _isPaused = false;
+    _isPlaying = true;
+
+    // Reactivate audio session
+    try {
+      if (_audioSession != null) {
+        await _audioSession!.setActive(true);
+        debugPrint('Audio session activated for resume');
+      }
+    } catch (e) {
+      debugPrint('Failed to activate audio session: $e');
+    }
+
+    try {
+      await _audioPlayer.play();
+      
+      // Continue playing the queue if not yet finished synthesizing
+      if (!_isSynthesizing && _currentQueueIndex < _audioQueue.length) {
+        await _playQueue();
+      }
+    } catch (e) {
+      debugPrint('Error resuming audio player: $e');
+    }
   }
 
   Future<void> _cleanupTempFiles() async {

@@ -64,6 +64,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         tts = TtsOrchestrator(
           openAiApiKey: settings.llmApiKey,
           ttsVoice: settings.ttsVoice,
+          forceOfflineMode: settings.ttsOfflineMode,
         );
         
         // Set up TTS completion callback
@@ -199,17 +200,18 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   }
 
   Future<void> _resumeAudio() async {
-    if (tts == null || currentAudioText == null) return;
+    if (tts == null) return;
 
-    // Note: Flutter TTS doesn't support true resume - it will restart from beginning
-    // But we keep the pause/resume pattern for better UX
     setState(() {
       isPlayingAudio = true;
       isPausedAudio = false;
     });
 
-    // Restart audio (Flutter TTS limitation - no true resume)
-    await tts!.speak(currentAudioText!);
+    // Call resume on TtsOrchestrator
+    final orchestrator = tts as TtsOrchestrator?;
+    if (orchestrator != null) {
+      await orchestrator.resume();
+    }
   }
 
   Future<void> _stopAudio() async {
