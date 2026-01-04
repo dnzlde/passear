@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import '../services/local_tts_service.dart';
+import '../services/tts_service.dart';
+import '../services/tts/tts_orchestrator.dart';
 import '../services/poi_service.dart';
 import '../services/llm_service.dart';
 import '../services/settings_service.dart';
@@ -22,7 +23,7 @@ class WikiPoiDetail extends StatefulWidget {
 }
 
 class _WikiPoiDetailState extends State<WikiPoiDetail> {
-  late final LocalTtsService tts;
+  TtsService? tts;
   late final PoiService poiService;
   late final SettingsService settingsService;
   late Poi currentPoi;
@@ -39,21 +40,12 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   @override
   void initState() {
     super.initState();
-    tts = LocalTtsService();
     poiService = PoiService();
     settingsService = SettingsService.instance;
     currentPoi = widget.poi;
 
-    // Set up TTS completion callback
-    tts.setCompletionCallback(() {
-      if (mounted) {
-        setState(() {
-          isPlayingAudio = false;
-          isPausedAudio = false;
-          currentAudioText = null;
-        });
-      }
-    });
+    // Initialize TTS asynchronously
+    _initializeTts();
 
     // Load description if not already loaded
     if (!currentPoi.isDescriptionLoaded) {
@@ -63,6 +55,29 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     // Initialize LLM service and load settings
     _initializeLlmService();
     _loadTourAudioSetting();
+  }
+
+  Future<void> _initializeTts() async {
+    final settings = await settingsService.loadSettings();
+    if (mounted) {
+      setState(() {
+        tts = TtsOrchestrator(
+          openAiApiKey: settings.openAiTtsApiKey,
+          ttsVoice: settings.ttsVoice,
+        );
+        
+        // Set up TTS completion callback
+        tts!.setCompletionCallback(() {
+          if (mounted) {
+            setState(() {
+              isPlayingAudio = false;
+              isPausedAudio = false;
+              currentAudioText = null;
+            });
+          }
+        });
+      });
+    }
   }
 
   Future<void> _loadTourAudioSetting() async {
@@ -149,6 +164,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   }
 
   Future<void> _playAudio(String text) async {
+    if (tts == null) return;
+    
     if (!tourAudioEnabled) {
       _showSnackBar('Tour audio is disabled. Enable it in Settings.');
       return;
@@ -156,7 +173,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
 
     // Stop any currently playing audio first
     if (isPlayingAudio || isPausedAudio) {
-      await tts.stop();
+      await tts!.stop();
     }
 
     setState(() {
@@ -165,12 +182,14 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       currentAudioText = text;
     });
 
-    await tts.speak(text);
+    await tts!.speak(text);
   }
 
   Future<void> _pauseAudio() async {
+    if (tts == null) return;
+    
     // Use pause to allow potential resume (though Flutter TTS will restart on speak)
-    await tts.pause();
+    await tts!.pause();
     if (mounted) {
       setState(() {
         isPlayingAudio = false;
@@ -180,7 +199,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   }
 
   Future<void> _resumeAudio() async {
-    if (currentAudioText == null) return;
+    if (tts == null || currentAudioText == null) return;
 
     // Note: Flutter TTS doesn't support true resume - it will restart from beginning
     // But we keep the pause/resume pattern for better UX
@@ -190,11 +209,13 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     });
 
     // Restart audio (Flutter TTS limitation - no true resume)
-    await tts.speak(currentAudioText!);
+    await tts!.speak(currentAudioText!);
   }
 
   Future<void> _stopAudio() async {
-    await tts.stop();
+    if (tts == null) return;
+    
+    await tts!.stop();
     if (mounted) {
       setState(() {
         isPlayingAudio = false;
@@ -230,7 +251,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
 
   @override
   void dispose() {
-    tts.dispose();
+    tts?.dispose();
     llmService?.dispose();
     super.dispose();
   }
