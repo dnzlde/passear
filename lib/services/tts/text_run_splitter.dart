@@ -24,8 +24,9 @@ class TextRunSplitter {
     }
 
     // Second pass: merge runs intelligently
-    // 1. Merge whitespace/punctuation with adjacent non-default language runs
-    // 2. Merge single-character runs with adjacent runs
+    // 1. Merge whitespace/punctuation between same-language runs
+    // 2. Merge whitespace/punctuation with adjacent non-default language runs
+    // 3. Merge single-character runs with adjacent runs
     final mergedRuns = <_CharRun>[];
     for (int i = 0; i < runs.length; i++) {
       final run = runs[i];
@@ -35,8 +36,18 @@ class TextRunSplitter {
 
       // If this is whitespace/punctuation and matches default language
       if (isWhitespaceOrPunct && run.language == defaultLang) {
+        // Check if it's between two runs of the SAME non-default language
+        // This fixes Hebrew/Arabic/etc phrase splitting: "word1 word2 word3"
+        if (mergedRuns.isNotEmpty && 
+            i + 1 < runs.length &&
+            mergedRuns.last.language != defaultLang &&
+            mergedRuns.last.language == runs[i + 1].language) {
+          // Merge space with previous run, and it will connect to next
+          mergedRuns.last.chars.add(text);
+          continue;
+        }
         // Try to merge with previous non-default run if exists
-        if (mergedRuns.isNotEmpty && mergedRuns.last.language != defaultLang) {
+        else if (mergedRuns.isNotEmpty && mergedRuns.last.language != defaultLang) {
           mergedRuns.last.chars.add(text);
           continue;
         }

@@ -179,7 +179,6 @@ class TtsOrchestrator implements TtsService {
     try {
       // Synthesize all runs in parallel (for OpenAI) or sequentially (for Piper)
       await _synthesizeAllRuns(runs);
-      _isSynthesizing = false;
       
       // Cache the synthesized audio
       if (_audioQueue.isNotEmpty) {
@@ -187,9 +186,18 @@ class TtsOrchestrator implements TtsService {
         debugPrint('TtsOrchestrator: Cached audio for future playback');
       }
       
+      // Mark synthesis as complete
+      _isSynthesizing = false;
+      
       // Start playing the queue
       if (_audioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
         await _playQueue();
+      } else {
+        // No audio to play - complete immediately
+        debugPrint('TtsOrchestrator: No audio queue to play');
+        _isPlaying = false;
+        _completionCallback?.call();
+        await _deactivateAudioSession();
       }
     } catch (e) {
       debugPrint('TtsOrchestrator: Error during synthesis: $e');
