@@ -8,17 +8,31 @@ import 'tts_models.dart';
 class PiperTtsEngine implements TtsEngine {
   final FlutterTts _tts = FlutterTts();
   bool _isInitialized = false;
+  void Function()? _completionHandler;
 
   @override
   String get engineName => 'Piper TTS (fallback)';
 
+  // Expose TTS for orchestrator (for completion handling)
+  FlutterTts get tts => _tts;
+
   Future<void> _initialize() async {
     if (_isInitialized) return;
 
+    // Speech rate: on iOS/Android, values typically range 0.0-1.0 where 0.5 is normal
+    // But this varies by platform. Let's use 0.5 as a middle ground.
+    // If speech is too fast, this might be the issue - platform interprets it differently
     await _tts.setSpeechRate(0.5);
     await _tts.setVolume(1.0);
     await _tts.setPitch(1.0);
     _isInitialized = true;
+  }
+
+  /// Set language for direct TTS playback (used by orchestrator)
+  Future<void> setLanguageForDirect(String language) async {
+    await _initialize();
+    final locale = _mapLanguageToLocale(language);
+    await _tts.setLanguage(locale);
   }
 
   @override

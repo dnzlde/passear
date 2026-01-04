@@ -18,7 +18,7 @@ class TtsOrchestrator implements TtsService {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final CancellationToken _cancellationToken = CancellationToken();
   final List<String> _tempFiles = [];
-  final List<String> _audioQueue = []; // Queue of synthesized audio file paths
+  final List<_QueueItem> _audioQueue = []; // Queue of audio items to play
 
   bool _isPlaying = false;
   bool _isPaused = false;
@@ -206,7 +206,7 @@ class TtsOrchestrator implements TtsService {
     }
   }
 
-  Future<String?> _synthesizeRun(TextRun run) async {
+  Future<_QueueItem?> _synthesizeRun(TextRun run) async {
     debugPrint(
         'TtsOrchestrator: Synthesizing run in ${run.language}: "${run.text}"');
 
@@ -262,17 +262,16 @@ class TtsOrchestrator implements TtsService {
         debugPrint(
             'TtsOrchestrator: Saved audio file: ${tempFile.path} (${audio.bytes.length} bytes)');
         
-        return tempFile.path;
+        return _QueueItem.file(tempFile.path);
       } catch (e) {
         debugPrint('TtsOrchestrator: Error saving audio: $e');
         return null;
       }
     } else {
-      // For Piper fallback with empty bytes, speak directly
+      // For Piper fallback with empty bytes, queue for direct playback
       debugPrint(
-          'TtsOrchestrator: No audio bytes, using flutter_tts for playback');
-      await _piperEngine.speakDirect(run.text);
-      return null; // Return null to indicate no file was created
+          'TtsOrchestrator: No audio bytes, queuing for flutter_tts playback');
+      return _QueueItem.direct(run.text, run.language);
     }
   }
 
@@ -284,26 +283,48 @@ class TtsOrchestrator implements TtsService {
         continue;
       }
 
-      final audioPath = _audioQueue[_currentQueueIndex];
-      debugPrint('TtsOrchestrator: Playing audio ${_currentQueueIndex + 1}/${_audioQueue.length}: $audioPath');
+      final queueItem = _audioQueue[_currentQueueIndex];
+      debugPrint('TtsOrchestrator: Playing item ${_currentQueueIndex + 1}/${_audioQueue.length}');
 
       try {
-        await _audioPlayer.setFilePath(audioPath);
-        await _audioPlayer.play();
+        if (queueItem.isFile) {
+          // Play audio file
+          await _audioPlayer.setFilePath(queueItem.filePath!);
+          await _audioPlayer.play();
 
-        // Wait for playback to complete or cancellation
-        await _audioPlayer.playerStateStream.firstWhere(
-          (state) =>
-              state.processingState == ProcessingState.completed ||
-              _cancellationToken.isCancelled ||
-              _isPaused,
-        );
+          // Wait for playback to complete or cancellation
+          await _audioPlayer.playerStateStream.firstWhere(
+            (state) =>
+                state.processingState == ProcessingState.completed ||
+                _cancellationToken.isCancelled ||
+                _isPaused,
+          );
+        } else if (queueItem.isDirect) {
+          // Use flutter_tts directly
+          debugPrint('TtsOrchestrator: Using flutter_tts for: "${queueItem.text}"');
+          
+          // Set the language for this text
+          await _piperEngine.setLanguageForDirect(queueItem.language!);
+          
+          // Speak and wait for completion
+          bool completed = false;
+          _piperEngine.tts.setCompletionHandler(() {
+            completed = true;
+          });
+          
+          await _piperEngine.tts.speak(queueItem.text!);
+          
+          // Wait for completion or cancellation
+          while (!completed && !_cancellationToken.isCancelled && !_isPaused) {
+            await Future.delayed(const Duration(milliseconds: 100));
+          }
+        }
 
         if (!_isPaused && !_cancellationToken.isCancelled) {
           _currentQueueIndex++;
         }
       } catch (e) {
-        debugPrint('TtsOrchestrator: Error playing audio: $e');
+        debugPrint('TtsOrchestrator: Error playing item: $e');
         _currentQueueIndex++;
       }
     }
@@ -328,6 +349,7 @@ class TtsOrchestrator implements TtsService {
 
     try {
       await _audioPlayer.stop();
+      await _piperEngine.tts.stop(); // Also stop Piper if it's playing
     } catch (e) {
       debugPrint('Error stopping audio player: $e');
     }
@@ -345,6 +367,7 @@ class TtsOrchestrator implements TtsService {
 
     try {
       await _audioPlayer.pause();
+      await _piperEngine.tts.stop(); // Stop Piper playback (no pause support)
     } catch (e) {
       debugPrint('Error pausing audio player: $e');
     }
@@ -414,4 +437,20 @@ class TtsOrchestrator implements TtsService {
     await _piperEngine.dispose();
     await _cleanupTempFiles();
   }
+}
+
+/// Internal class for queue items
+class _QueueItem {
+  final String? filePath; // Path to audio file (null for direct TTS)
+  final String? text; // Text for direct TTS (null for file)
+  final String? language; // Language for direct TTS
+
+  _QueueItem.file(this.filePath)
+      : text = null,
+        language = null;
+
+  _QueueItem.direct(this.text, this.language) : filePath = null;
+
+  bool get isFile => filePath != null;
+  bool get isDirect => text != null;
 }
