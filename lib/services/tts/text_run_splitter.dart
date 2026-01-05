@@ -27,6 +27,7 @@ class TextRunSplitter {
     // 1. Merge whitespace/punctuation between same-language runs
     // 2. Merge whitespace/punctuation with adjacent non-default language runs
     // 3. Merge single-character runs with adjacent runs
+    // 4. Merge consecutive runs of the same language
     final mergedRuns = <_CharRun>[];
     for (int i = 0; i < runs.length; i++) {
       final run = runs[i];
@@ -71,7 +72,13 @@ class TextRunSplitter {
           mergedRuns.add(run);
         }
       } else {
-        mergedRuns.add(run);
+        // Check if we can merge with previous run of same language
+        if (mergedRuns.isNotEmpty && mergedRuns.last.language == run.language) {
+          // Merge with previous run of same language
+          mergedRuns.last.chars.addAll(run.chars);
+        } else {
+          mergedRuns.add(run);
+        }
       }
     }
 
