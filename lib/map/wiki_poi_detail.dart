@@ -285,26 +285,56 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     final poi = currentPoi;
     final description = poi.description;
 
-    return SingleChildScrollView(
-      controller: widget.scrollController,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Drag handle indicator
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Progress indicator pinned at top (always visible)
+        if (isSynthesizingAudio && synthesisTotal > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.blue.withValues(alpha: 0.1),
+            child: Column(
+              children: [
+                LinearProgressIndicator(
+                  value: synthesisProgress / synthesisTotal,
+                  backgroundColor: Colors.grey[300],
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    Colors.blue,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  'Preparing audio: $synthesisProgress/$synthesisTotal',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
+          ),
+        Expanded(
+          child: SingleChildScrollView(
+            controller: widget.scrollController,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Drag handle indicator
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
             Row(
               children: [
                 Expanded(
@@ -493,30 +523,6 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
             if (description.isNotEmpty && !isLoadingDescription)
               Column(
                 children: [
-                  // Progress indicator during synthesis
-                  if (isSynthesizingAudio && synthesisTotal > 0)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Column(
-                        children: [
-                          LinearProgressIndicator(
-                            value: synthesisProgress / synthesisTotal,
-                            backgroundColor: Colors.grey[300],
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.blue,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Preparing audio: $synthesisProgress/$synthesisTotal',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   Row(
                     children: [
                       Expanded(
@@ -584,6 +590,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
           ],
         ),
       ),
+        ),
+      ],
     );
   }
 

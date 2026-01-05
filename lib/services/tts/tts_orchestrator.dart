@@ -329,6 +329,10 @@ class TtsOrchestrator implements TtsService {
         if (queueItem.isFile) {
           // Play audio file
           await _audioPlayer.setFilePath(queueItem.filePath!);
+          
+          // Update state before starting playback
+          _isPlaying = true;
+          
           await _audioPlayer.play();
 
           // Wait for playback to complete or cancellation
@@ -342,20 +346,38 @@ class TtsOrchestrator implements TtsService {
           // Use flutter_tts directly
           debugPrint('TtsOrchestrator: Using flutter_tts for: "${queueItem.text}"');
           
+          // Update state before starting playback
+          _isPlaying = true;
+          
           // Set the language for this text
           await _piperEngine.setLanguageForDirect(queueItem.language!);
           
-          // Speak and wait for completion
-          bool completed = false;
+          // Speak and wait for completion using a simple flag
+          bool isCompleted = false;
+          
+          // Set completion handler before speaking
           _piperEngine.tts.setCompletionHandler(() {
-            completed = true;
+            if (!isCompleted) {
+              isCompleted = true;
+              debugPrint('TtsOrchestrator: Piper TTS completed for item');
+            }
           });
           
           await _piperEngine.tts.speak(queueItem.text!);
           
-          // Wait for completion or cancellation
-          while (!completed && !_cancellationToken.isCancelled && !_isPaused) {
+          // Wait for completion or cancellation with timeout
+          final timeout = Duration(seconds: queueItem.text!.length ~/ 10 + 10);
+          final startTime = DateTime.now();
+          while (!isCompleted && 
+                 !_cancellationToken.isCancelled && 
+                 !_isPaused &&
+                 DateTime.now().difference(startTime) < timeout) {
             await Future.delayed(const Duration(milliseconds: 100));
+          }
+          
+          // If timed out, log it
+          if (!isCompleted && !_cancellationToken.isCancelled && !_isPaused) {
+            debugPrint('TtsOrchestrator: Piper TTS timed out');
           }
         }
 
