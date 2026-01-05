@@ -591,6 +591,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         ),
       ),
     ),
+  ),
       ],
     );
   }
