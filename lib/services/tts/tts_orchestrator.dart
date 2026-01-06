@@ -232,11 +232,17 @@ class TtsOrchestrator implements TtsService {
   Future<void> _synthesizeAllRuns(List<TextRun> runs) async {
     int synthesizedCount = 0;
     
+    // Only report progress for OpenAI mode (file-based synthesis with delays)
+    // For Piper mode (direct TTS), progress bar doesn't make sense
+    final bool isOpenAiMode = openAiApiKey.isNotEmpty && !forceOfflineMode;
+    
     // Report initial progress (0 of total) so UI can show progress bar immediately
-    _progressCallback?.call(0, runs.length);
+    if (isOpenAiMode) {
+      _progressCallback?.call(0, runs.length);
+    }
     
     // For better performance, synthesize in parallel when using OpenAI (unless forced offline)
-    if (openAiApiKey.isNotEmpty && !forceOfflineMode) {
+    if (isOpenAiMode) {
       // Synthesize up to 3 runs in parallel to avoid overwhelming the API
       final batchSize = 3;
       for (int i = 0; i < runs.length; i += batchSize) {
@@ -251,19 +257,22 @@ class TtsOrchestrator implements TtsService {
           if (result != null && !_cancellationToken.isCancelled) {
             _audioQueue.add(result);
             synthesizedCount++;
-            _progressCallback?.call(synthesizedCount, runs.length);
+            if (isOpenAiMode) {
+              _progressCallback?.call(synthesizedCount, runs.length);
+            }
           }
         }
       }
     } else {
       // For Piper fallback, synthesize sequentially
+      // No progress reporting for Piper since synthesis is instant
       for (final run in runs) {
         if (_cancellationToken.isCancelled) break;
         final result = await _synthesizeRun(run);
         if (result != null) {
           _audioQueue.add(result);
           synthesizedCount++;
-          _progressCallback?.call(synthesizedCount, runs.length);
+          // No progress callback for Piper mode
         }
       }
     }
