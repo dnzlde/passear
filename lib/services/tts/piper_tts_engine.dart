@@ -34,6 +34,8 @@ class PiperTtsEngine implements TtsEngine {
     await _initialize();
     final locale = _mapLanguageToLocale(language);
     await _tts.setLanguage(locale);
+    // Re-apply speech rate after language change as some platforms reset it
+    await _tts.setSpeechRate(0.25);
   }
 
   @override

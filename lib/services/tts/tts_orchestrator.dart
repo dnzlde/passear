@@ -211,6 +211,9 @@ class TtsOrchestrator implements TtsService {
   Future<void> _synthesizeAllRuns(List<TextRun> runs) async {
     int synthesizedCount = 0;
     
+    // Report initial progress (0 of total) so UI can show progress bar immediately
+    _progressCallback?.call(0, runs.length);
+    
     // For better performance, synthesize in parallel when using OpenAI (unless forced offline)
     if (openAiApiKey.isNotEmpty && !forceOfflineMode) {
       // Synthesize up to 3 runs in parallel to avoid overwhelming the API

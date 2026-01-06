@@ -199,7 +199,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     setState(() {
       isPlayingAudio = true;
       isPausedAudio = false;
-      isSynthesizingAudio = true;
+      // Don't set isSynthesizingAudio here - let the progress callback handle it
       currentAudioText = text;
       synthesisProgress = 0;
       synthesisTotal = 0;
