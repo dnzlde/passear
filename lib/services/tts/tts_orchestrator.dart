@@ -153,11 +153,23 @@ class TtsOrchestrator implements TtsService {
     if (_audioCache.containsKey(cacheKey)) {
       debugPrint('TtsOrchestrator: Using cached audio for this text');
       _audioQueue.addAll(_audioCache[cacheKey]!);
-      _isSynthesizing = false;
+      
+      // For file-based playback (OpenAI), synthesis is already done
+      // For direct TTS (Piper), keep synthesis flag until playback completes
+      final hasDirectTts = _audioQueue.any((item) => item.isDirect);
+      if (!hasDirectTts) {
+        _isSynthesizing = false;
+      }
       
       // Start playing the queue immediately
       if (_audioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
         await _playQueue();
+        // For direct TTS, mark synthesis complete after playback
+        if (hasDirectTts) {
+          _isSynthesizing = false;
+        }
+      } else {
+        _isSynthesizing = false;
       }
       return;
     }
@@ -186,16 +198,25 @@ class TtsOrchestrator implements TtsService {
         debugPrint('TtsOrchestrator: Cached audio for future playback');
       }
       
-      // Mark synthesis as complete
-      _isSynthesizing = false;
+      // For file-based playback (OpenAI), mark synthesis complete before playback
+      // For direct TTS (Piper), keep synthesis flag until playback completes
+      final hasDirectTts = _audioQueue.any((item) => item.isDirect);
+      if (!hasDirectTts) {
+        _isSynthesizing = false;
+      }
       
       // Start playing the queue
       if (_audioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
         await _playQueue();
+        // For direct TTS, mark synthesis complete after playback
+        if (hasDirectTts) {
+          _isSynthesizing = false;
+        }
       } else {
         // No audio to play - complete immediately
         debugPrint('TtsOrchestrator: No audio queue to play');
         _isPlaying = false;
+        _isSynthesizing = false;
         _completionCallback?.call();
         await _deactivateAudioSession();
       }
