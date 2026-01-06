@@ -31,6 +31,10 @@ class TtsOrchestrator implements TtsService {
 
   // Audio cache: text hash -> list of queue items
   final Map<String, List<_QueueItem>> _audioCache = {};
+  
+  // Chunk-level cache: (text, language) hash -> queue item
+  // Deduplicates repeated chunks across different texts
+  final Map<String, _QueueItem> _chunkCache = {};
 
   late final OpenAiTtsEngine _openAiEngine;
   late final PiperTtsEngine _piperEngine;
@@ -279,6 +283,16 @@ class TtsOrchestrator implements TtsService {
   }
 
   Future<_QueueItem?> _synthesizeRun(TextRun run) async {
+    // Create cache key from text and language
+    final chunkCacheKey = '${run.text}|${run.language}';
+    
+    // Check chunk cache first
+    if (_chunkCache.containsKey(chunkCacheKey)) {
+      debugPrint(
+        'TtsOrchestrator: Reusing cached chunk for "${run.text}" in ${run.language}');
+      return _chunkCache[chunkCacheKey];
+    }
+    
     debugPrint(
         'TtsOrchestrator: Synthesizing run in ${run.language}: "${run.text}"');
 
@@ -320,6 +334,8 @@ class TtsOrchestrator implements TtsService {
 
     debugPrint('TtsOrchestrator: Using engine: $engineUsed');
 
+    _QueueItem? queueItem;
+    
     // Save audio to file if we have bytes
     if (audio.bytes.isNotEmpty) {
       try {
@@ -334,7 +350,7 @@ class TtsOrchestrator implements TtsService {
         debugPrint(
             'TtsOrchestrator: Saved audio file: ${tempFile.path} (${audio.bytes.length} bytes)');
         
-        return _QueueItem.file(tempFile.path);
+        queueItem = _QueueItem.file(tempFile.path);
       } catch (e) {
         debugPrint('TtsOrchestrator: Error saving audio: $e');
         return null;
@@ -343,8 +359,16 @@ class TtsOrchestrator implements TtsService {
       // For Piper fallback with empty bytes, queue for direct playback
       debugPrint(
           'TtsOrchestrator: No audio bytes, queuing for flutter_tts playback');
-      return _QueueItem.direct(run.text, run.language);
+      queueItem = _QueueItem.direct(run.text, run.language);
     }
+    
+    // Cache this chunk for future reuse
+    if (queueItem != null) {
+      _chunkCache[chunkCacheKey] = queueItem;
+      debugPrint('TtsOrchestrator: Cached chunk for "${run.text}" in ${run.language}');
+    }
+    
+    return queueItem;
   }
 
   Future<void> _playQueue() async {
