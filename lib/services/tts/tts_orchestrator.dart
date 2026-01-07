@@ -158,22 +158,12 @@ class TtsOrchestrator implements TtsService {
       debugPrint('TtsOrchestrator: Using cached audio for this text');
       _audioQueue.addAll(_audioCache[cacheKey]!);
       
-      // For file-based playback (OpenAI), synthesis is already done
-      // For direct TTS (Piper), keep synthesis flag until playback completes
-      final hasDirectTts = _audioQueue.any((item) => item.isDirect);
-      if (!hasDirectTts) {
-        _isSynthesizing = false;
-      }
+      // Synthesis is complete (cached), no need to show progress indicator
+      _isSynthesizing = false;
       
       // Start playing the queue immediately
       if (_audioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
         await _playQueue();
-        // For direct TTS, mark synthesis complete after playback
-        if (hasDirectTts) {
-          _isSynthesizing = false;
-        }
-      } else {
-        _isSynthesizing = false;
       }
       return;
     }
@@ -202,20 +192,13 @@ class TtsOrchestrator implements TtsService {
         debugPrint('TtsOrchestrator: Cached audio for future playback');
       }
       
-      // For file-based playback (OpenAI), mark synthesis complete before playback
-      // For direct TTS (Piper), keep synthesis flag until playback completes
-      final hasDirectTts = _audioQueue.any((item) => item.isDirect);
-      if (!hasDirectTts) {
-        _isSynthesizing = false;
-      }
+      // Mark synthesis complete - playback will handle the rest
+      // Progress indicator should disappear when playback starts, not after synthesis
+      _isSynthesizing = false;
       
       // Start playing the queue
       if (_audioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
         await _playQueue();
-        // For direct TTS, mark synthesis complete after playback
-        if (hasDirectTts) {
-          _isSynthesizing = false;
-        }
       } else {
         // No audio to play - complete immediately
         debugPrint('TtsOrchestrator: No audio queue to play');
@@ -399,6 +382,12 @@ class TtsOrchestrator implements TtsService {
                 _cancellationToken.isCancelled ||
                 _isPaused,
           );
+          
+          // Reduce pause between chunks for smoother transitions
+          // Small delay to allow audio system to prepare next chunk
+          if (_currentQueueIndex < _audioQueue.length - 1 && !_cancellationToken.isCancelled && !_isPaused) {
+            await Future.delayed(const Duration(milliseconds: 50));
+          }
         } else if (queueItem.isDirect) {
           // Use flutter_tts directly
           debugPrint('TtsOrchestrator: Using flutter_tts for: "${queueItem.text}"');
@@ -435,6 +424,11 @@ class TtsOrchestrator implements TtsService {
           // If timed out, log it
           if (!isCompleted && !_cancellationToken.isCancelled && !_isPaused) {
             debugPrint('TtsOrchestrator: Piper TTS timed out');
+          }
+          
+          // Minimal pause between Piper chunks for smoother transitions
+          if (_currentQueueIndex < _audioQueue.length - 1 && !_cancellationToken.isCancelled && !_isPaused) {
+            await Future.delayed(const Duration(milliseconds: 50));
           }
         }
 
