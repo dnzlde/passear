@@ -300,11 +300,15 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       _selectedPoi = poi;
     });
-    _sheetController.animateTo(
-      0.4,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
+    // Check if controller is attached before animating
+    // This prevents crashes when POI is selected before sheet is built
+    if (_sheetController.isAttached) {
+      _sheetController.animateTo(
+        0.4,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   void _hidePoiDetails() {

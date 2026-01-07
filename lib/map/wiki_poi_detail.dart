@@ -125,20 +125,26 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   Future<void> _loadDescription() async {
     if (isLoadingDescription || currentPoi.isDescriptionLoaded) return;
 
-    setState(() {
-      isLoadingDescription = true;
-    });
+    if (mounted) {
+      setState(() {
+        isLoadingDescription = true;
+      });
+    }
 
     try {
       final updatedPoi = await poiService.fetchPoiDescription(currentPoi);
-      setState(() {
-        currentPoi = updatedPoi;
-        isLoadingDescription = false;
-      });
+      if (mounted) {
+        setState(() {
+          currentPoi = updatedPoi;
+          isLoadingDescription = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        isLoadingDescription = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoadingDescription = false;
+        });
+      }
       // Handle error gracefully - the POI will remain without a description
     }
   }
@@ -176,10 +182,13 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         await _playAudio(story);
       }
     } catch (e) {
-      setState(() {
-        isGeneratingStory = false;
-      });
-      _showSnackBar('Failed to generate AI story: ${e.toString()}');
+      // Check if widget is still mounted before calling setState
+      if (mounted) {
+        setState(() {
+          isGeneratingStory = false;
+        });
+        _showSnackBar('Failed to generate AI story: ${e.toString()}');
+      }
     }
   }
 
@@ -196,14 +205,16 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       await tts!.stop();
     }
 
-    setState(() {
-      isPlayingAudio = true;
-      isPausedAudio = false;
-      // Don't set isSynthesizingAudio here - let the progress callback handle it
-      currentAudioText = text;
-      synthesisProgress = 0;
-      synthesisTotal = 0;
-    });
+    if (mounted) {
+      setState(() {
+        isPlayingAudio = true;
+        isPausedAudio = false;
+        // Don't set isSynthesizingAudio here - let the progress callback handle it
+        currentAudioText = text;
+        synthesisProgress = 0;
+        synthesisTotal = 0;
+      });
+    }
 
     await tts!.speak(text);
   }
@@ -224,10 +235,12 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   Future<void> _resumeAudio() async {
     if (tts == null) return;
 
-    setState(() {
-      isPlayingAudio = true;
-      isPausedAudio = false;
-    });
+    if (mounted) {
+      setState(() {
+        isPlayingAudio = true;
+        isPausedAudio = false;
+      });
+    }
 
     // Call resume on TtsOrchestrator
     final orchestrator = tts as TtsOrchestrator?;
