@@ -738,6 +738,7 @@ class _MapPageState extends State<MapPage> {
               right: 0,
               bottom: 0,
               child: DraggableScrollableSheet(
+                key: ValueKey(_selectedPoi?.id),
                 controller: _sheetController,
                 initialChildSize: 0.4,
                 minChildSize: 0.4,
