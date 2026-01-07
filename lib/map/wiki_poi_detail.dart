@@ -301,6 +301,18 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Drag handle indicator - OUTSIDE scrollview for proper drag detection
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
         // Progress indicator pinned at top (always visible)
         if (isSynthesizingAudio && synthesisTotal > 0)
           Container(
@@ -336,18 +348,6 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Drag handle indicator
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
             Row(
               children: [
                 Expanded(
