@@ -581,7 +581,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                             style: const TextStyle(fontSize: 16, height: 1.5),
                           ),
                           const SizedBox(height: 8),
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
                             children: [
                               ElevatedButton.icon(
                                 onPressed: tourAudioEnabled
@@ -600,8 +602,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                   ),
                                 ),
                               ),
-                              if (hasMoreContent && !isGeneratingExtendedStory) ...[
-                                const SizedBox(width: 8),
+                              if (hasMoreContent && !isGeneratingExtendedStory)
                                 ElevatedButton.icon(
                                   onPressed: _generateExtendedStory,
                                   icon: const Icon(Icons.read_more, size: 16),
@@ -615,7 +616,6 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                     ),
                                   ),
                                 ),
-                              ],
                               if (isCheckingMoreContent)
                                 const Padding(
                                   padding: EdgeInsets.only(left: 8.0),
