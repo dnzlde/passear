@@ -67,6 +67,11 @@ class LlmService {
   final http.Client? _client;
   final Map<String, String> _storyCache = {};
 
+  // Constants for max tokens
+  static const int standardStoryMaxTokens = 600;
+  static const int extendedStoryMaxTokens = 1200;
+  static const int contentCheckMaxTokens = 20;
+
   LlmService({required this.config, http.Client? client})
       : _client = client ?? http.Client();
 
@@ -131,7 +136,7 @@ YES if there's substantial additional interesting content (at least 2-3 more det
 NO if the landmark has limited notable features or the description covers most interesting aspects.''';
 
     try {
-      final response = await _makeApiCall(prompt, maxTokens: 10);
+      final response = await _makeApiCall(prompt, maxTokens: contentCheckMaxTokens);
       final answer = response.trim().toUpperCase();
       return answer.startsWith('YES');
     } catch (e) {
@@ -181,7 +186,7 @@ Create an EXTENDED story that:
 Extended story:''';
 
     try {
-      final response = await _makeApiCall(prompt, maxTokens: 1200);
+      final response = await _makeApiCall(prompt, maxTokens: extendedStoryMaxTokens);
 
       // Cache the result
       _storyCache[cacheKey] = response;
@@ -211,7 +216,7 @@ Story:''';
   }
 
   /// Make the API call to the LLM service
-  Future<String> _makeApiCall(String prompt, {int maxTokens = 600}) async {
+  Future<String> _makeApiCall(String prompt, {int? maxTokens}) async {
     final uri = Uri.parse(config.apiEndpoint);
 
     final requestBody = {
@@ -220,7 +225,7 @@ Story:''';
         {'role': 'user', 'content': prompt}
       ],
       'temperature': 0.7,
-      'max_tokens': maxTokens,
+      'max_tokens': maxTokens ?? standardStoryMaxTokens,
     };
 
     final response = await _client!.post(

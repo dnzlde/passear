@@ -428,7 +428,7 @@ void main() {
     test('generates extended story successfully', () async {
       final mockClient = MockClient((request) async {
         final body = jsonDecode(request.body);
-        expect(body['max_tokens'], 1200); // Extended story should have more tokens
+        expect(body['max_tokens'], LlmService.extendedStoryMaxTokens);
 
         return http.Response(
           jsonEncode({
