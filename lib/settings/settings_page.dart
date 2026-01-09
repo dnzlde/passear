@@ -15,11 +15,14 @@ class _SettingsPageState extends State<SettingsPage> {
   final SettingsService _settingsService = SettingsService.instance;
   late AppSettings _settings;
   bool _isLoading = true;
-  
+
   // Controllers for LLM settings
   late final TextEditingController _llmApiKeyController;
   late final TextEditingController _llmApiEndpointController;
   late final TextEditingController _llmModelController;
+  
+  // Controllers for TTS settings
+  late final TextEditingController _ttsVoiceController;
 
   @override
   void initState() {
@@ -27,6 +30,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _llmApiKeyController = TextEditingController();
     _llmApiEndpointController = TextEditingController();
     _llmModelController = TextEditingController();
+    _ttsVoiceController = TextEditingController();
     _loadSettings();
   }
 
@@ -35,6 +39,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _llmApiKeyController.dispose();
     _llmApiEndpointController.dispose();
     _llmModelController.dispose();
+    _ttsVoiceController.dispose();
     super.dispose();
   }
 
@@ -48,6 +53,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _llmApiKeyController.text = settings.llmApiKey;
         _llmApiEndpointController.text = settings.llmApiEndpoint;
         _llmModelController.text = settings.llmModel;
+        _ttsVoiceController.text = settings.ttsVoice;
       });
     } catch (e) {
       setState(() {
@@ -57,6 +63,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _llmApiKeyController.text = _settings.llmApiKey;
         _llmApiEndpointController.text = _settings.llmApiEndpoint;
         _llmModelController.text = _settings.llmModel;
+        _ttsVoiceController.text = _settings.ttsVoice;
       });
     }
   }
@@ -135,6 +142,22 @@ class _SettingsPageState extends State<SettingsPage> {
     await _settingsService.updateLlmModel(model);
     setState(() {
       _settings = _settings.copyWith(llmModel: model);
+    });
+  }
+
+  Future<void> _updateTtsVoice(String voice) async {
+    final updatedSettings = _settings.copyWith(ttsVoice: voice);
+    await _settingsService.saveSettings(updatedSettings);
+    setState(() {
+      _settings = updatedSettings;
+    });
+  }
+
+  Future<void> _updateTtsOfflineMode(bool offlineMode) async {
+    final updatedSettings = _settings.copyWith(ttsOfflineMode: offlineMode);
+    await _settingsService.saveSettings(updatedSettings);
+    setState(() {
+      _settings = updatedSettings;
     });
   }
 
@@ -432,8 +455,134 @@ class _SettingsPageState extends State<SettingsPage> {
                             size: 20, color: Colors.blue[700]),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
+                           child: Text(
                             'To get AI-generated stories for POI, configure your OpenAI API key or compatible LLM endpoint. Get your API key from platform.openai.com',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue[900],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // TTS (Text-to-Speech) Configuration
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.record_voice_over, color: Colors.blue[400]),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Text-to-Speech Voice',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Choose voice for TTS. Uses the same OpenAI API key as AI stories above.',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 16),
+                  // Status badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _settings.llmApiKey.isNotEmpty
+                          ? Colors.green[100]
+                          : Colors.orange[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _settings.llmApiKey.isNotEmpty
+                              ? Icons.check_circle
+                              : Icons.info,
+                          size: 16,
+                          color: _settings.llmApiKey.isNotEmpty
+                              ? Colors.green[800]
+                              : Colors.orange[800],
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _settings.llmApiKey.isNotEmpty
+                              ? 'OpenAI TTS Enabled'
+                              : 'Using Offline TTS',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _settings.llmApiKey.isNotEmpty
+                                ? Colors.green[800]
+                                : Colors.orange[800],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Voice field
+                  TextField(
+                    controller: _ttsVoiceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Voice',
+                      hintText: 'alloy, echo, fable, onyx, nova, shimmer',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.voice_chat),
+                    ),
+                    onChanged: (value) {
+                      _updateTtsVoice(value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Offline mode checkbox for testing
+                  CheckboxListTile(
+                    title: const Text('Force Offline Mode (Testing)'),
+                    subtitle: const Text(
+                      'Test Piper offline TTS without disabling internet. AI features will still work.',
+                    ),
+                    value: _settings.ttsOfflineMode,
+                    onChanged: (value) {
+                      _updateTtsOfflineMode(value ?? false);
+                    },
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
+                  const SizedBox(height: 12),
+                  // Help text
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue[200]!),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 20, color: Colors.blue[700]),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'TTS uses the OpenAI API key configured above for high-quality multilingual speech. Without a key, offline TTS is used automatically. Choose from voices: alloy (neutral), echo (male), fable (expressive), onyx (deep male), nova (female), shimmer (gentle female).',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.blue[900],

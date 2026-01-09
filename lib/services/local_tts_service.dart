@@ -29,16 +29,16 @@ class LocalTtsService implements TtsService {
     _tts.setCompletionHandler(() {
       _isPlaying = false;
       _completionCallback?.call();
-      
+
       // Deactivate audio session when audio completes
       _deactivateAudioSession();
     });
-    
+
     // Set up error handler
     _tts.setErrorHandler((msg) {
       _isPlaying = false;
       _completionCallback?.call();
-      
+
       // Deactivate audio session on error
       _deactivateAudioSession();
     });
@@ -94,7 +94,7 @@ class LocalTtsService implements TtsService {
   @override
   Future<void> speak(String text) async {
     await _initAudioSession();
-    
+
     // Activate audio session before speaking
     try {
       if (_audioSession != null) {
@@ -104,7 +104,7 @@ class LocalTtsService implements TtsService {
     } catch (e) {
       debugPrint('Failed to activate audio session: $e');
     }
-    
+
     _isPlaying = true;
     _isPaused = false;
     return _tts.speak(text);
@@ -115,7 +115,7 @@ class LocalTtsService implements TtsService {
     _isPlaying = false;
     _isPaused = false;
     await _tts.stop();
-    
+
     // Deactivate audio session to release audio focus
     await _deactivateAudioSession();
   }
@@ -125,7 +125,7 @@ class LocalTtsService implements TtsService {
     _isPaused = true;
     _isPlaying = false;
     await _tts.pause();
-    
+
     // Deactivate audio session to release audio focus and restore other audio to normal volume
     debugPrint('Pausing audio and deactivating session...');
     await _deactivateAudioSession();
@@ -142,7 +142,7 @@ class LocalTtsService implements TtsService {
     _isPlaying = false;
     _isPaused = false;
     await _tts.stop();
-    
+
     // Deactivate audio session on dispose
     await _deactivateAudioSession();
   }

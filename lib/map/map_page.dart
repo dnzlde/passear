@@ -12,7 +12,8 @@ import '../models/route.dart';
 import '../models/settings.dart';
 import '../services/poi_service.dart';
 import '../services/routing_service.dart';
-import '../services/local_tts_service.dart';
+import '../services/tts_service.dart';
+import '../services/tts/tts_orchestrator.dart';
 import '../services/settings_service.dart';
 import '../settings/settings_page.dart';
 import 'wiki_poi_detail.dart';
@@ -29,7 +30,7 @@ class _MapPageState extends State<MapPage> {
   final PoiService _poiService = PoiService();
   final RoutingService _routingService = RoutingService();
   final SettingsService _settingsService = SettingsService.instance;
-  late final LocalTtsService _ttsService;
+  TtsService? _ttsService;
   LatLng _mapCenter = const LatLng(32.0741, 34.7924); // fallback: Azrieli
   final MapController _mapController = MapController();
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
@@ -59,16 +60,29 @@ class _MapPageState extends State<MapPage> {
   @override
   void initState() {
     super.initState();
-    _ttsService = LocalTtsService();
+    _initializeTts();
     _initMap();
     _startLocationTracking();
     _loadVoiceGuidanceSetting();
   }
 
+  Future<void> _initializeTts() async {
+    final settings = await _settingsService.loadSettings();
+    if (mounted) {
+      setState(() {
+        _ttsService = TtsOrchestrator(
+          openAiApiKey: settings.llmApiKey,
+          ttsVoice: settings.ttsVoice,
+          forceOfflineMode: settings.ttsOfflineMode,
+        );
+      });
+    }
+  }
+
   @override
   void dispose() {
     _locationSubscription?.cancel();
-    _ttsService.dispose();
+    _ttsService?.dispose();
     super.dispose();
   }
 
@@ -286,11 +300,15 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       _selectedPoi = poi;
     });
-    _sheetController.animateTo(
-      0.4,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
+    // Check if controller is attached before animating
+    // This prevents crashes when POI is selected before sheet is built
+    if (_sheetController.isAttached) {
+      _sheetController.animateTo(
+        0.4,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   void _hidePoiDetails() {
@@ -334,8 +352,8 @@ class _MapPageState extends State<MapPage> {
         if (route != null && route.waypoints.isNotEmpty) {
           _fitMapToRoute(route);
           // Announce route summary if voice guidance is enabled
-          if (_voiceGuidanceEnabled) {
-            _ttsService.speak(
+          if (_voiceGuidanceEnabled && _ttsService != null) {
+            _ttsService!.speak(
               'Route calculated. Distance: ${route.formattedDistance}. '
               'Estimated time: ${route.formattedDuration}',
             );
@@ -389,7 +407,7 @@ class _MapPageState extends State<MapPage> {
 
   void _announceInstruction(RouteInstruction instruction, double distance) {
     // Check if voice guidance is enabled (using cached value for performance)
-    if (!_voiceGuidanceEnabled) {
+    if (!_voiceGuidanceEnabled || _ttsService == null) {
       return; // Voice guidance is disabled, skip announcement
     }
 
@@ -405,7 +423,7 @@ class _MapPageState extends State<MapPage> {
       announcement =
           'In ${instruction.formattedDistance}, ${instruction.text.toLowerCase()}';
     }
-    _ttsService.speak(announcement);
+    _ttsService!.speak(announcement);
   }
 
   void _showCustomDestinationDialog(LatLng destination) {
@@ -720,6 +738,7 @@ class _MapPageState extends State<MapPage> {
               right: 0,
               bottom: 0,
               child: DraggableScrollableSheet(
+                key: ValueKey(_selectedPoi?.id),
                 controller: _sheetController,
                 initialChildSize: 0.4,
                 minChildSize: 0.4,

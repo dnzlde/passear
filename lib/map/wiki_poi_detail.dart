@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import '../services/local_tts_service.dart';
+import '../services/tts_service.dart';
+import '../services/tts/tts_orchestrator.dart';
 import '../services/poi_service.dart';
 import '../services/llm_service.dart';
 import '../services/settings_service.dart';
@@ -22,7 +23,7 @@ class WikiPoiDetail extends StatefulWidget {
 }
 
 class _WikiPoiDetailState extends State<WikiPoiDetail> {
-  late final LocalTtsService tts;
+  TtsService? tts;
   late final PoiService poiService;
   late final SettingsService settingsService;
   late Poi currentPoi;
@@ -30,6 +31,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   bool isGeneratingStory = false;
   bool isPlayingAudio = false;
   bool isPausedAudio = false;
+  bool isSynthesizingAudio = false; // Track synthesis progress
+  int synthesisProgress = 0; // Current progress
+  int synthesisTotal = 0; // Total chunks
   bool tourAudioEnabled = true;
   String? currentAudioText; // Store current audio text for resume
   String? aiStory;
@@ -39,21 +43,12 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   @override
   void initState() {
     super.initState();
-    tts = LocalTtsService();
     poiService = PoiService();
     settingsService = SettingsService.instance;
     currentPoi = widget.poi;
 
-    // Set up TTS completion callback
-    tts.setCompletionCallback(() {
-      if (mounted) {
-        setState(() {
-          isPlayingAudio = false;
-          isPausedAudio = false;
-          currentAudioText = null;
-        });
-      }
-    });
+    // Initialize TTS asynchronously
+    _initializeTts();
 
     // Load description if not already loaded
     if (!currentPoi.isDescriptionLoaded) {
@@ -63,6 +58,46 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     // Initialize LLM service and load settings
     _initializeLlmService();
     _loadTourAudioSetting();
+  }
+
+  Future<void> _initializeTts() async {
+    final settings = await settingsService.loadSettings();
+    if (!mounted) return;
+    
+    final ttsInstance = TtsOrchestrator(
+      openAiApiKey: settings.llmApiKey,
+      ttsVoice: settings.ttsVoice,
+      forceOfflineMode: settings.ttsOfflineMode,
+    );
+    
+    // Set up TTS completion callback with mounted check
+    ttsInstance.setCompletionCallback(() {
+      if (!mounted) return;
+      setState(() {
+        isPlayingAudio = false;
+        isPausedAudio = false;
+        isSynthesizingAudio = false;
+        currentAudioText = null;
+        synthesisProgress = 0;
+        synthesisTotal = 0;
+      });
+    });
+    
+    // Set up TTS progress callback with mounted check
+    ttsInstance.setProgressCallback((current, total) {
+      if (!mounted) return;
+      setState(() {
+        synthesisProgress = current;
+        synthesisTotal = total;
+        isSynthesizingAudio = ttsInstance.isSynthesizing;
+      });
+    });
+    
+    if (mounted) {
+      setState(() {
+        tts = ttsInstance;
+      });
+    }
   }
 
   Future<void> _loadTourAudioSetting() async {
@@ -90,20 +125,26 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   Future<void> _loadDescription() async {
     if (isLoadingDescription || currentPoi.isDescriptionLoaded) return;
 
-    setState(() {
-      isLoadingDescription = true;
-    });
+    if (mounted) {
+      setState(() {
+        isLoadingDescription = true;
+      });
+    }
 
     try {
       final updatedPoi = await poiService.fetchPoiDescription(currentPoi);
-      setState(() {
-        currentPoi = updatedPoi;
-        isLoadingDescription = false;
-      });
+      if (mounted) {
+        setState(() {
+          currentPoi = updatedPoi;
+          isLoadingDescription = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        isLoadingDescription = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoadingDescription = false;
+        });
+      }
       // Handle error gracefully - the POI will remain without a description
     }
   }
@@ -141,36 +182,48 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         await _playAudio(story);
       }
     } catch (e) {
-      setState(() {
-        isGeneratingStory = false;
-      });
-      _showSnackBar('Failed to generate AI story: ${e.toString()}');
+      // Check if widget is still mounted before calling setState
+      if (mounted) {
+        setState(() {
+          isGeneratingStory = false;
+        });
+        _showSnackBar('Failed to generate AI story: ${e.toString()}');
+      }
     }
   }
 
   Future<void> _playAudio(String text) async {
+    if (tts == null) return;
+    
     if (!tourAudioEnabled) {
       _showSnackBar('Tour audio is disabled. Enable it in Settings.');
       return;
     }
-    
+
     // Stop any currently playing audio first
     if (isPlayingAudio || isPausedAudio) {
-      await tts.stop();
+      await tts!.stop();
     }
-    
-    setState(() {
-      isPlayingAudio = true;
-      isPausedAudio = false;
-      currentAudioText = text;
-    });
-    
-    await tts.speak(text);
+
+    if (mounted) {
+      setState(() {
+        isPlayingAudio = true;
+        isPausedAudio = false;
+        // Don't set isSynthesizingAudio here - let the progress callback handle it
+        currentAudioText = text;
+        synthesisProgress = 0;
+        synthesisTotal = 0;
+      });
+    }
+
+    await tts!.speak(text);
   }
 
   Future<void> _pauseAudio() async {
+    if (tts == null) return;
+    
     // Use pause to allow potential resume (though Flutter TTS will restart on speak)
-    await tts.pause();
+    await tts!.pause();
     if (mounted) {
       setState(() {
         isPlayingAudio = false;
@@ -180,21 +233,26 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   }
 
   Future<void> _resumeAudio() async {
-    if (currentAudioText == null) return;
-    
-    // Note: Flutter TTS doesn't support true resume - it will restart from beginning
-    // But we keep the pause/resume pattern for better UX
-    setState(() {
-      isPlayingAudio = true;
-      isPausedAudio = false;
-    });
-    
-    // Restart audio (Flutter TTS limitation - no true resume)
-    await tts.speak(currentAudioText!);
+    if (tts == null) return;
+
+    if (mounted) {
+      setState(() {
+        isPlayingAudio = true;
+        isPausedAudio = false;
+      });
+    }
+
+    // Call resume on TtsOrchestrator
+    final orchestrator = tts as TtsOrchestrator?;
+    if (orchestrator != null) {
+      await orchestrator.resume();
+    }
   }
 
   Future<void> _stopAudio() async {
-    await tts.stop();
+    if (tts == null) return;
+    
+    await tts!.stop();
     if (mounted) {
       setState(() {
         isPlayingAudio = false;
@@ -230,7 +288,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
 
   @override
   void dispose() {
-    tts.dispose();
+    tts?.dispose();
     llmService?.dispose();
     super.dispose();
   }
@@ -240,26 +298,56 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     final poi = currentPoi;
     final description = poi.description;
 
-    return SingleChildScrollView(
-      controller: widget.scrollController,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Drag handle indicator
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Drag handle indicator - OUTSIDE scrollview for proper drag detection
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
             ),
+          ),
+        ),
+        // Progress indicator pinned at top (always visible)
+        if (isSynthesizingAudio && synthesisTotal > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.blue.withValues(alpha: 0.1),
+            child: Column(
+              children: [
+                LinearProgressIndicator(
+                  value: synthesisProgress / synthesisTotal,
+                  backgroundColor: Colors.grey[300],
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    Colors.blue,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Preparing audio: $synthesisProgress/$synthesisTotal',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: SingleChildScrollView(
+            controller: widget.scrollController,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
             Row(
               children: [
                 Expanded(
@@ -421,13 +509,13 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                           ),
                           const SizedBox(height: 8),
                           ElevatedButton.icon(
-                            onPressed: tourAudioEnabled 
-                              ? () => _playAudio(aiStory!)
-                              : null,
+                            onPressed: tourAudioEnabled
+                                ? () => _playAudio(aiStory!)
+                                : null,
                             icon: const Icon(Icons.volume_up, size: 16),
-                            label: Text(tourAudioEnabled 
-                              ? 'Play Again' 
-                              : 'Audio Disabled'),
+                            label: Text(tourAudioEnabled
+                                ? 'Play Again'
+                                : 'Audio Disabled'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.purple,
                               foregroundColor: Colors.white,
@@ -446,52 +534,68 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
               ),
             // Action buttons
             if (description.isNotEmpty && !isLoadingDescription)
-              Row(
+              Column(
                 children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: isPlayingAudio
-                          ? _pauseAudio
-                          : (isPausedAudio
-                              ? _resumeAudio
-                              : (tourAudioEnabled 
-                                  ? () => _playAudio(description)
-                                  : null)),
-                      icon: Icon(isPlayingAudio 
-                          ? Icons.pause 
-                          : (isPausedAudio 
-                              ? Icons.play_arrow
-                              : Icons.volume_up)),
-                      label: Text(isPlayingAudio 
-                          ? "Pause" 
-                          : (isPausedAudio 
-                              ? "Resume"
-                              : (tourAudioEnabled ? "Listen" : "Audio Disabled"))),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isPlayingAudio 
-                            ? Colors.orange 
-                            : (isPausedAudio ? Colors.green : null),
-                        foregroundColor: (isPlayingAudio || isPausedAudio)
-                            ? Colors.white 
-                            : null,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (widget.onNavigate != null)
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          widget.onNavigate!(LatLng(poi.lat, poi.lon));
-                        },
-                        icon: const Icon(Icons.directions_walk),
-                        label: const Text("Navigate"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: isSynthesizingAudio
+                              ? null // Disable during synthesis
+                              : (isPlayingAudio
+                                  ? _pauseAudio
+                                  : (isPausedAudio
+                                      ? _resumeAudio
+                                      : (tourAudioEnabled
+                                          ? () => _playAudio(description)
+                                          : null))),
+                          icon: Icon(
+                            isSynthesizingAudio
+                                ? Icons.hourglass_empty
+                                : (isPlayingAudio
+                                    ? Icons.pause
+                                    : (isPausedAudio
+                                        ? Icons.play_arrow
+                                        : Icons.volume_up)),
+                          ),
+                          label: Text(
+                            isSynthesizingAudio
+                                ? "Preparing..."
+                                : (isPlayingAudio
+                                    ? "Pause"
+                                    : (isPausedAudio
+                                        ? "Resume"
+                                        : (tourAudioEnabled
+                                            ? "Listen"
+                                            : "Audio Disabled"))),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isPlayingAudio
+                                ? Colors.orange
+                                : (isPausedAudio ? Colors.green : null),
+                            foregroundColor: (isPlayingAudio || isPausedAudio)
+                                ? Colors.white
+                                : null,
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      if (widget.onNavigate != null)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              widget.onNavigate!(LatLng(poi.lat, poi.lon));
+                            },
+                            icon: const Icon(Icons.directions_walk),
+                            label: const Text("Navigate"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             // Add extra padding at bottom for comfortable scrolling
@@ -499,6 +603,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
           ],
         ),
       ),
+    ),
+  ),
+      ],
     );
   }
 
