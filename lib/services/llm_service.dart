@@ -103,6 +103,95 @@ class LlmService {
     }
   }
 
+  /// Check if there's significantly more interesting information available for this POI
+  Future<bool> hasMoreContent({
+    required String poiName,
+    required String poiDescription,
+  }) async {
+    // Validate configuration
+    if (!config.isValid) {
+      throw LlmException(
+          'LLM service is not properly configured. Please set up your API key in settings.');
+    }
+
+    final prompt = '''Based on the following POI information, determine if there is significantly more interesting and detailed content that could be shared beyond a basic tour story.
+
+POI Name: $poiName
+Description: $poiDescription
+
+Consider:
+- Historical significance and depth
+- Architectural or artistic details
+- Notable events or stories
+- Cultural importance
+- Unique or fascinating facts
+
+Answer with ONLY "YES" or "NO" - nothing else.
+YES if there's substantial additional interesting content (at least 2-3 more detailed aspects worth exploring).
+NO if the landmark has limited notable features or the description covers most interesting aspects.''';
+
+    try {
+      final response = await _makeApiCall(prompt, maxTokens: 10);
+      final answer = response.trim().toUpperCase();
+      return answer.startsWith('YES');
+    } catch (e) {
+      // If we can't determine, assume no additional content to avoid interruption
+      debugPrint('Failed to check for more content: $e');
+      return false;
+    }
+  }
+
+  /// Generate an extended story with more details
+  Future<String> generateExtendedStory({
+    required String poiName,
+    required String poiDescription,
+    required String originalStory,
+    StoryStyle style = StoryStyle.neutral,
+  }) async {
+    // Check cache first
+    final cacheKey = '${_getCacheKey(poiName, poiDescription, style)}_extended';
+    if (_storyCache.containsKey(cacheKey)) {
+      return _storyCache[cacheKey]!;
+    }
+
+    // Validate configuration
+    if (!config.isValid) {
+      throw LlmException(
+          'LLM service is not properly configured. Please set up your API key in settings.');
+    }
+
+    final prompt = '''You are an expert tour guide creating a detailed, engaging audio tour ${style.promptModifier}.
+
+POI: $poiName
+Description: $poiDescription
+
+Previous story covered:
+$originalStory
+
+Create an EXTENDED story that:
+- Dives deeper into fascinating details not covered in the basic story
+- Length should match the significance: 5-8 paragraphs (400-700 words) for major landmarks with rich history, 3-4 paragraphs (250-400 words) for moderately significant sites
+- Includes specific historical events, architectural details, cultural significance, or interesting anecdotes
+- Maintains high content quality - every sentence should provide value
+- Avoids generic introductions like "Welcome to..." or "Let me tell you about..." - start directly with interesting content
+- Minimizes conclusions - end naturally with a compelling fact or observation
+- Keeps the narrative engaging and original, not formulaic
+- Focuses on what makes this place truly exceptional
+
+Extended story:''';
+
+    try {
+      final response = await _makeApiCall(prompt, maxTokens: 1200);
+
+      // Cache the result
+      _storyCache[cacheKey] = response;
+
+      return response;
+    } catch (e) {
+      throw LlmException('Failed to generate extended story: $e');
+    }
+  }
+
   /// Build the prompt for the LLM
   String _buildPrompt(String poiName, String poiDescription, StoryStyle style) {
     return '''You are an expert tour guide. Create an engaging audio tour story about "$poiName" ${style.promptModifier}.
@@ -122,7 +211,7 @@ Story:''';
   }
 
   /// Make the API call to the LLM service
-  Future<String> _makeApiCall(String prompt) async {
+  Future<String> _makeApiCall(String prompt, {int maxTokens = 600}) async {
     final uri = Uri.parse(config.apiEndpoint);
 
     final requestBody = {
@@ -131,7 +220,7 @@ Story:''';
         {'role': 'user', 'content': prompt}
       ],
       'temperature': 0.7,
-      'max_tokens': 600,
+      'max_tokens': maxTokens,
     };
 
     final response = await _client!.post(

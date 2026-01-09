@@ -39,6 +39,10 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   String? aiStory;
   LlmService? llmService;
   StoryStyle currentStyle = StoryStyle.neutral;
+  bool hasMoreContent = false; // Whether POI has more content available
+  bool isCheckingMoreContent = false; // Whether checking for more content
+  String? extendedStory; // The extended story if generated
+  bool isGeneratingExtendedStory = false; // Whether generating extended story
 
   @override
   void initState() {
@@ -163,6 +167,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     setState(() {
       isGeneratingStory = true;
       aiStory = null;
+      hasMoreContent = false;
+      extendedStory = null;
     });
 
     try {
@@ -181,6 +187,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       if (tourAudioEnabled) {
         await _playAudio(story);
       }
+
+      // Check if there's more content available (async, don't wait)
+      _checkForMoreContent();
     } catch (e) {
       // Check if widget is still mounted before calling setState
       if (mounted) {
@@ -188,6 +197,70 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
           isGeneratingStory = false;
         });
         _showSnackBar('Failed to generate AI story: ${e.toString()}');
+      }
+    }
+  }
+
+  Future<void> _checkForMoreContent() async {
+    if (llmService == null || aiStory == null) return;
+
+    setState(() {
+      isCheckingMoreContent = true;
+    });
+
+    try {
+      final hasMore = await llmService!.hasMoreContent(
+        poiName: currentPoi.name,
+        poiDescription: currentPoi.description,
+      );
+
+      if (mounted) {
+        setState(() {
+          hasMoreContent = hasMore;
+          isCheckingMoreContent = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isCheckingMoreContent = false;
+        });
+      }
+      // Silently fail - this is not critical
+    }
+  }
+
+  Future<void> _generateExtendedStory() async {
+    if (llmService == null || aiStory == null) return;
+
+    setState(() {
+      isGeneratingExtendedStory = true;
+    });
+
+    try {
+      final extended = await llmService!.generateExtendedStory(
+        poiName: currentPoi.name,
+        poiDescription: currentPoi.description,
+        originalStory: aiStory!,
+        style: currentStyle,
+      );
+
+      setState(() {
+        extendedStory = extended;
+        isGeneratingExtendedStory = false;
+        hasMoreContent = false; // Hide the button after generating
+      });
+
+      // Automatically play the extended story via TTS if audio is enabled
+      if (tourAudioEnabled) {
+        await _playAudio(extended);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isGeneratingExtendedStory = false;
+        });
+        _showSnackBar('Failed to generate extended story: ${e.toString()}');
       }
     }
   }
@@ -508,16 +581,114 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                             style: const TextStyle(fontSize: 16, height: 1.5),
                           ),
                           const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: tourAudioEnabled
+                                    ? () => _playAudio(aiStory!)
+                                    : null,
+                                icon: const Icon(Icons.volume_up, size: 16),
+                                label: Text(tourAudioEnabled
+                                    ? 'Play Again'
+                                    : 'Audio Disabled'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.purple,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                ),
+                              ),
+                              if (hasMoreContent && !isGeneratingExtendedStory) ...[
+                                const SizedBox(width: 8),
+                                ElevatedButton.icon(
+                                  onPressed: _generateExtendedStory,
+                                  icon: const Icon(Icons.read_more, size: 16),
+                                  label: const Text('Tell Me More'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.deepPurple,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              if (isCheckingMoreContent)
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 8.0),
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (isGeneratingExtendedStory)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        'Generating extended story...',
+                        style: TextStyle(
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  if (extendedStory != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.deepPurple.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.auto_stories,
+                                size: 16,
+                                color: Colors.deepPurple,
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                'Extended Story',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.deepPurple,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            extendedStory!,
+                            style: const TextStyle(fontSize: 16, height: 1.5),
+                          ),
+                          const SizedBox(height: 8),
                           ElevatedButton.icon(
                             onPressed: tourAudioEnabled
-                                ? () => _playAudio(aiStory!)
+                                ? () => _playAudio(extendedStory!)
                                 : null,
                             icon: const Icon(Icons.volume_up, size: 16),
                             label: Text(tourAudioEnabled
                                 ? 'Play Again'
                                 : 'Audio Disabled'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple,
+                              backgroundColor: Colors.deepPurple,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
