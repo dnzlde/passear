@@ -202,8 +202,18 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   }
 
   Future<void> _checkForMoreContent() async {
-    if (llmService == null || aiStory == null) return;
+    if (llmService == null || aiStory == null) {
+      debugPrint('_checkForMoreContent: Skipping check - llmService or aiStory is null');
+      return;
+    }
 
+    // Only check for more content for important POIs (high or medium interest level)
+    if (currentPoi.interestLevel == PoiInterestLevel.low) {
+      debugPrint('_checkForMoreContent: Skipping check - POI has low interest level: ${currentPoi.name}');
+      return;
+    }
+
+    debugPrint('_checkForMoreContent: Starting check for POI: ${currentPoi.name} (interest level: ${currentPoi.interestLevel})');
     setState(() {
       isCheckingMoreContent = true;
     });
@@ -214,6 +224,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         poiDescription: currentPoi.description,
       );
 
+      debugPrint('_checkForMoreContent: Result for ${currentPoi.name}: $hasMore');
       if (mounted) {
         setState(() {
           hasMoreContent = hasMore;
@@ -221,6 +232,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         });
       }
     } catch (e) {
+      debugPrint('_checkForMoreContent: Exception caught: $e');
       if (mounted) {
         setState(() {
           isCheckingMoreContent = false;

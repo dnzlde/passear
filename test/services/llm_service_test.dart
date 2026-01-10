@@ -422,6 +422,22 @@ void main() {
 
       expect(hasMore, false);
     });
+
+    test('returns false when LLM is not configured', () async {
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: '', // Invalid config
+      );
+
+      final service = LlmService(config: config);
+
+      final hasMore = await service.hasMoreContent(
+        poiName: 'Test POI',
+        poiDescription: 'A test description',
+      );
+
+      expect(hasMore, false);
+    });
   });
 
   group('generateExtendedStory', () {

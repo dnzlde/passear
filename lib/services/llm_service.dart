@@ -113,35 +113,39 @@ class LlmService {
     required String poiName,
     required String poiDescription,
   }) async {
-    // Validate configuration
+    // Validate configuration - return false instead of throwing to avoid interruption
     if (!config.isValid) {
-      throw LlmException(
-          'LLM service is not properly configured. Please set up your API key in settings.');
+      debugPrint('hasMoreContent: LLM not configured, returning false');
+      return false;
     }
 
-    final prompt = '''Based on the following POI information, determine if there is significantly more interesting and detailed content that could be shared beyond a basic tour story.
+    final prompt = '''Based on the following POI information, determine if there is more interesting and detailed content that could be shared beyond a basic tour story.
 
 POI Name: $poiName
 Description: $poiDescription
 
-Consider:
-- Historical significance and depth
-- Architectural or artistic details
-- Notable events or stories
-- Cultural importance
-- Unique or fascinating facts
+Consider if you could share additional details about:
+- Historical background, events, or significance
+- Architectural features or artistic elements
+- Cultural or religious importance
+- Interesting stories, legends, or facts
+- Notable people or events associated with the place
 
 Answer with ONLY "YES" or "NO" - nothing else.
-YES if there's substantial additional interesting content (at least 2-3 more detailed aspects worth exploring).
-NO if the landmark has limited notable features or the description covers most interesting aspects.''';
+YES if you can provide meaningful additional details (even 1-2 interesting aspects).
+NO only if the description already covers essentially all notable information about this place.''';
 
     try {
+      debugPrint('hasMoreContent: Checking content for POI: $poiName');
       final response = await _makeApiCall(prompt, maxTokens: contentCheckMaxTokens);
       final answer = response.trim().toUpperCase();
-      return answer.startsWith('YES');
+      debugPrint('hasMoreContent: LLM response: "$answer"');
+      final result = answer.startsWith('YES');
+      debugPrint('hasMoreContent: Returning $result for $poiName');
+      return result;
     } catch (e) {
       // If we can't determine, assume no additional content to avoid interruption
-      debugPrint('Failed to check for more content: $e');
+      debugPrint('hasMoreContent: Failed to check for more content: $e');
       return false;
     }
   }
