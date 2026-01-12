@@ -183,13 +183,15 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         isGeneratingStory = false;
       });
 
-      // Automatically play the story via TTS if audio is enabled
-      if (tourAudioEnabled) {
-        await _playAudio(story);
-      }
-
       // Check if there's more content available (async, don't wait)
+      // Do this BEFORE playing audio so the button can appear while audio plays
       _checkForMoreContent();
+
+      // Automatically play the story via TTS if audio is enabled
+      // Don't await - let it play in background so "Tell Me More" button can appear
+      if (tourAudioEnabled) {
+        _playAudio(story);
+      }
     } catch (e) {
       // Check if widget is still mounted before calling setState
       if (mounted) {
@@ -245,6 +247,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   Future<void> _generateExtendedStory() async {
     if (llmService == null || aiStory == null) return;
 
+    debugPrint('_generateExtendedStory: Starting generation for ${currentPoi.name}');
     setState(() {
       isGeneratingExtendedStory = true;
     });
@@ -257,6 +260,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         style: currentStyle,
       );
 
+      debugPrint('_generateExtendedStory: Generation complete, length: ${extended.length}');
       setState(() {
         extendedStory = extended;
         isGeneratingExtendedStory = false;
@@ -264,10 +268,13 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       });
 
       // Automatically play the extended story via TTS if audio is enabled
+      // Don't await - let it play in background
       if (tourAudioEnabled) {
-        await _playAudio(extended);
+        debugPrint('_generateExtendedStory: Starting TTS playback');
+        _playAudio(extended);
       }
     } catch (e) {
+      debugPrint('_generateExtendedStory: Error: $e');
       if (mounted) {
         setState(() {
           isGeneratingExtendedStory = false;
@@ -285,8 +292,11 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       return;
     }
 
+    debugPrint('_playAudio: Starting playback for text of length ${text.length}');
+
     // Stop any currently playing audio first
     if (isPlayingAudio || isPausedAudio) {
+      debugPrint('_playAudio: Stopping currently playing audio');
       await tts!.stop();
     }
 
