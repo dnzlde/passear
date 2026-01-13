@@ -27,39 +27,42 @@ After the initial story is generated, **if the POI has high or medium interest l
 - Debug logging tracks the check process for troubleshooting
 
 ### 3. Tell Me More Button
-If additional content is available:
+If substantial additional content is available:
 - A "Tell Me More" button appears next to the "Play Again" button
 - The button is styled in deep purple to distinguish it from the regular AI Story
-- The button only appears for POIs that pass both the interest level filter AND the content check
+- **Strict criteria**: Button only appears when LLM confirms 3+ compelling NEW facts are available
+- The button appears for POIs that pass the interest level filter AND the strict content quality check
 
 ### 4. Extended Story Generation
 When the user clicks "Tell Me More":
-- An extended story is generated with more details
+- An extended story is generated with genuinely NEW details
+- **No repetition**: Extended story does NOT repeat information from the basic story
 - Length is adaptive: 5-8 paragraphs (400-700 words) for major landmarks, 3-4 paragraphs (250-400 words) for moderate sites
 - The extended story automatically plays via text-to-speech
 - Displayed in a separate container with "Extended Story" header
 
 ## Key Features
 
-### Quality Over Quantity
+### Quality Over Quantity - STRICTLY ENFORCED
+- **No repetition**: Extended story provides only NEW information
+- **No filler**: Every sentence must provide genuine value
+- **Strict criteria**: Button appears only when 3+ compelling NEW facts are available
 - Stories avoid generic introductions ("Welcome to...")
 - Minimizes formulaic conclusions
-- Focuses on interesting, valuable content
-- Each sentence provides real value
+- Focuses on fascinating, specific content (dates, names, events, architectural secrets)
 
 ### Adaptive Length
 The system automatically adjusts story length based on:
 - POI significance and historical importance
-- Amount of interesting information available
-- Content quality (no filler or padding)
+- Amount of genuinely NEW interesting information available
+- Content quality (quality over quantity - will generate shorter story or none at all if insufficient new content)
 
-### Smart Content Detection
-The LLM evaluates whether there's more content by considering:
-- Historical background, events, or significance
-- Architectural features or artistic elements
-- Cultural or religious importance
-- Interesting stories, legends, or facts
-- Notable people or events associated with the place
+### Strict Content Detection
+The LLM evaluates whether there's more content with STRICT criteria:
+- Requires 3+ compelling additional facts, stories, or details NOT in the description
+- Must include specific information: historical events, architectural secrets, cultural insights
+- Must be genuinely interesting, not generic filler
+- **When in doubt, the system says NO** - better no button than poor content
 
 ## Technical Implementation
 
@@ -84,8 +87,10 @@ Future<bool> hasMoreContent({
   required String poiDescription,
 })
 ```
-- Checks if POI has additional interesting content
-- Returns true if 1-2+ additional aspects can be explored
+- Checks if POI has substantial additional interesting content
+- **Returns true ONLY if 3+ compelling NEW facts are available**
+- Requires specific, fascinating information (not generic content)
+- **Strict criteria**: When in doubt, returns false
 - Returns false on any error (config invalid, API error, etc.)
 - Includes debug logging for troubleshooting
 - Gracefully handles errors to avoid interrupting user experience
@@ -99,8 +104,10 @@ Future<String> generateExtendedStory({
   StoryStyle style = StoryStyle.neutral,
 })
 ```
-- Generates detailed extended story
-- Uses original story context to avoid repetition
+- Generates extended story with genuinely NEW details
+- **Enforces no repetition**: Does NOT repeat information from originalStory
+- Quality check: Stops if repeating or adding filler
+- Every sentence must provide NEW value
 - Supports same style options as regular stories
 - Uses more tokens (max 1200) for detailed content
 
