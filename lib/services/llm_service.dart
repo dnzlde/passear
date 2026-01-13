@@ -119,21 +119,22 @@ class LlmService {
       return false;
     }
 
-    final prompt = '''Based on the following POI information, determine if there is more interesting and detailed content that could be shared beyond a basic tour story.
+    final prompt = '''Based on the following POI information, determine if there is SUBSTANTIALLY MORE fascinating and unique content that would make an extended tour genuinely interesting and valuable.
 
 POI Name: $poiName
 Description: $poiDescription
 
-Consider if you could share additional details about:
-- Historical background, events, or significance
-- Architectural features or artistic elements
-- Cultural or religious importance
-- Interesting stories, legends, or facts
-- Notable people or events associated with the place
+CRITICAL: Answer YES ONLY if you can provide:
+- Multiple (3+) compelling additional facts, stories, or details NOT in the description
+- Specific historical events, architectural secrets, or cultural insights
+- Unique anecdotes or lesser-known information that would fascinate visitors
+- Content that is INTERESTING, not generic filler or repetition
 
 Answer with ONLY "YES" or "NO" - nothing else.
-YES if you can provide meaningful additional details (even 1-2 interesting aspects).
-NO only if the description already covers essentially all notable information about this place.''';
+YES = Substantial fascinating additional content available (worthy of an extended tour)
+NO = Limited additional content, or information would be generic/repetitive (no extended tour needed)
+
+Be STRICT: When in doubt, answer NO. Quality over quantity.''';
 
     try {
       debugPrint('hasMoreContent: Checking content for POI: $poiName');
@@ -177,17 +178,19 @@ Description: $poiDescription
 Previous story covered:
 $originalStory
 
-Create an EXTENDED story that:
-- Dives deeper into fascinating details not covered in the basic story
-- Length should match the significance: 5-8 paragraphs (400-700 words) for major landmarks with rich history, 3-4 paragraphs (250-400 words) for moderately significant sites
-- Includes specific historical events, architectural details, cultural significance, or interesting anecdotes
-- Maintains high content quality - every sentence should provide value
-- Avoids generic introductions like "Welcome to..." or "Let me tell you about..." - start directly with interesting content
-- Minimizes conclusions - end naturally with a compelling fact or observation
-- Keeps the narrative engaging and original, not formulaic
-- Focuses on what makes this place truly exceptional
+CRITICAL REQUIREMENTS for the EXTENDED story:
+- Do NOT repeat ANY information from the previous story
+- Share ONLY new, fascinating details not mentioned before
+- Include specific facts: dates, names, events, architectural details, cultural significance
+- Every sentence must provide NEW VALUE - no generic statements or filler
+- Length: 5-8 paragraphs (400-700 words) for major landmarks, 3-4 paragraphs (250-400 words) for moderate sites
+- Start directly with interesting new content - NO introductions like "Let me tell you more..."
+- End naturally with a compelling new fact - NO generic conclusions
 
-Extended story:''';
+QUALITY CHECK: If you find yourself repeating the previous story or adding generic filler, STOP.
+Only continue if you have genuinely interesting NEW information.
+
+Extended story with NEW fascinating details:''';
 
     try {
       final response = await _makeApiCall(prompt, maxTokens: extendedStoryMaxTokens);
