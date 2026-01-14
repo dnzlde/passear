@@ -294,17 +294,15 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
 
     debugPrint('_playAudio: Starting playback for text of length ${text.length}');
 
-    // Stop any currently playing audio first
-    if (isPlayingAudio || isPausedAudio) {
-      debugPrint('_playAudio: Stopping currently playing audio');
-      await tts!.stop();
-    }
+    // Don't stop currently playing audio here - let it continue playing
+    // while the new audio is being synthesized. The TtsOrchestrator will
+    // handle stopping when the new audio is ready to play.
+    // This prevents interruption while preparing audio.
 
     if (mounted) {
       setState(() {
-        isPlayingAudio = true;
-        isPausedAudio = false;
-        // Don't set isSynthesizingAudio here - let the progress callback handle it
+        // Mark that we're preparing new audio, but keep isPlayingAudio true
+        // if audio is currently playing
         currentAudioText = text;
         synthesisProgress = 0;
         synthesisTotal = 0;
@@ -312,6 +310,14 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     }
 
     await tts!.speak(text);
+    
+    // After speak() starts, update state
+    if (mounted) {
+      setState(() {
+        isPlayingAudio = true;
+        isPausedAudio = false;
+      });
+    }
   }
 
   Future<void> _pauseAudio() async {
