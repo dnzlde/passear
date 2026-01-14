@@ -123,14 +123,76 @@ class TtsOrchestrator implements TtsService {
 
   @override
   Future<void> speak(String text) async {
-    // Cancel any ongoing synthesis
+    final systemLang = _getSystemLanguage();
+    debugPrint('TtsOrchestrator: System language: $systemLang');
+
+    // Check cache first - if audio is cached, we can stop and play immediately
+    final cacheKey = text.hashCode.toString();
+    final bool isCached = _audioCache.containsKey(cacheKey);
+    
+    // Temporary queue for synthesis (to avoid clearing synthesized audio)
+    List<_QueueItem>? synthesizedQueue;
+    
+    // If not cached, synthesize first before stopping current audio
+    // This allows current audio to continue playing during synthesis
+    if (!isCached) {
+      debugPrint('TtsOrchestrator: Starting synthesis before stopping current audio');
+      
+      // Cancel any ongoing synthesis
+      _cancellationToken.cancel();
+      // Reset cancellation token for new request
+      _cancellationToken.reset();
+      
+      // Keep current audio playing, start synthesis
+      _isSynthesizing = true;
+      
+      // Split text into runs by language
+      final runs = TextRunSplitter.split(text, systemLang);
+      debugPrint('TtsOrchestrator: Split into ${runs.length} language runs');
+      
+      if (runs.isEmpty) {
+        debugPrint('TtsOrchestrator: No text to synthesize');
+        _isPlaying = false;
+        _isSynthesizing = false;
+        _completionCallback?.call();
+        return;
+      }
+      
+      // Temporarily save the current queue
+      final oldQueue = List<_QueueItem>.from(_audioQueue);
+      _audioQueue.clear();
+      
+      try {
+        // Synthesize all runs - current audio continues playing during this
+        await _synthesizeAllRuns(runs);
+        
+        // Save synthesized audio to temporary variable
+        synthesizedQueue = List.from(_audioQueue);
+        
+        // Restore old queue temporarily (will be replaced after stop)
+        _audioQueue.clear();
+        _audioQueue.addAll(oldQueue);
+        
+        debugPrint('TtsOrchestrator: Synthesis complete, stopping current audio');
+      } catch (e) {
+        debugPrint('TtsOrchestrator: Error during synthesis: $e');
+        _isSynthesizing = false;
+        // Restore old queue on error
+        _audioQueue.clear();
+        _audioQueue.addAll(oldQueue);
+        await stop();
+        _completionCallback?.call();
+        return;
+      }
+    }
+    
+    // Now stop current audio (either immediately for cached, or after synthesis for new)
+    debugPrint('TtsOrchestrator: Stopping current audio');
     _cancellationToken.cancel();
     await stop();
-
-    // Reset cancellation token for new request
     _cancellationToken.reset();
     
-    // Clear audio queue
+    // Clear audio queue and prepare for playback
     _audioQueue.clear();
     _currentQueueIndex = 0;
 
@@ -149,12 +211,7 @@ class TtsOrchestrator implements TtsService {
     _isPlaying = true;
     _isPaused = false;
 
-    final systemLang = _getSystemLanguage();
-    debugPrint('TtsOrchestrator: System language: $systemLang');
-
-    // Check cache first
-    final cacheKey = text.hashCode.toString();
-    if (_audioCache.containsKey(cacheKey)) {
+    if (isCached) {
       debugPrint('TtsOrchestrator: Using cached audio for this text');
       _audioQueue.addAll(_audioCache[cacheKey]!);
       
@@ -168,32 +225,15 @@ class TtsOrchestrator implements TtsService {
       return;
     }
 
-    _isSynthesizing = true;
-
-    // Split text into runs by language
-    final runs = TextRunSplitter.split(text, systemLang);
-    debugPrint('TtsOrchestrator: Split into ${runs.length} language runs');
-
-    if (runs.isEmpty) {
-      debugPrint('TtsOrchestrator: No text to synthesize');
-      _isPlaying = false;
-      _isSynthesizing = false;
-      _completionCallback?.call();
-      return;
-    }
-
-    try {
-      // Synthesize all runs in parallel (for OpenAI) or sequentially (for Piper)
-      await _synthesizeAllRuns(runs);
+    // Use the pre-synthesized audio
+    if (synthesizedQueue != null && synthesizedQueue.isNotEmpty) {
+      _audioQueue.addAll(synthesizedQueue);
       
       // Cache the synthesized audio
-      if (_audioQueue.isNotEmpty) {
-        _audioCache[cacheKey] = List.from(_audioQueue);
-        debugPrint('TtsOrchestrator: Cached audio for future playback');
-      }
+      _audioCache[cacheKey] = List.from(synthesizedQueue);
+      debugPrint('TtsOrchestrator: Cached audio for future playback');
       
-      // Mark synthesis complete - playback will handle the rest
-      // Progress indicator should disappear when playback starts, not after synthesis
+      // Mark synthesis complete
       _isSynthesizing = false;
       
       // Start playing the queue
@@ -207,8 +247,9 @@ class TtsOrchestrator implements TtsService {
         _completionCallback?.call();
         await _deactivateAudioSession();
       }
-    } catch (e) {
-      debugPrint('TtsOrchestrator: Error during synthesis: $e');
+    } else {
+      // Something went wrong - no audio to play
+      debugPrint('TtsOrchestrator: No synthesized audio available');
       _isPlaying = false;
       _isSynthesizing = false;
       _completionCallback?.call();
