@@ -16,7 +16,12 @@ class TtsOrchestrator implements TtsService {
   final String openAiApiKey;
   final String ttsVoice;
   final bool forceOfflineMode; // For testing Piper without disabling internet
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  
+  // Dual AudioPlayer architecture for seamless transitions
+  final AudioPlayer _primaryPlayer = AudioPlayer();
+  final AudioPlayer _secondaryPlayer = AudioPlayer();
+  late AudioPlayer _activePlayer; // Points to either _primaryPlayer or _secondaryPlayer
+  
   final CancellationToken _cancellationToken = CancellationToken();
   final List<String> _tempFiles = [];
   final List<_QueueItem> _audioQueue = []; // Queue of audio items to play
@@ -53,15 +58,27 @@ class TtsOrchestrator implements TtsService {
     this.ttsVoice = 'alloy',
     this.forceOfflineMode = false,
   }) {
+    _activePlayer = _primaryPlayer; // Initialize active player
     _openAiEngine = OpenAiTtsEngine(apiKey: openAiApiKey);
     _piperEngine = PiperTtsEngine();
-    _setupAudioPlayer();
+    _setupAudioPlayers();
     _initPersistentCache();
   }
 
-  void _setupAudioPlayer() {
-    _audioPlayer.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed) {
+  void _setupAudioPlayers() {
+    // Setup both players with completion listeners
+    _primaryPlayer.playerStateStream.listen((state) {
+      if (_activePlayer == _primaryPlayer && 
+          state.processingState == ProcessingState.completed) {
+        _isPlaying = false;
+        _completionCallback?.call();
+        _deactivateAudioSession();
+      }
+    });
+    
+    _secondaryPlayer.playerStateStream.listen((state) {
+      if (_activePlayer == _secondaryPlayer && 
+          state.processingState == ProcessingState.completed) {
         _isPlaying = false;
         _completionCallback?.call();
         _deactivateAudioSession();
@@ -346,23 +363,58 @@ class TtsOrchestrator implements TtsService {
 
   @override
   Future<void> speak(String text) async {
-    // Cancel any ongoing synthesis
-    _cancellationToken.cancel();
-    await stop();
-
+    // Don't cancel ongoing synthesis - let it finish while we prepare
+    // Only cancel if we're actively synthesizing (not just playing)
+    if (_isSynthesizing) {
+      _cancellationToken.cancel();
+    }
+    
     // Reset cancellation token for new request
     _cancellationToken.reset();
     
-    // Clear audio queue
-    _audioQueue.clear();
-    _currentQueueIndex = 0;
+    // Determine which player to use for preparation
+    final AudioPlayer preparingPlayer = _activePlayer == _primaryPlayer 
+        ? _secondaryPlayer 
+        : _primaryPlayer;
 
     await _initAudioSession();
     await _initPersistentCache(); // Ensure persistent cache is ready
 
-    // Activate audio session
+    final systemLang = _getSystemLanguage();
+    debugPrint('TtsOrchestrator: System language: $systemLang');
+
+    // Check caches (persistent first, then in-memory)
+    final cacheKey = text.hashCode.toString();
+    final List<_QueueItem> newAudioQueue = [];
+    
+    bool isCached = false;
+    
+    // Try persistent cache first
+    final persistentItems = await _loadFromPersistentCache(cacheKey);
+    if (persistentItems != null) {
+      debugPrint('TtsOrchestrator: Using persistent cached audio');
+      newAudioQueue.addAll(persistentItems);
+      isCached = true;
+    } else if (_audioCache.containsKey(cacheKey)) {
+      // Try in-memory cache
+      debugPrint('TtsOrchestrator: Using in-memory cached audio');
+      newAudioQueue.addAll(_audioCache[cacheKey]!);
+      isCached = true;
+    }
+
+    if (isCached) {
+      // Cached audio - quick transition
+      await _prepareAndSwapPlayer(preparingPlayer, newAudioQueue);
+      return;
+    }
+
+    // Not cached - synthesize while current audio continues
+    debugPrint('TtsOrchestrator: Synthesizing new audio on secondary player');
+    _isSynthesizing = true;
+
+    // Activate audio session if not active
     try {
-      if (_audioSession != null) {
+      if (_audioSession != null && !_isPlaying) {
         await _audioSession!.setActive(true);
         debugPrint('Audio session activated for speaking');
       }
@@ -370,66 +422,31 @@ class TtsOrchestrator implements TtsService {
       debugPrint('Failed to activate audio session: $e');
     }
 
-    _isPlaying = true;
-    _isPaused = false;
-
-    final systemLang = _getSystemLanguage();
-    debugPrint('TtsOrchestrator: System language: $systemLang');
-
-    // Check caches (persistent first, then in-memory)
-    final cacheKey = text.hashCode.toString();
-    
-    // Try persistent cache first
-    final persistentItems = await _loadFromPersistentCache(cacheKey);
-    if (persistentItems != null) {
-      debugPrint('TtsOrchestrator: Using persistent cached audio');
-      _audioQueue.addAll(persistentItems);
-      _isSynthesizing = false;
-      
-      if (_audioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
-        await _playQueue();
-      }
-      return;
-    }
-    
-    // Try in-memory cache
-    if (_audioCache.containsKey(cacheKey)) {
-      debugPrint('TtsOrchestrator: Using in-memory cached audio');
-      _audioQueue.addAll(_audioCache[cacheKey]!);
-      _isSynthesizing = false;
-      
-      if (_audioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
-        await _playQueue();
-      }
-      return;
-    }
-
-    _isSynthesizing = true;
-
     // Split text into runs by language
     final runs = TextRunSplitter.split(text, systemLang);
     debugPrint('TtsOrchestrator: Split into ${runs.length} language runs');
 
     if (runs.isEmpty) {
       debugPrint('TtsOrchestrator: No text to synthesize');
-      _isPlaying = false;
       _isSynthesizing = false;
-      _completionCallback?.call();
+      if (!_isPlaying) {
+        _completionCallback?.call();
+      }
       return;
     }
 
     try {
-      // Synthesize all runs in parallel (for OpenAI) or sequentially (for Piper)
-      await _synthesizeAllRuns(runs);
+      // Synthesize all runs
+      await _synthesizeAllRuns(runs, newAudioQueue);
       
       // Cache the synthesized audio (both in-memory and persistent)
-      if (_audioQueue.isNotEmpty) {
+      if (newAudioQueue.isNotEmpty) {
         // In-memory cache
-        _audioCache[cacheKey] = List.from(_audioQueue);
+        _audioCache[cacheKey] = List.from(newAudioQueue);
         debugPrint('TtsOrchestrator: Cached audio in memory');
         
         // Persistent cache - save file-based audio only
-        final filePaths = _audioQueue
+        final filePaths = newAudioQueue
             .where((item) => item.isFile)
             .map((item) => item.filePath!)
             .toList();
@@ -439,31 +456,64 @@ class TtsOrchestrator implements TtsService {
         }
       }
       
-      // Mark synthesis complete - playback will handle the rest
-      // Progress indicator should disappear when playback starts, not after synthesis
       _isSynthesizing = false;
       
-      // Start playing the queue
-      if (_audioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
-        await _playQueue();
+      // Prepare and swap to new audio
+      if (newAudioQueue.isNotEmpty && !_cancellationToken.isCancelled) {
+        await _prepareAndSwapPlayer(preparingPlayer, newAudioQueue);
       } else {
-        // No audio to play - complete immediately
         debugPrint('TtsOrchestrator: No audio queue to play');
-        _isPlaying = false;
-        _isSynthesizing = false;
-        _completionCallback?.call();
-        await _deactivateAudioSession();
+        if (!_isPlaying) {
+          _completionCallback?.call();
+          await _deactivateAudioSession();
+        }
       }
     } catch (e) {
       debugPrint('TtsOrchestrator: Error during synthesis: $e');
-      _isPlaying = false;
       _isSynthesizing = false;
-      _completionCallback?.call();
-      await _deactivateAudioSession();
+      if (!_isPlaying) {
+        _completionCallback?.call();
+        await _deactivateAudioSession();
+      }
     }
   }
 
-  Future<void> _synthesizeAllRuns(List<TextRun> runs) async {
+  /// Prepare new audio on a player and swap to it
+  Future<void> _prepareAndSwapPlayer(AudioPlayer targetPlayer, List<_QueueItem> queue) async {
+    // Activate audio session
+    try {
+      if (_audioSession != null) {
+        await _audioSession!.setActive(true);
+        debugPrint('Audio session activated');
+      }
+    } catch (e) {
+      debugPrint('Failed to activate audio session: $e');
+    }
+
+    // Stop the old player
+    final oldPlayer = _activePlayer;
+    try {
+      await oldPlayer.stop();
+      debugPrint('TtsOrchestrator: Stopped old player');
+    } catch (e) {
+      debugPrint('TtsOrchestrator: Error stopping old player: $e');
+    }
+
+    // Swap to new player and queue
+    _activePlayer = targetPlayer;
+    _audioQueue.clear();
+    _audioQueue.addAll(queue);
+    _currentQueueIndex = 0;
+    _isPlaying = true;
+    _isPaused = false;
+
+    debugPrint('TtsOrchestrator: Swapped to new player, starting playback');
+    
+    // Start playing the new queue
+    await _playQueue();
+  }
+
+  Future<void> _synthesizeAllRuns(List<TextRun> runs, List<_QueueItem> targetQueue) async {
     int synthesizedCount = 0;
     
     // Only report progress for OpenAI mode (file-based synthesis with delays)
@@ -489,7 +539,7 @@ class TtsOrchestrator implements TtsService {
         // Add successful results to queue in order
         for (final result in results) {
           if (result != null && !_cancellationToken.isCancelled) {
-            _audioQueue.add(result);
+            targetQueue.add(result);
             synthesizedCount++;
             if (isOpenAiMode) {
               _progressCallback?.call(synthesizedCount, runs.length);
@@ -504,7 +554,7 @@ class TtsOrchestrator implements TtsService {
         if (_cancellationToken.isCancelled) break;
         final result = await _synthesizeRun(run);
         if (result != null) {
-          _audioQueue.add(result);
+          targetQueue.add(result);
           synthesizedCount++;
           // No progress callback for Piper mode
         }
@@ -615,15 +665,15 @@ class TtsOrchestrator implements TtsService {
       try {
         if (queueItem.isFile) {
           // Play audio file
-          await _audioPlayer.setFilePath(queueItem.filePath!);
+          await _activePlayer.setFilePath(queueItem.filePath!);
           
           // Update state before starting playback
           _isPlaying = true;
           
-          await _audioPlayer.play();
+          await _activePlayer.play();
 
           // Wait for playback to complete or cancellation
-          await _audioPlayer.playerStateStream.firstWhere(
+          await _activePlayer.playerStateStream.firstWhere(
             (state) =>
                 state.processingState == ProcessingState.completed ||
                 _cancellationToken.isCancelled ||
@@ -707,10 +757,11 @@ class TtsOrchestrator implements TtsService {
     _currentQueueIndex = 0;
 
     try {
-      await _audioPlayer.stop();
+      await _primaryPlayer.stop();
+      await _secondaryPlayer.stop();
       await _piperEngine.tts.stop(); // Also stop Piper if it's playing
     } catch (e) {
-      debugPrint('Error stopping audio player: $e');
+      debugPrint('Error stopping audio players: $e');
     }
 
     await _deactivateAudioSession();
@@ -725,7 +776,7 @@ class TtsOrchestrator implements TtsService {
     _isPlaying = false;
 
     try {
-      await _audioPlayer.pause();
+      await _activePlayer.pause();
       await _piperEngine.tts.stop(); // Stop Piper playback (no pause support)
     } catch (e) {
       debugPrint('Error pausing audio player: $e');
@@ -752,7 +803,7 @@ class TtsOrchestrator implements TtsService {
     }
 
     try {
-      await _audioPlayer.play();
+      await _activePlayer.play();
       
       // Continue playing the queue if not yet finished synthesizing
       if (!_isSynthesizing && _currentQueueIndex < _audioQueue.length) {
