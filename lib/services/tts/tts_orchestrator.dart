@@ -851,7 +851,8 @@ class TtsOrchestrator implements TtsService {
   Future<void> dispose() async {
     _cancellationToken.cancel();
     await stop();
-    await _audioPlayer.dispose();
+    await _primaryPlayer.dispose();
+    await _secondaryPlayer.dispose();
     await _piperEngine.dispose();
     await _cleanupTempFiles();
     
