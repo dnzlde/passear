@@ -490,7 +490,24 @@ class TtsOrchestrator implements TtsService {
       debugPrint('Failed to activate audio session: $e');
     }
 
-    // Stop the old player
+    // Prepare the first audio item on the target player BEFORE stopping old player
+    // This preloads the audio so it's ready to play immediately after swap
+    if (queue.isNotEmpty) {
+      try {
+        final firstItem = queue[0];
+        if (firstItem.isFile) {
+          await targetPlayer.setFilePath(firstItem.filePath!);
+          debugPrint('TtsOrchestrator: Preloaded first audio file on new player');
+        } else if (firstItem.isUrl) {
+          await targetPlayer.setUrl(firstItem.url!);
+          debugPrint('TtsOrchestrator: Preloaded first audio URL on new player');
+        }
+      } catch (e) {
+        debugPrint('TtsOrchestrator: Error preloading audio on new player: $e');
+      }
+    }
+
+    // NOW stop the old player - new player is already loaded and ready
     final oldPlayer = _activePlayer;
     try {
       await oldPlayer.stop();
@@ -509,7 +526,7 @@ class TtsOrchestrator implements TtsService {
 
     debugPrint('TtsOrchestrator: Swapped to new player, starting playback');
     
-    // Start playing the new queue
+    // Start playing the new queue (first item already loaded, so this is fast)
     await _playQueue();
   }
 
