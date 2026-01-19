@@ -1,0 +1,285 @@
+// lib/services/poi_cache/poi_cache_service.dart
+import 'dart:async';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
+import '../../models/poi.dart';
+import '../../models/settings.dart';
+import 'poi_cache_entry.dart';
+import 'poi_tile_storage.dart';
+import 'tile_utils.dart';
+
+/// Configuration for POI cache
+class PoiCacheConfig {
+  /// Time-to-live for cached tiles (default: 12 hours)
+  final Duration ttl;
+
+  /// Maximum number of tiles to keep in cache (LRU eviction)
+  final int maxTiles;
+
+  /// Maximum concurrent network requests
+  final int maxConcurrentRequests;
+
+  const PoiCacheConfig({
+    this.ttl = const Duration(hours: 12),
+    this.maxTiles = 500,
+    this.maxConcurrentRequests = 4,
+  });
+}
+
+/// Service for managing tile-based POI caching
+class PoiCacheService {
+  final PoiTileStorage _storage = PoiTileStorage();
+  final PoiCacheConfig config;
+
+  // Metrics
+  int _cacheHits = 0;
+  int _cacheMisses = 0;
+  int _staleHits = 0;
+
+  // Semaphore for limiting concurrent requests
+  final Map<String, Completer<void>> _inflightRequests = {};
+
+  PoiCacheService({
+    this.config = const PoiCacheConfig(),
+  });
+
+  /// Initialize the cache service
+  Future<void> initialize() async {
+    await _storage.initialize();
+  }
+
+  /// Create a hash of filter parameters for cache key
+  String createFiltersHash(AppSettings settings) {
+    final filterData = {
+      'provider': settings.poiProvider.name,
+      'categories': settings.enabledCategories.entries
+          .where((e) => e.value)
+          .map((e) => e.key.name)
+          .toList()
+        ..sort(),
+      'maxCount': settings.maxPoiCount,
+    };
+    final jsonString = jsonEncode(filterData);
+    final bytes = utf8.encode(jsonString);
+    final hash = sha256.convert(bytes);
+    return hash.toString().substring(0, 16); // Use first 16 chars
+  }
+
+  /// Get POIs for a viewport with caching
+  /// Returns cached POIs immediately if available (even if stale),
+  /// and triggers background refresh for stale entries
+  Future<List<Poi>> getPoisForViewport({
+    required double north,
+    required double south,
+    required double east,
+    required double west,
+    required AppSettings settings,
+    required Future<List<Poi>> Function(GeoBounds bounds) fetchFunction,
+  }) async {
+    final filtersHash = createFiltersHash(settings);
+    final tiles = TileUtils.getTilesForViewport(
+      north: north,
+      south: south,
+      east: east,
+      west: west,
+    );
+
+    debugPrint('POI Cache: Processing ${tiles.length} tiles for viewport');
+
+    final allPois = <String, Poi>{}; // Use map to deduplicate by ID
+    final tilesToFetch = <TileCoordinate>[];
+
+    // Check cache for each tile
+    for (final tile in tiles) {
+      final cacheKey = TileUtils.createTileKey(tile, filtersHash);
+      final cachedEntry = await _storage.get(cacheKey);
+
+      if (cachedEntry != null) {
+        if (cachedEntry.isValid(config.ttl)) {
+          // Fresh cache hit
+          _cacheHits++;
+          debugPrint('POI Cache: HIT (fresh) - $cacheKey');
+
+          // Update last access time
+          await _storage.put(cacheKey, cachedEntry.copyWithAccess());
+
+          // Add POIs to result
+          for (final poi in cachedEntry.pois) {
+            allPois[poi.id] = poi;
+          }
+        } else {
+          // Stale cache hit - use it but schedule refresh
+          _staleHits++;
+          debugPrint('POI Cache: HIT (stale) - $cacheKey');
+
+          // Add stale POIs to result
+          for (final poi in cachedEntry.pois) {
+            allPois[poi.id] = poi;
+          }
+
+          // Schedule background refresh
+          tilesToFetch.add(tile);
+        }
+      } else {
+        // Cache miss
+        _cacheMisses++;
+        debugPrint('POI Cache: MISS - $cacheKey');
+        tilesToFetch.add(tile);
+      }
+    }
+
+    // Fetch missing/stale tiles in the background
+    if (tilesToFetch.isNotEmpty) {
+      _fetchTilesInBackground(
+        tiles: tilesToFetch,
+        filtersHash: filtersHash,
+        fetchFunction: fetchFunction,
+      );
+    }
+
+    // Log cache metrics periodically
+    final totalRequests = _cacheHits + _cacheMisses;
+    if (totalRequests % 10 == 0 && totalRequests > 0) {
+      final hitRate = (_cacheHits / totalRequests * 100).toStringAsFixed(1);
+      debugPrint(
+        'POI Cache Stats: Hits=$_cacheHits, Misses=$_cacheMisses, Stale=$_staleHits, Hit Rate=$hitRate%',
+      );
+    }
+
+    return allPois.values.toList();
+  }
+
+  /// Fetch tiles in background with concurrency control
+  Future<void> _fetchTilesInBackground({
+    required List<TileCoordinate> tiles,
+    required String filtersHash,
+    required Future<List<Poi>> Function(GeoBounds bounds) fetchFunction,
+  }) async {
+    // Limit concurrent fetches
+    final futures = <Future<void>>[];
+
+    for (final tile in tiles) {
+      final cacheKey = TileUtils.createTileKey(tile, filtersHash);
+
+      // Check if already fetching this tile
+      if (_inflightRequests.containsKey(cacheKey)) {
+        await _inflightRequests[cacheKey]!.future;
+        continue;
+      }
+
+      // Create a completer for this request
+      final completer = Completer<void>();
+      _inflightRequests[cacheKey] = completer;
+
+      final future = _fetchAndCacheTile(
+        tile: tile,
+        cacheKey: cacheKey,
+        fetchFunction: fetchFunction,
+      ).then((_) {
+        _inflightRequests.remove(cacheKey);
+        completer.complete();
+      }).catchError((error) {
+        _inflightRequests.remove(cacheKey);
+        completer.completeError(error);
+        debugPrint('POI Cache: Error fetching tile $cacheKey: $error');
+      });
+
+      futures.add(future);
+
+      // Limit concurrent requests
+      if (futures.length >= config.maxConcurrentRequests) {
+        await Future.any(futures);
+        futures.removeWhere((f) => f.isCompleted);
+      }
+    }
+
+    // Wait for all fetches to complete
+    if (futures.isNotEmpty) {
+      await Future.wait(futures);
+    }
+
+    // Perform LRU eviction if needed
+    await _performLruEviction();
+  }
+
+  /// Fetch and cache a single tile
+  Future<void> _fetchAndCacheTile({
+    required TileCoordinate tile,
+    required String cacheKey,
+    required Future<List<Poi>> Function(GeoBounds bounds) fetchFunction,
+  }) async {
+    final bounds = TileUtils.tileToBounds(tile);
+
+    debugPrint('POI Cache: Fetching tile $cacheKey');
+
+    final pois = await fetchFunction(bounds);
+
+    final entry = PoiCacheEntry(
+      pois: pois,
+      updatedAt: DateTime.now(),
+      lastAccessedAt: DateTime.now(),
+    );
+
+    await _storage.put(cacheKey, entry);
+    debugPrint('POI Cache: Cached ${pois.length} POIs for $cacheKey');
+  }
+
+  /// Perform LRU eviction if cache exceeds max size
+  Future<void> _performLruEviction() async {
+    final size = await _storage.getSize();
+    if (size <= config.maxTiles) return;
+
+    debugPrint('POI Cache: Performing LRU eviction (size=$size, max=${config.maxTiles})');
+
+    // Get all entries with their last access times
+    final keys = await _storage.getAllKeys();
+    final entries = <String, DateTime>{};
+
+    for (final key in keys) {
+      final entry = await _storage.get(key);
+      if (entry != null) {
+        entries[key] = entry.lastAccessedAt;
+      }
+    }
+
+    // Sort by last access time (oldest first)
+    final sortedKeys = entries.keys.toList()
+      ..sort((a, b) => entries[a]!.compareTo(entries[b]!));
+
+    // Remove oldest entries until we're under the limit
+    final toRemove = size - config.maxTiles;
+    for (int i = 0; i < toRemove && i < sortedKeys.length; i++) {
+      await _storage.delete(sortedKeys[i]);
+      debugPrint('POI Cache: Evicted ${sortedKeys[i]}');
+    }
+  }
+
+  /// Clear all cached data
+  Future<void> clearCache() async {
+    await _storage.clear();
+    _cacheHits = 0;
+    _cacheMisses = 0;
+    _staleHits = 0;
+    debugPrint('POI Cache: Cleared all cache');
+  }
+
+  /// Get cache statistics
+  Map<String, dynamic> getStats() {
+    final totalRequests = _cacheHits + _cacheMisses;
+    final hitRate = totalRequests > 0 ? _cacheHits / totalRequests : 0.0;
+
+    return {
+      'hits': _cacheHits,
+      'misses': _cacheMisses,
+      'stale': _staleHits,
+      'hitRate': hitRate,
+      'total': totalRequests,
+    };
+  }
+
+  /// Close the service (cleanup)
+  Future<void> close() async {
+    await _storage.close();
+  }
+}
