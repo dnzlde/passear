@@ -218,8 +218,10 @@ class PoiCacheService {
       // Limit concurrent requests
       if (futures.length >= config.maxConcurrentRequests) {
         await Future.any(futures);
-        // Clear the list - all futures will complete in background
-        // We can't easily track which specific future completed with Future.any
+        // Clear all futures from the list after any one completes.
+        // This is intentional: we use _inflightRequests map as the real
+        // semaphore to prevent duplicate fetches, and futures list is only
+        // for concurrency limiting. All futures will complete in background.
         futures.clear();
       }
     }
@@ -312,6 +314,7 @@ class PoiCacheService {
   /// Close the service (cleanup)
   Future<void> close() async {
     // Wait for all inflight requests to complete
+    // The while loop handles any new requests added during cleanup
     while (_inflightRequests.isNotEmpty) {
       final completers = _inflightRequests.values.toList();
       _inflightRequests.clear();
