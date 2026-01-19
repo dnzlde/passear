@@ -498,10 +498,8 @@ class TtsOrchestrator implements TtsService {
         if (firstItem.isFile) {
           await targetPlayer.setFilePath(firstItem.filePath!);
           debugPrint('TtsOrchestrator: Preloaded first audio file on new player');
-        } else if (firstItem.isUrl) {
-          await targetPlayer.setUrl(firstItem.url!);
-          debugPrint('TtsOrchestrator: Preloaded first audio URL on new player');
         }
+        // Note: Direct TTS (isDirect) doesn't need preloading
       } catch (e) {
         debugPrint('TtsOrchestrator: Error preloading audio on new player: $e');
       }
