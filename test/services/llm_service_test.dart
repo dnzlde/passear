@@ -343,4 +343,203 @@ void main() {
       );
     });
   });
+
+  group('hasMoreContent', () {
+    test('returns true when API responds with YES', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {'content': 'YES'},
+              },
+            ],
+          }),
+          200,
+        );
+      });
+
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: 'test-api-key',
+      );
+
+      final service = LlmService(config: config, client: mockClient);
+
+      final hasMore = await service.hasMoreContent(
+        poiName: 'Test POI',
+        poiDescription: 'A test description',
+      );
+
+      expect(hasMore, true);
+    });
+
+    test('returns false when API responds with NO', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {'content': 'NO'},
+              },
+            ],
+          }),
+          200,
+        );
+      });
+
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: 'test-api-key',
+      );
+
+      final service = LlmService(config: config, client: mockClient);
+
+      final hasMore = await service.hasMoreContent(
+        poiName: 'Test POI',
+        poiDescription: 'A test description',
+      );
+
+      expect(hasMore, false);
+    });
+
+    test('returns false on error to avoid interruption', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response('Server error', 500);
+      });
+
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: 'test-api-key',
+      );
+
+      final service = LlmService(config: config, client: mockClient);
+
+      final hasMore = await service.hasMoreContent(
+        poiName: 'Test POI',
+        poiDescription: 'A test description',
+      );
+
+      expect(hasMore, false);
+    });
+
+    test('returns false when LLM is not configured', () async {
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: '', // Invalid config
+      );
+
+      final service = LlmService(config: config);
+
+      final hasMore = await service.hasMoreContent(
+        poiName: 'Test POI',
+        poiDescription: 'A test description',
+      );
+
+      expect(hasMore, false);
+    });
+  });
+
+  group('generateExtendedStory', () {
+    test('generates extended story successfully', () async {
+      final mockClient = MockClient((request) async {
+        final body = jsonDecode(request.body);
+        expect(body['max_tokens'], LlmService.extendedStoryMaxTokens);
+
+        return http.Response(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {
+                  'content': 'This is a detailed extended story with much more information.',
+                },
+              },
+            ],
+          }),
+          200,
+        );
+      });
+
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: 'test-api-key',
+      );
+
+      final service = LlmService(config: config, client: mockClient);
+
+      final extendedStory = await service.generateExtendedStory(
+        poiName: 'Test POI',
+        poiDescription: 'A test description',
+        originalStory: 'Original story text',
+      );
+
+      expect(extendedStory, 'This is a detailed extended story with much more information.');
+    });
+
+    test('caches extended stories separately from regular stories', () async {
+      var callCount = 0;
+      final mockClient = MockClient((request) async {
+        callCount++;
+        return http.Response(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {
+                  'content': 'Story $callCount',
+                },
+              },
+            ],
+          }),
+          200,
+        );
+      });
+
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: 'test-api-key',
+      );
+
+      final service = LlmService(config: config, client: mockClient);
+
+      // Generate regular story
+      await service.generateStory(
+        poiName: 'Test POI',
+        poiDescription: 'A test description',
+      );
+
+      // Generate extended story with same parameters - should call API again (different cache key)
+      await service.generateExtendedStory(
+        poiName: 'Test POI',
+        poiDescription: 'A test description',
+        originalStory: 'Original',
+      );
+
+      // Second extended story call - should use cache
+      await service.generateExtendedStory(
+        poiName: 'Test POI',
+        poiDescription: 'A test description',
+        originalStory: 'Original',
+      );
+
+      expect(callCount, 2); // Regular story + extended story (cached)
+    });
+
+    test('throws LlmException when configuration is invalid', () async {
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: '', // Empty API key
+      );
+
+      final service = LlmService(config: config);
+
+      expect(
+        () => service.generateExtendedStory(
+          poiName: 'Test POI',
+          poiDescription: 'A test description',
+          originalStory: 'Original',
+        ),
+        throwsA(isA<LlmException>()),
+      );
+    });
+  });
 }

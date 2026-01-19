@@ -67,6 +67,11 @@ class LlmService {
   final http.Client? _client;
   final Map<String, String> _storyCache = {};
 
+  // Constants for max tokens
+  static const int standardStoryMaxTokens = 600;
+  static const int extendedStoryMaxTokens = 1200;
+  static const int contentCheckMaxTokens = 20;
+
   LlmService({required this.config, http.Client? client})
       : _client = client ?? http.Client();
 
@@ -103,6 +108,102 @@ class LlmService {
     }
   }
 
+  /// Check if there's significantly more interesting information available for this POI
+  Future<bool> hasMoreContent({
+    required String poiName,
+    required String poiDescription,
+  }) async {
+    // Validate configuration - return false instead of throwing to avoid interruption
+    if (!config.isValid) {
+      debugPrint('hasMoreContent: LLM not configured, returning false');
+      return false;
+    }
+
+    final prompt = '''Based on the following POI information, determine if there is SUBSTANTIALLY MORE fascinating and unique content that would make an extended tour genuinely interesting and valuable.
+
+POI Name: $poiName
+Description: $poiDescription
+
+CRITICAL: Answer YES ONLY if you can provide:
+- Multiple (3+) compelling additional facts, stories, or details NOT in the description
+- Specific historical events, architectural secrets, or cultural insights
+- Unique anecdotes or lesser-known information that would fascinate visitors
+- Content that is INTERESTING, not generic filler or repetition
+
+Answer with ONLY "YES" or "NO" - nothing else.
+YES = Substantial fascinating additional content available (worthy of an extended tour)
+NO = Limited additional content, or information would be generic/repetitive (no extended tour needed)
+
+Be STRICT: When in doubt, answer NO. Quality over quantity.''';
+
+    try {
+      debugPrint('hasMoreContent: Checking content for POI: $poiName');
+      final response = await _makeApiCall(prompt, maxTokens: contentCheckMaxTokens);
+      final answer = response.trim().toUpperCase();
+      debugPrint('hasMoreContent: LLM response: "$answer"');
+      final result = answer.startsWith('YES');
+      debugPrint('hasMoreContent: Returning $result for $poiName');
+      return result;
+    } catch (e) {
+      // If we can't determine, assume no additional content to avoid interruption
+      debugPrint('hasMoreContent: Failed to check for more content: $e');
+      return false;
+    }
+  }
+
+  /// Generate an extended story with more details
+  Future<String> generateExtendedStory({
+    required String poiName,
+    required String poiDescription,
+    required String originalStory,
+    StoryStyle style = StoryStyle.neutral,
+  }) async {
+    // Check cache first
+    final cacheKey = '${_getCacheKey(poiName, poiDescription, style)}_extended';
+    if (_storyCache.containsKey(cacheKey)) {
+      return _storyCache[cacheKey]!;
+    }
+
+    // Validate configuration
+    if (!config.isValid) {
+      throw LlmException(
+          'LLM service is not properly configured. Please set up your API key in settings.');
+    }
+
+    final prompt = '''You are an expert tour guide creating a detailed, engaging audio tour ${style.promptModifier}.
+
+POI: $poiName
+Description: $poiDescription
+
+Previous story covered:
+$originalStory
+
+CRITICAL REQUIREMENTS for the EXTENDED story:
+- Do NOT repeat ANY information from the previous story
+- Share ONLY new, fascinating details not mentioned before
+- Include specific facts: dates, names, events, architectural details, cultural significance
+- Every sentence must provide NEW VALUE - no generic statements or filler
+- Length: 5-8 paragraphs (400-700 words) for major landmarks, 3-4 paragraphs (250-400 words) for moderate sites
+- Start directly with interesting new content - NO introductions like "Let me tell you more..."
+- End naturally with a compelling new fact - NO generic conclusions
+
+QUALITY CHECK: If you find yourself repeating the previous story or adding generic filler, STOP.
+Only continue if you have genuinely interesting NEW information.
+
+Extended story with NEW fascinating details:''';
+
+    try {
+      final response = await _makeApiCall(prompt, maxTokens: extendedStoryMaxTokens);
+
+      // Cache the result
+      _storyCache[cacheKey] = response;
+
+      return response;
+    } catch (e) {
+      throw LlmException('Failed to generate extended story: $e');
+    }
+  }
+
   /// Build the prompt for the LLM
   String _buildPrompt(String poiName, String poiDescription, StoryStyle style) {
     return '''You are an expert tour guide. Create an engaging audio tour story about "$poiName" ${style.promptModifier}.
@@ -122,7 +223,7 @@ Story:''';
   }
 
   /// Make the API call to the LLM service
-  Future<String> _makeApiCall(String prompt) async {
+  Future<String> _makeApiCall(String prompt, {int? maxTokens}) async {
     final uri = Uri.parse(config.apiEndpoint);
 
     final requestBody = {
@@ -131,7 +232,7 @@ Story:''';
         {'role': 'user', 'content': prompt}
       ],
       'temperature': 0.7,
-      'max_tokens': 600,
+      'max_tokens': maxTokens ?? standardStoryMaxTokens,
     };
 
     final response = await _client!.post(
