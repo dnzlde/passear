@@ -67,13 +67,13 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   Future<void> _initializeTts() async {
     final settings = await settingsService.loadSettings();
     if (!mounted) return;
-    
+
     final ttsInstance = TtsOrchestrator(
       openAiApiKey: settings.llmApiKey,
       ttsVoice: settings.ttsVoice,
       forceOfflineMode: settings.ttsOfflineMode,
     );
-    
+
     // Set up TTS completion callback with mounted check
     ttsInstance.setCompletionCallback(() {
       if (!mounted) return;
@@ -86,7 +86,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         synthesisTotal = 0;
       });
     });
-    
+
     // Set up TTS progress callback with mounted check
     ttsInstance.setProgressCallback((current, total) {
       if (!mounted) return;
@@ -96,7 +96,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         isSynthesizingAudio = ttsInstance.isSynthesizing;
       });
     });
-    
+
     if (mounted) {
       setState(() {
         tts = ttsInstance;
@@ -205,17 +205,20 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
 
   Future<void> _checkForMoreContent() async {
     if (llmService == null || aiStory == null) {
-      debugPrint('_checkForMoreContent: Skipping check - llmService or aiStory is null');
+      debugPrint(
+          '_checkForMoreContent: Skipping check - llmService or aiStory is null');
       return;
     }
 
     // Only check for more content for important POIs (high or medium interest level)
     if (currentPoi.interestLevel == PoiInterestLevel.low) {
-      debugPrint('_checkForMoreContent: Skipping check - POI has low interest level: ${currentPoi.name}');
+      debugPrint(
+          '_checkForMoreContent: Skipping check - POI has low interest level: ${currentPoi.name}');
       return;
     }
 
-    debugPrint('_checkForMoreContent: Starting check for POI: ${currentPoi.name} (interest level: ${currentPoi.interestLevel})');
+    debugPrint(
+        '_checkForMoreContent: Starting check for POI: ${currentPoi.name} (interest level: ${currentPoi.interestLevel})');
     setState(() {
       isCheckingMoreContent = true;
     });
@@ -226,7 +229,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         poiDescription: currentPoi.description,
       );
 
-      debugPrint('_checkForMoreContent: Result for ${currentPoi.name}: $hasMore');
+      debugPrint(
+          '_checkForMoreContent: Result for ${currentPoi.name}: $hasMore');
       if (mounted) {
         setState(() {
           hasMoreContent = hasMore;
@@ -247,7 +251,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   Future<void> _generateExtendedStory() async {
     if (llmService == null || aiStory == null) return;
 
-    debugPrint('_generateExtendedStory: Starting generation for ${currentPoi.name}');
+    debugPrint(
+        '_generateExtendedStory: Starting generation for ${currentPoi.name}');
     setState(() {
       isGeneratingExtendedStory = true;
     });
@@ -260,7 +265,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
         style: currentStyle,
       );
 
-      debugPrint('_generateExtendedStory: Generation complete, length: ${extended.length}');
+      debugPrint(
+          '_generateExtendedStory: Generation complete, length: ${extended.length}');
       setState(() {
         extendedStory = extended;
         isGeneratingExtendedStory = false;
@@ -286,13 +292,14 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
 
   Future<void> _playAudio(String text) async {
     if (tts == null) return;
-    
+
     if (!tourAudioEnabled) {
       _showSnackBar('Tour audio is disabled. Enable it in Settings.');
       return;
     }
 
-    debugPrint('_playAudio: Starting playback for text of length ${text.length}');
+    debugPrint(
+        '_playAudio: Starting playback for text of length ${text.length}');
 
     // Stop any currently playing audio first
     if (isPlayingAudio || isPausedAudio) {
@@ -316,7 +323,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
 
   Future<void> _pauseAudio() async {
     if (tts == null) return;
-    
+
     // Use pause to allow potential resume (though Flutter TTS will restart on speak)
     await tts!.pause();
     if (mounted) {
@@ -346,7 +353,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
 
   Future<void> _stopAudio() async {
     if (tts == null) return;
-    
+
     await tts!.stop();
     if (mounted) {
       setState(() {
@@ -443,192 +450,281 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    poi.name,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                _buildInterestBadge(poi.interestLevel),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Audio status indicator
-            if (!tourAudioEnabled)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                margin: const EdgeInsets.only(bottom: 8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: Colors.orange.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.volume_off,
-                      size: 14,
-                      color: Colors.orange[700],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Tour audio is disabled',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange[700],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            if (poi.category != PoiCategory.generic)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Chip(
-                  label: Text(_getCategoryDisplayName(poi.category)),
-                  backgroundColor: _getCategoryColor(poi.category),
-                  labelStyle: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            // Description section with loading state
-            if (isLoadingDescription)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20.0),
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Row(
                     children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                      Expanded(
+                        child: Text(
+                          poi.name,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                      SizedBox(width: 8),
-                      Text('Loading description...'),
+                      _buildInterestBadge(poi.interestLevel),
                     ],
                   ),
-                ),
-              )
-            else if (description.isNotEmpty)
-              Text(
-                description,
-                style: const TextStyle(fontSize: 16, height: 1.5),
-              )
-            else
-              const Text(
-                'No description available.',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontStyle: FontStyle.italic,
-                  color: Colors.grey,
-                ),
-              ),
-            const SizedBox(height: 16),
-            // AI Story section
-            if (!isLoadingDescription && description.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: isGeneratingStory ? null : _generateAiStory,
-                    icon: isGeneratingStory
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.auto_awesome),
-                    label: const Text('AI Story'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                  if (isGeneratingStory)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Generating AI story...',
-                        style: TextStyle(
-                          fontStyle: FontStyle.italic,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
-                  if (aiStory != null) ...[
-                    const SizedBox(height: 16),
+                  const SizedBox(height: 8),
+                  // Audio status indicator
+                  if (!tourAudioEnabled)
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
-                        color: Colors.purple.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: Colors.purple.withValues(alpha: 0.3),
+                          color: Colors.orange.withValues(alpha: 0.3),
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.auto_awesome,
-                                size: 16,
-                                color: Colors.purple,
-                              ),
-                              const SizedBox(width: 4),
-                              const Text(
-                                'AI-Generated Story',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.purple,
-                                ),
-                              ),
-                            ],
+                          Icon(
+                            Icons.volume_off,
+                            size: 14,
+                            color: Colors.orange[700],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(width: 4),
                           Text(
-                            aiStory!,
-                            style: const TextStyle(fontSize: 16, height: 1.5),
+                            'Tour audio is disabled',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange[700],
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              ElevatedButton.icon(
-                                onPressed: tourAudioEnabled
-                                    ? () => _playAudio(aiStory!)
-                                    : null,
-                                icon: const Icon(Icons.volume_up, size: 16),
-                                label: Text(tourAudioEnabled
-                                    ? 'Play Again'
-                                    : 'Audio Disabled'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.purple,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                ),
+                        ],
+                      ),
+                    ),
+                  if (poi.category != PoiCategory.generic)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Chip(
+                        label: Text(_getCategoryDisplayName(poi.category)),
+                        backgroundColor: _getCategoryColor(poi.category),
+                        labelStyle: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  // Description section with loading state
+                  if (isLoadingDescription)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20.0),
+                      child: Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            SizedBox(width: 8),
+                            Text('Loading description...'),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (description.isNotEmpty)
+                    Text(
+                      description,
+                      style: const TextStyle(fontSize: 16, height: 1.5),
+                    )
+                  else
+                    const Text(
+                      'No description available.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  // AI Story section
+                  if (!isLoadingDescription && description.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed:
+                              isGeneratingStory ? null : _generateAiStory,
+                          icon: isGeneratingStory
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.auto_awesome),
+                          label: const Text('AI Story'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purple,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                        if (isGeneratingStory)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              'Generating AI story...',
+                              style: TextStyle(
+                                fontStyle: FontStyle.italic,
+                                color: Colors.grey,
                               ),
-                              if (hasMoreContent && !isGeneratingExtendedStory)
+                            ),
+                          ),
+                        if (aiStory != null) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.purple.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.auto_awesome,
+                                      size: 16,
+                                      color: Colors.purple,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Text(
+                                      'AI-Generated Story',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.purple,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  aiStory!,
+                                  style: const TextStyle(
+                                      fontSize: 16, height: 1.5),
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    ElevatedButton.icon(
+                                      onPressed: tourAudioEnabled
+                                          ? () => _playAudio(aiStory!)
+                                          : null,
+                                      icon:
+                                          const Icon(Icons.volume_up, size: 16),
+                                      label: Text(tourAudioEnabled
+                                          ? 'Play Again'
+                                          : 'Audio Disabled'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.purple,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                    ),
+                                    if (hasMoreContent &&
+                                        !isGeneratingExtendedStory)
+                                      ElevatedButton.icon(
+                                        onPressed: _generateExtendedStory,
+                                        icon: const Icon(Icons.read_more,
+                                            size: 16),
+                                        label: const Text('Tell Me More'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.deepPurple,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
+                                    if (isCheckingMoreContent)
+                                      const Padding(
+                                        padding: EdgeInsets.only(left: 8.0),
+                                        child: SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (isGeneratingExtendedStory)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              'Generating extended story...',
+                              style: TextStyle(
+                                fontStyle: FontStyle.italic,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        if (extendedStory != null) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.deepPurple.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.deepPurple.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.auto_stories,
+                                      size: 16,
+                                      color: Colors.deepPurple,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Text(
+                                      'Extended Story',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.deepPurple,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  extendedStory!,
+                                  style: const TextStyle(
+                                      fontSize: 16, height: 1.5),
+                                ),
+                                const SizedBox(height: 8),
                                 ElevatedButton.icon(
-                                  onPressed: _generateExtendedStory,
-                                  icon: const Icon(Icons.read_more, size: 16),
-                                  label: const Text('Tell Me More'),
+                                  onPressed: tourAudioEnabled
+                                      ? () => _playAudio(extendedStory!)
+                                      : null,
+                                  icon: const Icon(Icons.volume_up, size: 16),
+                                  label: Text(tourAudioEnabled
+                                      ? 'Play Again'
+                                      : 'Audio Disabled'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.deepPurple,
                                     foregroundColor: Colors.white,
@@ -638,166 +734,88 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                     ),
                                   ),
                                 ),
-                              if (isCheckingMoreContent)
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 8.0),
-                                  child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  // Action buttons
+                  if (description.isNotEmpty && !isLoadingDescription)
+                    Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: isSynthesizingAudio
+                                    ? null // Disable during synthesis
+                                    : (isPlayingAudio
+                                        ? _pauseAudio
+                                        : (isPausedAudio
+                                            ? _resumeAudio
+                                            : (tourAudioEnabled
+                                                ? () => _playAudio(description)
+                                                : null))),
+                                icon: Icon(
+                                  isSynthesizingAudio
+                                      ? Icons.hourglass_empty
+                                      : (isPlayingAudio
+                                          ? Icons.pause
+                                          : (isPausedAudio
+                                              ? Icons.play_arrow
+                                              : Icons.volume_up)),
+                                ),
+                                label: Text(
+                                  isSynthesizingAudio
+                                      ? "Preparing..."
+                                      : (isPlayingAudio
+                                          ? "Pause"
+                                          : (isPausedAudio
+                                              ? "Resume"
+                                              : (tourAudioEnabled
+                                                  ? "Listen"
+                                                  : "Audio Disabled"))),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isPlayingAudio
+                                      ? Colors.orange
+                                      : (isPausedAudio ? Colors.green : null),
+                                  foregroundColor:
+                                      (isPlayingAudio || isPausedAudio)
+                                          ? Colors.white
+                                          : null,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (widget.onNavigate != null)
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    widget
+                                        .onNavigate!(LatLng(poi.lat, poi.lon));
+                                  },
+                                  icon: const Icon(Icons.directions_walk),
+                                  label: const Text("Navigate"),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                    foregroundColor: Colors.white,
                                   ),
                                 ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (isGeneratingExtendedStory)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Generating extended story...',
-                        style: TextStyle(
-                          fontStyle: FontStyle.italic,
-                          color: Colors.grey,
+                              ),
+                          ],
                         ),
-                      ),
+                      ],
                     ),
-                  if (extendedStory != null) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.deepPurple.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.deepPurple.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.auto_stories,
-                                size: 16,
-                                color: Colors.deepPurple,
-                              ),
-                              const SizedBox(width: 4),
-                              const Text(
-                                'Extended Story',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.deepPurple,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            extendedStory!,
-                            style: const TextStyle(fontSize: 16, height: 1.5),
-                          ),
-                          const SizedBox(height: 8),
-                          ElevatedButton.icon(
-                            onPressed: tourAudioEnabled
-                                ? () => _playAudio(extendedStory!)
-                                : null,
-                            icon: const Icon(Icons.volume_up, size: 16),
-                            label: Text(tourAudioEnabled
-                                ? 'Play Again'
-                                : 'Audio Disabled'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.deepPurple,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
+                  // Add extra padding at bottom for comfortable scrolling
+                  const SizedBox(height: 50),
                 ],
               ),
-            // Action buttons
-            if (description.isNotEmpty && !isLoadingDescription)
-              Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: isSynthesizingAudio
-                              ? null // Disable during synthesis
-                              : (isPlayingAudio
-                                  ? _pauseAudio
-                                  : (isPausedAudio
-                                      ? _resumeAudio
-                                      : (tourAudioEnabled
-                                          ? () => _playAudio(description)
-                                          : null))),
-                          icon: Icon(
-                            isSynthesizingAudio
-                                ? Icons.hourglass_empty
-                                : (isPlayingAudio
-                                    ? Icons.pause
-                                    : (isPausedAudio
-                                        ? Icons.play_arrow
-                                        : Icons.volume_up)),
-                          ),
-                          label: Text(
-                            isSynthesizingAudio
-                                ? "Preparing..."
-                                : (isPlayingAudio
-                                    ? "Pause"
-                                    : (isPausedAudio
-                                        ? "Resume"
-                                        : (tourAudioEnabled
-                                            ? "Listen"
-                                            : "Audio Disabled"))),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isPlayingAudio
-                                ? Colors.orange
-                                : (isPausedAudio ? Colors.green : null),
-                            foregroundColor: (isPlayingAudio || isPausedAudio)
-                                ? Colors.white
-                                : null,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (widget.onNavigate != null)
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              widget.onNavigate!(LatLng(poi.lat, poi.lon));
-                            },
-                            icon: const Icon(Icons.directions_walk),
-                            label: const Text("Navigate"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            // Add extra padding at bottom for comfortable scrolling
-            const SizedBox(height: 50),
-          ],
+            ),
+          ),
         ),
-      ),
-    ),
-  ),
       ],
     );
   }

@@ -20,7 +20,7 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _llmApiKeyController;
   late final TextEditingController _llmApiEndpointController;
   late final TextEditingController _llmModelController;
-  
+
   // Controllers for TTS settings
   late final TextEditingController _ttsVoiceController;
 
@@ -455,7 +455,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             size: 20, color: Colors.blue[700]),
                         const SizedBox(width: 8),
                         Expanded(
-                           child: Text(
+                          child: Text(
                             'To get AI-generated stories for POI, configure your OpenAI API key or compatible LLM endpoint. Get your API key from platform.openai.com',
                             style: TextStyle(
                               fontSize: 12,

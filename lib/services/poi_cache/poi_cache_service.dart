@@ -40,6 +40,9 @@ class PoiCacheService {
   // Semaphore for limiting concurrent requests
   final Map<String, Completer<void>> _inflightRequests = {};
 
+  // Track background refresh operations
+  final List<Future<void>> _backgroundOperations = [];
+
   PoiCacheService({
     this.config = const PoiCacheConfig(),
   });
@@ -129,13 +132,38 @@ class PoiCacheService {
       }
     }
 
-    // Fetch missing/stale tiles in the background
+    // Fetch missing/stale tiles
     if (tilesToFetch.isNotEmpty) {
-      _fetchTilesInBackground(
-        tiles: tilesToFetch,
-        filtersHash: filtersHash,
-        fetchFunction: fetchFunction,
-      );
+      // If we have no cached data at all, wait for fetches to complete
+      // Otherwise fetch in background for better UX (stale-while-revalidate)
+      if (allPois.isEmpty) {
+        await _fetchTilesInBackground(
+          tiles: tilesToFetch,
+          filtersHash: filtersHash,
+          fetchFunction: fetchFunction,
+        );
+
+        // After fetching, collect the newly cached POIs
+        for (final tile in tilesToFetch) {
+          final cacheKey = TileUtils.createTileKey(tile, filtersHash);
+          final cachedEntry = await _storage.get(cacheKey);
+          if (cachedEntry != null) {
+            for (final poi in cachedEntry.pois) {
+              allPois[poi.id] = poi;
+            }
+          }
+        }
+      } else {
+        // Have some data, fetch updates in background
+        final backgroundOp = _fetchTilesInBackground(
+          tiles: tilesToFetch,
+          filtersHash: filtersHash,
+          fetchFunction: fetchFunction,
+        );
+        _backgroundOperations.add(backgroundOp);
+        // Clean up completed operations
+        backgroundOp.then((_) => _backgroundOperations.remove(backgroundOp));
+      }
     }
 
     // Log cache metrics periodically
@@ -190,7 +218,9 @@ class PoiCacheService {
       // Limit concurrent requests
       if (futures.length >= config.maxConcurrentRequests) {
         await Future.any(futures);
-        futures.removeWhere((f) => f.isCompleted);
+        // Clear the list - all futures will complete in background
+        // We can't easily track which specific future completed with Future.any
+        futures.clear();
       }
     }
 
@@ -230,7 +260,8 @@ class PoiCacheService {
     final size = await _storage.getSize();
     if (size <= config.maxTiles) return;
 
-    debugPrint('POI Cache: Performing LRU eviction (size=$size, max=${config.maxTiles})');
+    debugPrint(
+        'POI Cache: Performing LRU eviction (size=$size, max=${config.maxTiles})');
 
     // Get all entries with their last access times
     final keys = await _storage.getAllKeys();
@@ -280,6 +311,23 @@ class PoiCacheService {
 
   /// Close the service (cleanup)
   Future<void> close() async {
+    // Wait for all inflight requests to complete
+    while (_inflightRequests.isNotEmpty) {
+      final completers = _inflightRequests.values.toList();
+      _inflightRequests.clear();
+      await Future.wait(
+        completers.map((c) => c.future.catchError((_) => null)),
+      );
+    }
+
+    // Wait for all background operations to complete
+    if (_backgroundOperations.isNotEmpty) {
+      await Future.wait(
+        _backgroundOperations.map((op) => op.catchError((_) => null)),
+      );
+      _backgroundOperations.clear();
+    }
+
     await _storage.close();
   }
 }

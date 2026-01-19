@@ -119,7 +119,8 @@ class LlmService {
       return false;
     }
 
-    final prompt = '''Based on the following POI information, determine if there is SUBSTANTIALLY MORE fascinating and unique content that would make an extended tour genuinely interesting and valuable.
+    final prompt =
+        '''Based on the following POI information, determine if there is SUBSTANTIALLY MORE fascinating and unique content that would make an extended tour genuinely interesting and valuable.
 
 POI Name: $poiName
 Description: $poiDescription
@@ -138,7 +139,8 @@ Be STRICT: When in doubt, answer NO. Quality over quantity.''';
 
     try {
       debugPrint('hasMoreContent: Checking content for POI: $poiName');
-      final response = await _makeApiCall(prompt, maxTokens: contentCheckMaxTokens);
+      final response =
+          await _makeApiCall(prompt, maxTokens: contentCheckMaxTokens);
       final answer = response.trim().toUpperCase();
       debugPrint('hasMoreContent: LLM response: "$answer"');
       final result = answer.startsWith('YES');
@@ -170,7 +172,8 @@ Be STRICT: When in doubt, answer NO. Quality over quantity.''';
           'LLM service is not properly configured. Please set up your API key in settings.');
     }
 
-    final prompt = '''You are an expert tour guide creating a detailed, engaging audio tour ${style.promptModifier}.
+    final prompt =
+        '''You are an expert tour guide creating a detailed, engaging audio tour ${style.promptModifier}.
 
 POI: $poiName
 Description: $poiDescription
@@ -193,7 +196,8 @@ Only continue if you have genuinely interesting NEW information.
 Extended story with NEW fascinating details:''';
 
     try {
-      final response = await _makeApiCall(prompt, maxTokens: extendedStoryMaxTokens);
+      final response =
+          await _makeApiCall(prompt, maxTokens: extendedStoryMaxTokens);
 
       // Cache the result
       _storyCache[cacheKey] = response;

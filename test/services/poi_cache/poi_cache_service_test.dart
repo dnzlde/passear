@@ -1,12 +1,32 @@
 // test/services/poi_cache/poi_cache_service_test.dart
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:passear/models/poi.dart';
 import 'package:passear/models/settings.dart';
 import 'package:passear/services/poi_cache/poi_cache_service.dart';
-import 'package:passear/services/poi_cache/tile_utils.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  const MethodChannel pathProviderChannel =
+      MethodChannel('plugins.flutter.io/path_provider');
+
+  setUpAll(() {
+    // Mock path_provider plugin
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathProviderChannel,
+            (MethodCall methodCall) async {
+      if (methodCall.method == 'getApplicationDocumentsDirectory') {
+        return '/tmp/test_app_documents';
+      }
+      return null;
+    });
+  });
+
+  tearDownAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathProviderChannel, null);
+  });
 
   group('PoiCacheService', () {
     late PoiCacheService cacheService;
@@ -77,11 +97,10 @@ void main() {
         },
       );
 
-      // Should return empty immediately (cache miss)
+      // Should wait for fetch and return empty (fetch returns empty)
       expect(result, isEmpty);
 
-      // Should trigger background fetch
-      await Future.delayed(Duration(milliseconds: 100));
+      // Should have triggered fetch
       expect(fetchCallCount, greaterThan(0));
     });
 
@@ -100,7 +119,7 @@ void main() {
 
       int fetchCallCount = 0;
 
-      // First call - should miss cache and fetch
+      // First call - should miss cache and fetch (4 tiles)
       final result1 = await cacheService.getPoisForViewport(
         north: 32.08,
         south: 32.07,
@@ -113,10 +132,12 @@ void main() {
         },
       );
 
-      // Wait for background fetch to complete
-      await Future.delayed(Duration(milliseconds: 200));
+      // Should have fetched for all 4 tiles
+      expect(fetchCallCount, equals(4));
+      expect(result1, isNotEmpty);
 
       // Second call - should hit cache
+      fetchCallCount = 0; // Reset counter
       final result2 = await cacheService.getPoisForViewport(
         north: 32.08,
         south: 32.07,
@@ -134,7 +155,7 @@ void main() {
       expect(result2[0].id, equals('test-1'));
 
       // Should not fetch again (cache hit)
-      expect(fetchCallCount, equals(1));
+      expect(fetchCallCount, equals(0));
     });
 
     test('should refresh stale cache entries', () async {
@@ -152,7 +173,7 @@ void main() {
 
       int fetchCallCount = 0;
 
-      // First call - cache miss
+      // First call - cache miss (4 tiles)
       await cacheService.getPoisForViewport(
         north: 32.08,
         south: 32.07,
@@ -165,12 +186,13 @@ void main() {
         },
       );
 
-      await Future.delayed(Duration(milliseconds: 200));
+      expect(fetchCallCount, equals(4));
 
       // Wait for TTL to expire
-      await Future.delayed(Duration(milliseconds: 400));
+      await Future.delayed(Duration(milliseconds: 600));
 
-      // Second call after TTL - should return stale data and refresh
+      // Second call after TTL - should return stale data and refresh in background
+      fetchCallCount = 0; // Reset
       final result2 = await cacheService.getPoisForViewport(
         north: 32.08,
         south: 32.07,
@@ -186,9 +208,10 @@ void main() {
       // Should return stale data immediately
       expect(result2, isNotEmpty);
 
-      // Should trigger refresh in background
+      // Should trigger refresh in background for 4 tiles
+      // Since we have stale data, refresh happens in background (not awaited)
       await Future.delayed(Duration(milliseconds: 200));
-      expect(fetchCallCount, equals(2));
+      expect(fetchCallCount, equals(4));
     });
 
     test('should deduplicate POIs from multiple tiles', () async {
@@ -214,7 +237,11 @@ void main() {
         },
       );
 
-      await Future.delayed(Duration(milliseconds: 200));
+      // First call should return deduplicated result
+      expect(
+        result.where((poi) => poi.id == 'duplicate-poi').length,
+        equals(1),
+      );
 
       // Fetch again to get cached results
       final result2 = await cacheService.getPoisForViewport(
@@ -246,7 +273,7 @@ void main() {
       await freshCache.initialize();
       await freshCache.clearCache();
 
-      // First call - cache miss
+      // First call - cache miss (4 tiles)
       await freshCache.getPoisForViewport(
         north: 32.08,
         south: 32.07,
@@ -256,12 +283,10 @@ void main() {
         fetchFunction: (bounds) async => [],
       );
 
-      await Future.delayed(Duration(milliseconds: 100));
-
       final stats1 = freshCache.getStats();
-      expect(stats1['misses'], greaterThan(0));
+      expect(stats1['misses'], equals(4));
 
-      // Second call - cache hit
+      // Second call - cache hit (4 tiles)
       await freshCache.getPoisForViewport(
         north: 32.08,
         south: 32.07,
@@ -272,7 +297,8 @@ void main() {
       );
 
       final stats2 = freshCache.getStats();
-      expect(stats2['hits'], greaterThan(stats1['hits'] as int));
+      expect(stats2['hits'], equals(4));
+      expect(stats2['misses'], equals(4));
 
       await freshCache.close();
     });

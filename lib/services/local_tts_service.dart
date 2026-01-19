@@ -9,6 +9,7 @@ class LocalTtsService implements TtsService {
   bool _isPlaying = false;
   bool _isPaused = false;
   void Function()? _completionCallback;
+  void Function(int current, int total)? _progressCallback;
   AudioSession? _audioSession;
 
   LocalTtsService() {
@@ -17,8 +18,17 @@ class LocalTtsService implements TtsService {
   }
 
   @override
+  bool get isSynthesizing =>
+      false; // LocalTtsService doesn't synthesize, only speaks
+
+  @override
   void setCompletionCallback(void Function() callback) {
     _completionCallback = callback;
+  }
+
+  @override
+  void setProgressCallback(void Function(int current, int total) callback) {
+    _progressCallback = callback;
   }
 
   Future<void> _initAudioSession() async {

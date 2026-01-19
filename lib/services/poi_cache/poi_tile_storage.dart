@@ -69,12 +69,14 @@ class PoiTileStorage {
   /// Clear all cache entries
   Future<void> clear() async {
     await _ensureInitialized();
-    await _box!.clear();
+    if (_box?.isOpen == true) {
+      await _box!.clear();
+    }
   }
 
   /// Close the storage (cleanup)
   Future<void> close() async {
-    if (_isInitialized) {
+    if (_isInitialized && _box?.isOpen == true) {
       await _box?.close();
       _isInitialized = false;
     }

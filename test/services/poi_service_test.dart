@@ -1,17 +1,42 @@
 // test/services/poi_service_test.dart
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:passear/services/poi_service.dart';
 import 'package:passear/services/api_client.dart';
 import 'package:passear/models/poi.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  const MethodChannel pathProviderChannel =
+      MethodChannel('plugins.flutter.io/path_provider');
+
+  setUpAll(() {
+    // Mock path_provider plugin
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathProviderChannel,
+            (MethodCall methodCall) async {
+      if (methodCall.method == 'getApplicationDocumentsDirectory') {
+        return '/tmp/test_app_documents';
+      }
+      return null;
+    });
+  });
+
+  tearDownAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathProviderChannel, null);
+  });
+
   group('PoiService', () {
     late MockApiClient mockClient;
     late PoiService service;
 
-    setUp(() {
+    setUp(() async {
       mockClient = MockApiClient();
       service = PoiService(apiClient: mockClient);
+      // Clear any cached data from previous tests
+      await service.clearCaches();
     });
 
     test('should fetch POIs in bounds with scoring', () async {

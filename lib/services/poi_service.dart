@@ -180,9 +180,10 @@ class PoiService {
   }
 
   /// Clear caches
-  void clearCaches() {
+  Future<void> clearCaches() async {
     _wikiService?.clearCaches();
-    _cacheService?.clearCache();
+    await _ensureCacheInitialized();
+    await _cacheService?.clearCache();
   }
 
   /// Get cache statistics
