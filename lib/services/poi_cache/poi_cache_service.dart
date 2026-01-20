@@ -247,6 +247,14 @@ class PoiCacheService {
 
     final pois = await fetchFunction(bounds);
 
+    // Only cache non-empty results to avoid caching API errors/failures
+    // Empty tiles will be re-fetched on next request
+    if (pois.isEmpty) {
+      debugPrint(
+          'POI Cache: NOT caching empty tile $cacheKey (may be API error or legitimately empty)');
+      return;
+    }
+
     final entry = PoiCacheEntry(
       pois: pois,
       updatedAt: DateTime.now(),
@@ -295,6 +303,25 @@ class PoiCacheService {
     _cacheMisses = 0;
     _staleHits = 0;
     debugPrint('POI Cache: Cleared all cache');
+  }
+
+  /// Clear all empty cached tiles (tiles with no POIs)
+  /// This is useful to clean up incorrectly cached empty tiles from API errors
+  Future<int> clearEmptyTiles() async {
+    final keys = await _storage.getAllKeys();
+    int removedCount = 0;
+
+    for (final key in keys) {
+      final entry = await _storage.get(key);
+      if (entry != null && entry.pois.isEmpty) {
+        await _storage.delete(key);
+        removedCount++;
+        debugPrint('POI Cache: Removed empty tile $key');
+      }
+    }
+
+    debugPrint('POI Cache: Cleared $removedCount empty tiles');
+    return removedCount;
   }
 
   /// Get cache statistics

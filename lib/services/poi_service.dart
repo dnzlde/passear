@@ -186,6 +186,14 @@ class PoiService {
     await _cacheService?.clearCache();
   }
 
+  /// Clear all empty cached tiles
+  /// Useful for cleaning up incorrectly cached empty tiles from API errors
+  /// Returns the number of tiles removed
+  Future<int> clearEmptyTiles() async {
+    await _ensureCacheInitialized();
+    return await _cacheService?.clearEmptyTiles() ?? 0;
+  }
+
   /// Get cache statistics
   Map<String, dynamic>? getCacheStats() {
     return _cacheService?.getStats();

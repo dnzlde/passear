@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:passear/models/poi.dart';
 import 'package:passear/models/settings.dart';
 import 'package:passear/services/poi_cache/poi_cache_service.dart';
+import 'package:passear/services/poi_cache/poi_cache_entry.dart';
+import 'package:passear/services/poi_cache/poi_tile_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -273,14 +275,23 @@ void main() {
       await freshCache.initialize();
       await freshCache.clearCache();
 
-      // First call - cache miss (4 tiles)
+      final testPoi = Poi(
+        id: 'test-poi',
+        name: 'Test POI',
+        lat: 32.075,
+        lon: 34.795,
+        description: 'Test',
+        audio: '',
+      );
+
+      // First call - cache miss (4 tiles) with non-empty results
       await freshCache.getPoisForViewport(
         north: 32.08,
         south: 32.07,
         east: 34.80,
         west: 34.79,
         settings: settings,
-        fetchFunction: (bounds) async => [],
+        fetchFunction: (bounds) async => [testPoi],
       );
 
       final stats1 = freshCache.getStats();
@@ -293,7 +304,7 @@ void main() {
         east: 34.80,
         west: 34.79,
         settings: settings,
-        fetchFunction: (bounds) async => [],
+        fetchFunction: (bounds) async => [testPoi],
       );
 
       final stats2 = freshCache.getStats();
@@ -301,6 +312,101 @@ void main() {
       expect(stats2['misses'], equals(4));
 
       await freshCache.close();
+    });
+
+    test('should not cache empty tile results', () async {
+      final settings = AppSettings();
+      int fetchCallCount = 0;
+
+      // First call - should NOT cache empty results
+      await cacheService.getPoisForViewport(
+        north: 32.08,
+        south: 32.07,
+        east: 34.80,
+        west: 34.79,
+        settings: settings,
+        fetchFunction: (bounds) async {
+          fetchCallCount++;
+          return []; // Empty result (simulating API error or no POIs)
+        },
+      );
+
+      expect(fetchCallCount, equals(4)); // 4 tiles fetched
+
+      // Second call - should fetch again since empty wasn't cached
+      fetchCallCount = 0;
+      await cacheService.getPoisForViewport(
+        north: 32.08,
+        south: 32.07,
+        east: 34.80,
+        west: 34.79,
+        settings: settings,
+        fetchFunction: (bounds) async {
+          fetchCallCount++;
+          return []; // Empty again
+        },
+      );
+
+      // Should fetch again since empty results are not cached
+      expect(fetchCallCount, equals(4));
+    });
+
+    test('should clear empty tiles', () async {
+      final settings = AppSettings();
+
+      // Manually add some cached tiles (simulating old cached empty tiles)
+      final storage = PoiTileStorage();
+      await storage.initialize();
+
+      // Add a tile with POIs
+      await storage.put(
+        'poi:15:100:200:test',
+        PoiCacheEntry(
+          pois: [
+            Poi(
+              id: 'test-1',
+              name: 'Test',
+              lat: 32.0,
+              lon: 34.0,
+              description: '',
+              audio: '',
+            )
+          ],
+          updatedAt: DateTime.now(),
+          lastAccessedAt: DateTime.now(),
+        ),
+      );
+
+      // Add empty tiles (simulating incorrectly cached empty tiles)
+      await storage.put(
+        'poi:15:101:200:test',
+        PoiCacheEntry(
+          pois: [],
+          updatedAt: DateTime.now(),
+          lastAccessedAt: DateTime.now(),
+        ),
+      );
+      await storage.put(
+        'poi:15:102:200:test',
+        PoiCacheEntry(
+          pois: [],
+          updatedAt: DateTime.now(),
+          lastAccessedAt: DateTime.now(),
+        ),
+      );
+
+      // Clear empty tiles
+      final removed = await cacheService.clearEmptyTiles();
+
+      // Should have removed 2 empty tiles
+      expect(removed, equals(2));
+
+      // Non-empty tile should still exist
+      final remainingEntry = await storage.get('poi:15:100:200:test');
+      expect(remainingEntry, isNotNull);
+      expect(remainingEntry!.pois, isNotEmpty);
+
+      await storage.close();
     });
   });
 }
