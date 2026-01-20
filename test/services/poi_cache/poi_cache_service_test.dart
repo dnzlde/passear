@@ -331,11 +331,11 @@ void main() {
       await freshCache.close();
     });
 
-    test('should not cache empty tile results', () async {
+    test('should cache empty tile results', () async {
       final settings = AppSettings();
       int fetchCallCount = 0;
 
-      // First call - should NOT cache empty results
+      // First call - should cache empty results (successful HTTP 200 with no POIs)
       await cacheService.getPoisForViewport(
         north: 32.08,
         south: 32.07,
@@ -344,13 +344,13 @@ void main() {
         settings: settings,
         fetchFunction: (bounds) async {
           fetchCallCount++;
-          return []; // Empty result (simulating API error or no POIs)
+          return []; // Empty result (successful response, no POIs in area)
         },
       );
 
       expect(fetchCallCount, equals(4)); // 4 tiles fetched
 
-      // Second call - should fetch again since empty wasn't cached
+      // Second call - should NOT fetch again since empty WAS cached
       fetchCallCount = 0;
       await cacheService.getPoisForViewport(
         north: 32.08,
@@ -360,12 +360,12 @@ void main() {
         settings: settings,
         fetchFunction: (bounds) async {
           fetchCallCount++;
-          return []; // Empty again
+          return []; // Should not be called
         },
       );
 
-      // Should fetch again since empty results are not cached
-      expect(fetchCallCount, equals(4));
+      // Should NOT fetch again since empty results ARE now cached
+      expect(fetchCallCount, equals(0));
     });
 
     test('should clear empty tiles', () async {
