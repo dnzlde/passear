@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/poi.dart';
 import '../models/settings.dart';
 import '../services/settings_service.dart';
+import '../services/poi_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -13,8 +14,10 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final SettingsService _settingsService = SettingsService.instance;
+  final PoiService _poiService = PoiService();
   late AppSettings _settings;
   bool _isLoading = true;
+  bool _isClearingCache = false;
 
   // Controllers for LLM settings
   late final TextEditingController _llmApiKeyController;
@@ -159,6 +162,48 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _settings = updatedSettings;
     });
+  }
+
+  Future<void> _updateMaxCacheTiles(int tiles) async {
+    final updatedSettings = _settings.copyWith(maxCacheTiles: tiles);
+    await _settingsService.saveSettings(updatedSettings);
+    setState(() {
+      _settings = updatedSettings;
+    });
+  }
+
+  Future<void> _clearPoiCache() async {
+    setState(() {
+      _isClearingCache = true;
+    });
+
+    try {
+      await _poiService.clearCaches();
+      
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('POI cache cleared successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error clearing cache: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isClearingCache = false;
+        });
+      }
+    }
   }
 
   String _getCategoryDisplayName(PoiCategory category) {
@@ -845,6 +890,208 @@ class _SettingsPageState extends State<SettingsPage> {
                       },
                     );
                   }),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Cache Management
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.storage, color: Colors.orange[400]),
+                      const SizedBox(width: 8),
+                      Text(
+                        'POI Cache Management',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Configure local POI cache to reduce network usage',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 16),
+                  // Cache statistics
+                  FutureBuilder<Map<String, dynamic>?>(
+                    future: Future.value(_poiService.getCacheStats()),
+                    builder: (context, snapshot) {
+                      final stats = snapshot.data;
+                      if (stats != null) {
+                        final hits = stats['hits'] as int? ?? 0;
+                        final misses = stats['misses'] as int? ?? 0;
+                        final total = stats['total'] as int? ?? 0;
+                        final hitRate = total > 0
+                            ? ((hits / total) * 100).toStringAsFixed(1)
+                            : '0.0';
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue[200]!),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Cache Statistics',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue[900],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Hits: $hits',
+                                      style:
+                                          TextStyle(color: Colors.blue[900])),
+                                  Text('Misses: $misses',
+                                      style:
+                                          TextStyle(color: Colors.blue[900])),
+                                  Text('Hit Rate: $hitRate%',
+                                      style:
+                                          TextStyle(color: Colors.blue[900])),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Max cache tiles setting
+                  Text(
+                    'Maximum Cached Tiles',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Slider(
+                    value: _settings.maxCacheTiles.toDouble(),
+                    min: 100,
+                    max: 1000,
+                    divisions: 18,
+                    label: '${_settings.maxCacheTiles}',
+                    onChanged: (value) {
+                      _updateMaxCacheTiles(value.round());
+                    },
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Current: ${_settings.maxCacheTiles} tiles',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      Text(
+                        '~${(_settings.maxCacheTiles * 2.4).toStringAsFixed(0)} km² area',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Clear cache button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isClearingCache
+                          ? null
+                          : () async {
+                              // Show confirmation dialog
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Clear POI Cache'),
+                                  content: const Text(
+                                    'This will clear all cached POI data. You\'ll need to re-download POIs when you visit areas again. Continue?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(true),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                      ),
+                                      child: const Text('Clear Cache'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirmed == true) {
+                                await _clearPoiCache();
+                              }
+                            },
+                      icon: _isClearingCache
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.delete_sweep),
+                      label: Text(
+                        _isClearingCache ? 'Clearing...' : 'Clear POI Cache',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange[700],
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Help text
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange[200]!),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 20, color: Colors.orange[700]),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'POI cache stores map data locally to reduce network usage and improve performance. Each tile covers approximately 2.4 km². Clear the cache if you experience issues or want to refresh stale data.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange[900],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
