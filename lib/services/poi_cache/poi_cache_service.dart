@@ -53,6 +53,7 @@ class PoiCacheService {
   }
 
   /// Create a hash of filter parameters for cache key
+  /// Note: maxPoiCount is NOT included - we cache all POIs and filter on display
   String createFiltersHash(AppSettings settings) {
     final filterData = {
       'provider': settings.poiProvider.name,
@@ -61,7 +62,7 @@ class PoiCacheService {
           .map((e) => e.key.name)
           .toList()
         ..sort(),
-      'maxCount': settings.maxPoiCount,
+      // maxCount deliberately excluded - cache all POIs, filter at display time
     };
     final jsonString = jsonEncode(filterData);
     final bytes = utf8.encode(jsonString);

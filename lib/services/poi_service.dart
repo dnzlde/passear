@@ -47,6 +47,7 @@ class PoiService {
   }
 
   /// Fetch POIs for a single tile (used by cache service)
+  /// Fetches ALL POIs in the tile area, filtering is done at display time
   Future<List<Poi>> _fetchPoisForTile(GeoBounds bounds) async {
     // Load current settings
     final settings = await _settingsService.loadSettings();
@@ -60,7 +61,7 @@ class PoiService {
           south: bounds.south,
           east: bounds.east,
           west: bounds.west,
-          maxResults: 50, // Reasonable limit per tile
+          maxResults: 100, // Fetch more POIs per tile for comprehensive caching
         );
         allPois = wikiPois.map((wikiPoi) {
           return Poi(
@@ -84,7 +85,7 @@ class PoiService {
           south: bounds.south,
           east: bounds.east,
           west: bounds.west,
-          maxResults: 50,
+          maxResults: 100,
         );
         allPois = overpassPois;
         break;

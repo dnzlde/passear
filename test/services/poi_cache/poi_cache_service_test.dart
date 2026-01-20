@@ -67,6 +67,23 @@ void main() {
       expect(hash1, equals(hash2));
     });
 
+    test('should create same hash regardless of maxPoiCount', () {
+      final settings1 = AppSettings(
+        poiProvider: PoiProvider.wikipedia,
+        maxPoiCount: 20,
+      );
+      final settings2 = AppSettings(
+        poiProvider: PoiProvider.wikipedia,
+        maxPoiCount: 50,
+      );
+
+      final hash1 = cacheService.createFiltersHash(settings1);
+      final hash2 = cacheService.createFiltersHash(settings2);
+
+      // Hash should be the same - maxPoiCount doesn't affect cache
+      expect(hash1, equals(hash2));
+    });
+
     test('should create different filter hashes for different settings', () {
       final settings1 = AppSettings(
         poiProvider: PoiProvider.wikipedia,
