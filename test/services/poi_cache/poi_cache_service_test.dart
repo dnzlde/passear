@@ -352,8 +352,6 @@ void main() {
     });
 
     test('should clear empty tiles', () async {
-      final settings = AppSettings();
-
       // Manually add some cached tiles (simulating old cached empty tiles)
       final storage = PoiTileStorage();
       await storage.initialize();

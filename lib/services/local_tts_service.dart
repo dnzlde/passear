@@ -9,6 +9,7 @@ class LocalTtsService implements TtsService {
   bool _isPlaying = false;
   bool _isPaused = false;
   void Function()? _completionCallback;
+  // ignore: unused_field
   void Function(int current, int total)? _progressCallback;
   AudioSession? _audioSession;
 
