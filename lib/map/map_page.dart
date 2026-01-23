@@ -11,6 +11,7 @@ import '../models/poi.dart';
 import '../models/route.dart';
 import '../models/settings.dart';
 import '../services/poi_service.dart';
+import '../services/poi_search_service.dart';
 import '../services/routing_service.dart';
 import '../services/tts_service.dart';
 import '../services/tts/tts_orchestrator.dart';
@@ -57,6 +58,10 @@ class _MapPageState extends State<MapPage> {
   int _currentInstructionIndex = 0;
   bool _voiceGuidanceEnabled = true; // Cache for performance
 
+  // Search state
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -83,6 +88,7 @@ class _MapPageState extends State<MapPage> {
   void dispose() {
     _locationSubscription?.cancel();
     _ttsService?.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -317,6 +323,219 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
+  /// Perform POI search and show results
+  Future<void> _performSearch(String query) async {
+    if (query.trim().isEmpty) return;
+
+    try {
+      // Create search service
+      final searchService = PoiSearchService();
+
+      // Get current map bounds
+      final bounds = _mapController.camera.visibleBounds;
+
+      // Perform search with context
+      final results = await searchService.searchPois(
+        query: query,
+        userLocation: _userLocation,
+        mapBounds: MapBounds(
+          north: bounds.north,
+          south: bounds.south,
+          east: bounds.east,
+          west: bounds.west,
+        ),
+        limit: 10,
+      );
+
+      if (!mounted) return;
+
+      if (results.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No results found for "$query"\n'
+              'Try a different search term or check spelling',
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
+      // Show search results in a bottom sheet
+      _showSearchResults(results);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Search failed: ${e.toString()}'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  /// Show search results in a bottom sheet
+  void _showSearchResults(List<PoiSearchResult> results) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Search Results (${results.length})',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: results.length,
+                    itemBuilder: (context, index) {
+                      final result = results[index];
+                      final poi = result.poi;
+                      return ListTile(
+                        leading: Icon(
+                          _getCategoryIcon(poi.category),
+                          color: _getInterestLevelColor(poi.interestLevel),
+                        ),
+                        title: Text(
+                          poi.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (poi.description.isNotEmpty)
+                              Text(
+                                poi.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Relevance: ${result.relevanceScore.toStringAsFixed(1)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                        isThreeLine: true,
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToSearchResult(poi);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Navigate to a search result POI
+  void _navigateToSearchResult(Poi poi) {
+    // Move map to the POI location
+    _mapController.move(
+      LatLng(poi.lat, poi.lon),
+      16, // Zoom level
+    );
+
+    // Show POI details
+    setState(() {
+      _selectedPoi = poi;
+      _isSearching = false;
+      _searchController.clear();
+    });
+
+    // Animate the sheet to show details
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (_sheetController.isAttached && mounted) {
+        _sheetController.animateTo(
+          0.4,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  /// Get icon for POI category
+  IconData _getCategoryIcon(PoiCategory category) {
+    switch (category) {
+      case PoiCategory.museum:
+        return Icons.museum;
+      case PoiCategory.historicalSite:
+        return Icons.castle;
+      case PoiCategory.landmark:
+        return Icons.landscape;
+      case PoiCategory.religiousSite:
+        return Icons.church;
+      case PoiCategory.park:
+        return Icons.park;
+      case PoiCategory.monument:
+        return Icons.account_balance;
+      case PoiCategory.university:
+        return Icons.school;
+      case PoiCategory.theater:
+        return Icons.theater_comedy;
+      case PoiCategory.gallery:
+        return Icons.palette;
+      case PoiCategory.architecture:
+        return Icons.architecture;
+      case PoiCategory.generic:
+        return Icons.place;
+    }
+  }
+
+  /// Get color for interest level
+  Color _getInterestLevelColor(PoiInterestLevel level) {
+    switch (level) {
+      case PoiInterestLevel.high:
+        return Colors.amber;
+      case PoiInterestLevel.medium:
+        return Colors.blue;
+      case PoiInterestLevel.low:
+        return Colors.grey;
+    }
+  }
+
   Future<void> _startNavigation(LatLng destination) async {
     if (_userLocation == null) {
       // Show error message if user location is not available
@@ -514,8 +733,45 @@ class _MapPageState extends State<MapPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Passear'),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Search attractions...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.white70),
+                ),
+                style: const TextStyle(color: Colors.white),
+                onSubmitted: (query) {
+                  if (query.isNotEmpty) {
+                    _performSearch(query);
+                  }
+                },
+              )
+            : const Text('Passear'),
         actions: [
+          if (_isSearching)
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Close search',
+              onPressed: () {
+                setState(() {
+                  _isSearching = false;
+                  _searchController.clear();
+                });
+              },
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: 'Search attractions',
+              onPressed: () {
+                setState(() {
+                  _isSearching = true;
+                });
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Settings',
