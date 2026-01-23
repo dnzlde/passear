@@ -1,6 +1,7 @@
 // lib/services/wikipedia_poi_service.dart
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'api_client.dart';
 import 'poi_interest_scorer.dart';
@@ -105,8 +106,21 @@ class WikipediaPoiService {
 
     final responseBody = await _apiClient.get(url);
     final data = json.decode(responseBody);
+
+    // Check for API errors in the response
+    if (data['error'] != null) {
+      final errorInfo = data['error'];
+      throw Exception(
+          'Wikipedia API error: ${errorInfo['code']} - ${errorInfo['info']}');
+    }
+
     final query = data['query'];
-    if (query == null) return [];
+    if (query == null) {
+      // Log unexpected response structure
+      debugPrint(
+          'WARNING: Wikipedia API returned unexpected response structure: $data');
+      return [];
+    }
     final results = query['geosearch'] as List?;
     if (results == null) return [];
     return results.map((e) {

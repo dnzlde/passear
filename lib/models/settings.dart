@@ -33,6 +33,7 @@ class AppSettings {
   final String llmModel;
   final String ttsVoice;
   final bool ttsOfflineMode; // Force offline TTS for testing
+  final int maxCacheTiles; // Maximum number of tiles to cache (LRU limit)
 
   AppSettings({
     Map<PoiCategory, bool>? enabledCategories,
@@ -47,6 +48,7 @@ class AppSettings {
     this.llmModel = 'gpt-3.5-turbo',
     this.ttsVoice = 'alloy',
     this.ttsOfflineMode = false,
+    this.maxCacheTiles = 500,
   }) : enabledCategories = enabledCategories ?? _defaultEnabledCategories();
 
   static Map<PoiCategory, bool> _defaultEnabledCategories() {
@@ -66,6 +68,7 @@ class AppSettings {
     String? llmModel,
     String? ttsVoice,
     bool? ttsOfflineMode,
+    int? maxCacheTiles,
   }) {
     return AppSettings(
       enabledCategories: enabledCategories ?? this.enabledCategories,
@@ -80,6 +83,7 @@ class AppSettings {
       llmModel: llmModel ?? this.llmModel,
       ttsVoice: ttsVoice ?? this.ttsVoice,
       ttsOfflineMode: ttsOfflineMode ?? this.ttsOfflineMode,
+      maxCacheTiles: maxCacheTiles ?? this.maxCacheTiles,
     );
   }
 
@@ -116,6 +120,7 @@ class AppSettings {
       llmModel: json['llmModel'] as String? ?? 'gpt-3.5-turbo',
       ttsVoice: json['ttsVoice'] as String? ?? 'alloy',
       ttsOfflineMode: json['ttsOfflineMode'] as bool? ?? false,
+      maxCacheTiles: json['maxCacheTiles'] as int? ?? 500,
     );
   }
 
@@ -136,6 +141,7 @@ class AppSettings {
       'llmModel': llmModel,
       'ttsVoice': ttsVoice,
       'ttsOfflineMode': ttsOfflineMode,
+      'maxCacheTiles': maxCacheTiles,
     };
   }
 

@@ -5,6 +5,8 @@ import 'wikipedia_poi_service.dart';
 import 'overpass_poi_service.dart';
 import 'api_client.dart';
 import 'settings_service.dart';
+import 'poi_cache/poi_cache_service.dart';
+import 'poi_cache/tile_utils.dart';
 
 class PoiService {
   WikipediaPoiService? _wikiService;
@@ -12,8 +14,18 @@ class PoiService {
   final SettingsService _settingsService = SettingsService.instance;
   final ApiClient? _apiClient;
   PoiProvider _currentProvider = PoiProvider.wikipedia;
+  PoiCacheService? _cacheService;
+  bool _cacheInitialized = false;
 
   PoiService({ApiClient? apiClient}) : _apiClient = apiClient;
+
+  /// Initialize cache service if not already initialized
+  Future<void> _ensureCacheInitialized() async {
+    if (_cacheInitialized) return;
+    _cacheService ??= PoiCacheService();
+    await _cacheService!.initialize();
+    _cacheInitialized = true;
+  }
 
   /// Get or create the appropriate POI service based on current provider
   WikipediaPoiService _getWikiService() {
@@ -34,38 +46,31 @@ class PoiService {
     clearCaches();
   }
 
-  /// Fetch POIs within rectangular bounds using intelligent scoring
-  Future<List<Poi>> fetchInBounds({
-    required double north,
-    required double south,
-    required double east,
-    required double west,
-    int? maxResults,
-  }) async {
+  /// Fetch POIs for a single tile (used by cache service)
+  /// Fetches ALL POIs in the tile area, filtering is done at display time
+  Future<List<Poi>> _fetchPoisForTile(GeoBounds bounds) async {
     // Load current settings
     final settings = await _settingsService.loadSettings();
-    final effectiveMaxResults = maxResults ?? settings.maxPoiCount;
 
     List<Poi> allPois;
 
     switch (_currentProvider) {
       case PoiProvider.wikipedia:
         final wikiPois = await _getWikiService().fetchIntelligentPoisInBounds(
-          north: north,
-          south: south,
-          east: east,
-          west: west,
-          maxResults:
-              effectiveMaxResults * 2, // Fetch more to allow for filtering
+          north: bounds.north,
+          south: bounds.south,
+          east: bounds.east,
+          west: bounds.west,
+          maxResults: 100, // Fetch more POIs per tile for comprehensive caching
         );
         allPois = wikiPois.map((wikiPoi) {
           return Poi(
-            id: wikiPoi.title, // используем title как ID
+            id: wikiPoi.title,
             name: wikiPoi.title,
             lat: wikiPoi.lat,
             lon: wikiPoi.lon,
             description: wikiPoi.description ?? '',
-            audio: '', // will be generated/added later
+            audio: '',
             interestScore: wikiPoi.interestScore,
             category: wikiPoi.category,
             interestLevel: wikiPoi.interestLevel,
@@ -75,20 +80,17 @@ class PoiService {
         break;
 
       case PoiProvider.overpass:
-        // Use Overpass API (OpenStreetMap POIs)
         final overpassPois = await _getOverpassService().fetchPoisInBounds(
-          north: north,
-          south: south,
-          east: east,
-          west: west,
-          maxResults: effectiveMaxResults * 2,
+          north: bounds.north,
+          south: bounds.south,
+          east: bounds.east,
+          west: bounds.west,
+          maxResults: 100,
         );
         allPois = overpassPois;
         break;
 
       case PoiProvider.googlePlaces:
-        // TODO: Implement Google Places API
-        // For now, fall back to Wikipedia
         allPois = [];
         break;
     }
@@ -98,8 +100,37 @@ class PoiService {
         .where((poi) => settings.isCategoryEnabled(poi.category))
         .toList();
 
-    // Return only the requested number of POIs
-    return filteredPois.take(effectiveMaxResults).toList();
+    return filteredPois;
+  }
+
+  /// Fetch POIs within rectangular bounds using intelligent scoring
+  Future<List<Poi>> fetchInBounds({
+    required double north,
+    required double south,
+    required double east,
+    required double west,
+    int? maxResults,
+  }) async {
+    // Initialize cache if needed
+    await _ensureCacheInitialized();
+
+    // Load current settings
+    final settings = await _settingsService.loadSettings();
+    final effectiveMaxResults = maxResults ?? settings.maxPoiCount;
+
+    // Use cache service to get POIs
+    final allPois = await _cacheService!.getPoisForViewport(
+      north: north,
+      south: south,
+      east: east,
+      west: west,
+      settings: settings,
+      fetchFunction: _fetchPoisForTile,
+    );
+
+    // Sort by interest score and return top results
+    allPois.sort((a, b) => b.interestScore.compareTo(a.interestScore));
+    return allPois.take(effectiveMaxResults).toList();
   }
 
   /// Legacy method for backward compatibility
@@ -150,7 +181,22 @@ class PoiService {
   }
 
   /// Clear caches
-  void clearCaches() {
+  Future<void> clearCaches() async {
     _wikiService?.clearCaches();
+    await _ensureCacheInitialized();
+    await _cacheService?.clearCache();
+  }
+
+  /// Clear all empty cached tiles
+  /// Useful for cleaning up incorrectly cached empty tiles from API errors
+  /// Returns the number of tiles removed
+  Future<int> clearEmptyTiles() async {
+    await _ensureCacheInitialized();
+    return await _cacheService?.clearEmptyTiles() ?? 0;
+  }
+
+  /// Get cache statistics
+  Map<String, dynamic>? getCacheStats() {
+    return _cacheService?.getStats();
   }
 }

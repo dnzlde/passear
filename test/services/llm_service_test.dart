@@ -451,7 +451,8 @@ void main() {
             'choices': [
               {
                 'message': {
-                  'content': 'This is a detailed extended story with much more information.',
+                  'content':
+                      'This is a detailed extended story with much more information.',
                 },
               },
             ],
@@ -473,7 +474,8 @@ void main() {
         originalStory: 'Original story text',
       );
 
-      expect(extendedStory, 'This is a detailed extended story with much more information.');
+      expect(extendedStory,
+          'This is a detailed extended story with much more information.');
     });
 
     test('caches extended stories separately from regular stories', () async {

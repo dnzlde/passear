@@ -32,14 +32,15 @@ class TextRunSplitter {
     for (int i = 0; i < runs.length; i++) {
       final run = runs[i];
       final text = run.chars.join();
-      final isWhitespaceOrPunct = text.trim().isEmpty || 
-          text.length == 1 && RegExp(r'[\s\p{P}]', unicode: true).hasMatch(text);
+      final isWhitespaceOrPunct = text.trim().isEmpty ||
+          text.length == 1 &&
+              RegExp(r'[\s\p{P}]', unicode: true).hasMatch(text);
 
       // If this is whitespace/punctuation and matches default language
       if (isWhitespaceOrPunct && run.language == defaultLang) {
         // Check if it's between two runs of the SAME non-default language
         // This fixes Hebrew/Arabic/etc phrase splitting: "word1 word2 word3"
-        if (mergedRuns.isNotEmpty && 
+        if (mergedRuns.isNotEmpty &&
             i + 1 < runs.length &&
             mergedRuns.last.language != defaultLang &&
             mergedRuns.last.language == runs[i + 1].language) {
@@ -48,7 +49,8 @@ class TextRunSplitter {
           continue;
         }
         // Try to merge with previous non-default run if exists
-        else if (mergedRuns.isNotEmpty && mergedRuns.last.language != defaultLang) {
+        else if (mergedRuns.isNotEmpty &&
+            mergedRuns.last.language != defaultLang) {
           mergedRuns.last.chars.add(text);
           continue;
         }
