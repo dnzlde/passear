@@ -61,6 +61,8 @@ class _MapPageState extends State<MapPage> {
   // Search state
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
+  List<PoiSearchResult> _searchSuggestions = [];
+  bool _isLoadingSearchSuggestions = false;
 
   @override
   void initState() {
@@ -324,12 +326,28 @@ class _MapPageState extends State<MapPage> {
   }
 
   /// Perform POI search and show results
-  Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) return;
+  Future<void> _performSearch(String query, {bool showSheet = true}) async {
+    if (query.trim().isEmpty) {
+      if (mounted) {
+        setState(() {
+          _searchSuggestions = [];
+          _isLoadingSearchSuggestions = false;
+        });
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoadingSearchSuggestions = true;
+      });
+    }
 
     try {
-      // Create search service
-      final searchService = PoiSearchService();
+      // Create search service with language detection
+      final searchService = PoiSearchService(
+        lang: _detectLanguage(query),
+      );
 
       // Get current map bounds
       final bounds = _mapController.camera.visibleBounds;
@@ -349,7 +367,12 @@ class _MapPageState extends State<MapPage> {
 
       if (!mounted) return;
 
-      if (results.isEmpty) {
+      setState(() {
+        _searchSuggestions = results;
+        _isLoadingSearchSuggestions = false;
+      });
+
+      if (results.isEmpty && showSheet) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -362,17 +385,51 @@ class _MapPageState extends State<MapPage> {
         return;
       }
 
-      // Show search results in a bottom sheet
-      _showSearchResults(results);
+      // Show search results in a bottom sheet only if requested
+      if (showSheet && results.isNotEmpty) {
+        _showSearchResults(results);
+      }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Search failed: ${e.toString()}'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      setState(() {
+        _isLoadingSearchSuggestions = false;
+        _searchSuggestions = [];
+      });
+      if (showSheet) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Search failed: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
+  }
+
+  /// Detect language from query text to use appropriate Wikipedia
+  String _detectLanguage(String query) {
+    // Check for Hebrew characters
+    if (RegExp(r'[\u0590-\u05FF]').hasMatch(query)) {
+      return 'he';
+    }
+    // Check for Russian characters
+    if (RegExp(r'[\u0400-\u04FF]').hasMatch(query)) {
+      return 'ru';
+    }
+    // Check for Arabic characters
+    if (RegExp(r'[\u0600-\u06FF]').hasMatch(query)) {
+      return 'ar';
+    }
+    // Check for Chinese characters
+    if (RegExp(r'[\u4E00-\u9FFF]').hasMatch(query)) {
+      return 'zh';
+    }
+    // Check for Japanese characters
+    if (RegExp(r'[\u3040-\u309F\u30A0-\u30FF]').hasMatch(query)) {
+      return 'ja';
+    }
+    // Default to English
+    return 'en';
   }
 
   /// Show search results in a bottom sheet
@@ -731,21 +788,30 @@ class _MapPageState extends State<MapPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
         title: _isSearching
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Search attractions...',
                   border: InputBorder.none,
-                  hintStyle: TextStyle(color: Colors.white70),
+                  hintStyle: TextStyle(color: colorScheme.onPrimary.withOpacity(0.7)),
                 ),
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: colorScheme.onPrimary),
+                onChanged: (query) {
+                  // Perform search as user types for autocomplete
+                  _performSearch(query, showSheet: false);
+                },
                 onSubmitted: (query) {
                   if (query.isNotEmpty) {
-                    _performSearch(query);
+                    _performSearch(query, showSheet: true);
                   }
                 },
               )
@@ -759,6 +825,8 @@ class _MapPageState extends State<MapPage> {
                 setState(() {
                   _isSearching = false;
                   _searchController.clear();
+                  _searchSuggestions = [];
+                  _isLoadingSearchSuggestions = false;
                 });
               },
             )
@@ -884,6 +952,70 @@ class _MapPageState extends State<MapPage> {
               left: 0,
               right: 0,
               child: Center(child: CircularProgressIndicator()),
+            ),
+          // Search suggestions dropdown
+          if (_isSearching && (_searchSuggestions.isNotEmpty || _isLoadingSearchSuggestions))
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Material(
+                elevation: 4,
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 400),
+                  color: Theme.of(context).colorScheme.surface,
+                  child: _isLoadingSearchSuggestions
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: _searchSuggestions.length,
+                          itemBuilder: (context, index) {
+                            final result = _searchSuggestions[index];
+                            return ListTile(
+                              leading: Icon(
+                                _getCategoryIcon(result.poi.category),
+                                color: _getInterestLevelColor(result.poi.interestLevel),
+                              ),
+                              title: Text(result.poi.name),
+                              subtitle: result.poi.description.isNotEmpty
+                                  ? Text(
+                                      result.poi.description,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    )
+                                  : null,
+                              trailing: Text(
+                                '${result.relevanceScore.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.secondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onTap: () {
+                                // Close search mode
+                                setState(() {
+                                  _isSearching = false;
+                                  _searchController.clear();
+                                  _searchSuggestions = [];
+                                });
+                                // Navigate to POI
+                                _mapController.move(
+                                  LatLng(result.poi.lat, result.poi.lon),
+                                  16,
+                                );
+                                // Show POI details
+                                _showPoiDetails(result.poi);
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ),
             ),
           // Route loading indicator
           if (_isLoadingRoute)
