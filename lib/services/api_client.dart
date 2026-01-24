@@ -131,7 +131,17 @@ class MockApiClient implements ApiClient {
 
     // For Wikipedia API, check query parameters to determine response type
     if (url.toString().contains('wikipedia.org/w/api.php')) {
-      if (url.queryParameters['action'] == 'opensearch') {
+      if (url.queryParameters['action'] == 'query' &&
+          url.queryParameters['list'] == 'search') {
+        // New search API for infix/substring matching
+        for (final pattern in _responses.keys) {
+          if (pattern.contains('search') ||
+              url.toString().contains(pattern)) {
+            return _responses[pattern]!;
+          }
+        }
+        return _getDefaultSearchResponse();
+      } else if (url.queryParameters['action'] == 'opensearch') {
         // Check if there's a configured opensearch response
         for (final pattern in _responses.keys) {
           if (pattern.contains('opensearch') ||
@@ -217,6 +227,23 @@ class MockApiClient implements ApiClient {
         'https://en.wikipedia.org/wiki/Test_Result_2'
       ],
     ]);
+  }
+
+  String _getDefaultSearchResponse() {
+    return jsonEncode({
+      'query': {
+        'search': [
+          {
+            'title': 'Test Result 1',
+            'snippet': 'This is a test <span>description</span> for result 1',
+          },
+          {
+            'title': 'Test Result 2',
+            'snippet': 'This is a test description for result 2',
+          },
+        ],
+      },
+    });
   }
 
   String _getDefaultCoordinatesResponse() {

@@ -25,13 +25,21 @@ void main() {
 
     test('should search Wikipedia and return POIs with coordinates', () async {
       // Arrange
-      const opensearchResponse = '''
-      [
-        "Wailing Wall",
-        ["Western Wall", "Temple Mount"],
-        ["Holy site in Jerusalem", "Religious site in Old City"],
-        ["https://en.wikipedia.org/wiki/Western_Wall", "https://en.wikipedia.org/wiki/Temple_Mount"]
-      ]
+      const searchResponse = '''
+      {
+        "query": {
+          "search": [
+            {
+              "title": "Western Wall",
+              "snippet": "Holy site in Jerusalem"
+            },
+            {
+              "title": "Temple Mount",
+              "snippet": "Religious site in Old City"
+            }
+          ]
+        }
+      }
       ''';
 
       const coordinatesResponse1 = '''
@@ -63,7 +71,7 @@ void main() {
       ''';
 
       // Configure mock responses
-      mockClient.setResponse('opensearch', opensearchResponse);
+      mockClient.setResponse('search', searchResponse);
       mockClient.setResponse('Western_Wall', coordinatesResponse1);
       mockClient.setResponse('Temple_Mount', coordinatesResponse2);
 
@@ -81,13 +89,21 @@ void main() {
 
     test('should filter out results without coordinates', () async {
       // Arrange
-      const opensearchResponse = '''
-      [
-        "test",
-        ["Place With Coords", "Place Without Coords"],
-        ["Description 1", "Description 2"],
-        ["url1", "url2"]
-      ]
+      const searchResponse = '''
+      {
+        "query": {
+          "search": [
+            {
+              "title": "Place With Coords",
+              "snippet": "Description 1"
+            },
+            {
+              "title": "Place Without Coords",
+              "snippet": "Description 2"
+            }
+          ]
+        }
+      }
       ''';
 
       const coordinatesResponse1 = '''
@@ -114,7 +130,7 @@ void main() {
       }
       ''';
 
-      mockClient.setResponse('opensearch', opensearchResponse);
+      mockClient.setResponse('search', searchResponse);
       mockClient.setResponse('Place_With_Coords', coordinatesResponse1);
       mockClient.setResponse('Place_Without_Coords', coordinatesResponse2);
 
@@ -128,13 +144,21 @@ void main() {
 
     test('should score POIs higher when close to user location', () async {
       // Arrange
-      const opensearchResponse = '''
-      [
-        "museum",
-        ["Close Museum", "Far Museum"],
-        ["Museum nearby", "Museum far away"],
-        ["url1", "url2"]
-      ]
+      const searchResponse = '''
+      {
+        "query": {
+          "search": [
+            {
+              "title": "Close Museum",
+              "snippet": "Museum nearby"
+            },
+            {
+              "title": "Far Museum",
+              "snippet": "Museum far away"
+            }
+          ]
+        }
+      }
       ''';
 
       const nearbyCoords = '''
@@ -165,7 +189,7 @@ void main() {
       }
       ''';
 
-      mockClient.setResponse('opensearch', opensearchResponse);
+      mockClient.setResponse('search', searchResponse);
       mockClient.setResponse('Close_Museum', nearbyCoords);
       mockClient.setResponse('Far_Museum', farCoords);
 
@@ -187,13 +211,21 @@ void main() {
 
     test('should score POIs higher when in visible map bounds', () async {
       // Arrange
-      const opensearchResponse = '''
-      [
-        "site",
-        ["Visible Site", "Hidden Site"],
-        ["In view", "Out of view"],
-        ["url1", "url2"]
-      ]
+      const searchResponse = '''
+      {
+        "query": {
+          "search": [
+            {
+              "title": "Visible Site",
+              "snippet": "In view"
+            },
+            {
+              "title": "Hidden Site",
+              "snippet": "Out of view"
+            }
+          ]
+        }
+      }
       ''';
 
       const visibleCoords = '''
@@ -224,7 +256,7 @@ void main() {
       }
       ''';
 
-      mockClient.setResponse('opensearch', opensearchResponse);
+      mockClient.setResponse('search', searchResponse);
       mockClient.setResponse('Visible_Site', visibleCoords);
       mockClient.setResponse('Hidden_Site', hiddenCoords);
 
@@ -251,13 +283,18 @@ void main() {
 
     test('should respect limit parameter', () async {
       // Arrange
-      const opensearchResponse = '''
-      [
-        "test",
-        ["Result 1", "Result 2", "Result 3", "Result 4", "Result 5"],
-        ["Desc 1", "Desc 2", "Desc 3", "Desc 4", "Desc 5"],
-        ["url1", "url2", "url3", "url4", "url5"]
-      ]
+      const searchResponse = '''
+      {
+        "query": {
+          "search": [
+            {"title": "Result 1", "snippet": "Desc 1"},
+            {"title": "Result 2", "snippet": "Desc 2"},
+            {"title": "Result 3", "snippet": "Desc 3"},
+            {"title": "Result 4", "snippet": "Desc 4"},
+            {"title": "Result 5", "snippet": "Desc 5"}
+          ]
+        }
+      }
       ''';
 
       // Configure coordinates for all results
@@ -280,7 +317,7 @@ void main() {
         );
       }
 
-      mockClient.setResponse('opensearch', opensearchResponse);
+      mockClient.setResponse('search', searchResponse);
 
       // Act
       final results = await service.searchPois(
@@ -294,7 +331,7 @@ void main() {
 
     test('should handle Wikipedia API errors gracefully', () async {
       // Arrange - Configure invalid JSON response that will cause parsing error
-      mockClient.setResponse('opensearch', 'invalid json {{{');
+      mockClient.setResponse('search', 'invalid json {{{');
 
       // Act & Assert - Should return empty list instead of throwing
       final results = await service.searchPois(query: 'test query');
@@ -303,13 +340,14 @@ void main() {
 
     test('should handle missing descriptions', () async {
       // Arrange
-      const opensearchResponse = '''
-      [
-        "test",
-        ["Place Name"],
-        [""],
-        ["url"]
-      ]
+      const searchResponse = '''
+      {
+        "query": {
+          "search": [
+            {"title": "Place Name", "snippet": ""}
+          ]
+        }
+      }
       ''';
 
       const coordinatesResponse = '''
@@ -326,7 +364,7 @@ void main() {
       }
       ''';
 
-      mockClient.setResponse('opensearch', opensearchResponse);
+      mockClient.setResponse('search', searchResponse);
       mockClient.setResponse('Place_Name', coordinatesResponse);
 
       // Act
@@ -339,13 +377,15 @@ void main() {
 
     test('should calculate higher scores for better text matches', () async {
       // Arrange
-      const opensearchResponse = '''
-      [
-        "test",
-        ["Exact Match", "Partial Match"],
-        ["First result", "Second result"],
-        ["url1", "url2"]
-      ]
+      const searchResponse = '''
+      {
+        "query": {
+          "search": [
+            {"title": "Exact Match", "snippet": "First result"},
+            {"title": "Partial Match", "snippet": "Second result"}
+          ]
+        }
+      }
       ''';
 
       const coords1 = '''
@@ -376,7 +416,7 @@ void main() {
       }
       ''';
 
-      mockClient.setResponse('opensearch', opensearchResponse);
+      mockClient.setResponse('search', searchResponse);
       mockClient.setResponse('Exact_Match', coords1);
       mockClient.setResponse('Partial_Match', coords2);
 
@@ -394,13 +434,14 @@ void main() {
 
     test('should set POI categories and interest scores', () async {
       // Arrange
-      const opensearchResponse = '''
-      [
-        "test",
-        ["National Museum"],
-        ["Important museum"],
-        ["url"]
-      ]
+      const searchResponse = '''
+      {
+        "query": {
+          "search": [
+            {"title": "National Museum", "snippet": "Important museum"}
+          ]
+        }
+      }
       ''';
 
       const coordinatesResponse = '''
@@ -417,7 +458,7 @@ void main() {
       }
       ''';
 
-      mockClient.setResponse('opensearch', opensearchResponse);
+      mockClient.setResponse('search', searchResponse);
       mockClient.setResponse('National_Museum', coordinatesResponse);
 
       // Act

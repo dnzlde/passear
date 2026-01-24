@@ -156,37 +156,47 @@ class PoiSearchService {
 
   /// Search Wikipedia using opensearch API
   /// Returns list of articles with titles and descriptions
+  /// Search Wikipedia using the Search API with better fuzzy matching
+  /// Supports infix/substring matching across all languages
   Future<List<Map<String, dynamic>>> _searchWikipedia(
     String query, {
     int limit = 10,
   }) async {
     try {
-      // Use opensearch API for fuzzy search with suggestions
-      // Adding 'redirects' parameter to handle redirects better
+      // Use the search API with cirrus for better substring matching
+      // This finds matches within titles, not just at the beginning
       final url = Uri.https('$lang.wikipedia.org', '/w/api.php', {
-        'action': 'opensearch',
+        'action': 'query',
         'format': 'json',
-        'search': query,
-        'limit': limit.toString(),
-        'namespace': '0', // Main namespace (articles)
-        'redirects': 'resolve', // Handle redirects
+        'list': 'search',
+        'srsearch': query,
+        'srlimit': limit.toString(),
+        'srnamespace': '0', // Main namespace (articles)
+        'srprop': 'snippet', // Get snippet for description
+        'srsort': 'relevance', // Sort by relevance
       });
 
       final responseBody = await _apiClient.get(url);
       final data = json.decode(responseBody);
 
-      // OpenSearch returns: [query, [titles], [descriptions], [urls]]
-      if (data is List && data.length >= 3) {
-        final titles = data[1] as List;
-        final descriptions = data[2] as List;
+      // Parse search results
+      if (data['query'] != null && data['query']['search'] != null) {
+        final searchResults = data['query']['search'] as List;
 
         final results = <Map<String, dynamic>>[];
-        for (int i = 0; i < titles.length; i++) {
+        for (int i = 0; i < searchResults.length; i++) {
+          final result = searchResults[i];
+          // Remove HTML tags from snippet
+          String? snippet = result['snippet'];
+          if (snippet != null) {
+            snippet = snippet.replaceAll(RegExp(r'<[^>]*>'), '');
+          }
+          
           results.add({
-            'title': titles[i],
-            'description': i < descriptions.length ? descriptions[i] : null,
+            'title': result['title'],
+            'description': snippet,
             'matchScore':
-                1.0 - (i / titles.length), // Higher for earlier results
+                1.0 - (i / searchResults.length), // Higher for earlier results
           });
         }
         return results;
