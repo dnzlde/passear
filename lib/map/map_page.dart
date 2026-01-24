@@ -19,6 +19,10 @@ import '../services/settings_service.dart';
 import '../settings/settings_page.dart';
 import 'wiki_poi_detail.dart';
 
+// Constants for search UI
+const double _kSearchDropdownMaxHeight = 400.0;
+const Duration _kSearchDebounceDelay = Duration(milliseconds: 500);
+
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
 
@@ -63,6 +67,7 @@ class _MapPageState extends State<MapPage> {
   final TextEditingController _searchController = TextEditingController();
   List<PoiSearchResult> _searchSuggestions = [];
   bool _isLoadingSearchSuggestions = false;
+  Timer? _searchDebounceTimer;
 
   @override
   void initState() {
@@ -90,6 +95,7 @@ class _MapPageState extends State<MapPage> {
   void dispose() {
     _locationSubscription?.cancel();
     _ttsService?.dispose();
+    _searchDebounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -806,10 +812,16 @@ class _MapPageState extends State<MapPage> {
                 ),
                 style: TextStyle(color: colorScheme.onPrimary),
                 onChanged: (query) {
-                  // Perform search as user types for autocomplete
-                  _performSearch(query, showSheet: false);
+                  // Cancel previous timer
+                  _searchDebounceTimer?.cancel();
+                  
+                  // Debounce search to avoid excessive API calls
+                  _searchDebounceTimer = Timer(_kSearchDebounceDelay, () {
+                    _performSearch(query, showSheet: false);
+                  });
                 },
                 onSubmitted: (query) {
+                  _searchDebounceTimer?.cancel();
                   if (query.isNotEmpty) {
                     _performSearch(query, showSheet: true);
                   }
@@ -822,6 +834,7 @@ class _MapPageState extends State<MapPage> {
               icon: const Icon(Icons.close),
               tooltip: 'Close search',
               onPressed: () {
+                _searchDebounceTimer?.cancel();
                 setState(() {
                   _isSearching = false;
                   _searchController.clear();
@@ -962,7 +975,7 @@ class _MapPageState extends State<MapPage> {
               child: Material(
                 elevation: 4,
                 child: Container(
-                  constraints: const BoxConstraints(maxHeight: 400),
+                  constraints: const BoxConstraints(maxHeight: _kSearchDropdownMaxHeight),
                   color: Theme.of(context).colorScheme.surface,
                   child: _isLoadingSearchSuggestions
                       ? const Center(
