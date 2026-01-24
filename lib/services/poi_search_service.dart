@@ -49,17 +49,43 @@ class PoiSearchService {
     }
 
     try {
-      // Use Wikipedia's opensearch API for fuzzy, multi-language search
-      final searchResults = await _searchWikipedia(query, limit: limit * 2);
+      // For Hebrew, try multiple search variants to improve results
+      List<String> searchQueries = [query];
+      
+      if (lang == 'he' && !query.startsWith('ה')) {
+        // Add variant with definite article for Hebrew
+        searchQueries.add('ה$query');
+      }
+      
+      // Try each search variant and collect results
+      final allSearchResults = <Map<String, dynamic>>[];
+      final seenTitles = <String>{};
+      
+      for (final searchQuery in searchQueries) {
+        final results = await _searchWikipedia(searchQuery, limit: limit * 2);
+        // Add unique results only
+        for (final result in results) {
+          final title = result['title'] as String;
+          if (!seenTitles.contains(title)) {
+            seenTitles.add(title);
+            allSearchResults.add(result);
+          }
+        }
+        
+        // If we have enough results from the first query, no need to try more
+        if (allSearchResults.length >= limit * 2) {
+          break;
+        }
+      }
 
-      if (searchResults.isEmpty) {
+      if (allSearchResults.isEmpty) {
         return [];
       }
 
       // Convert to POIs and calculate relevance scores
       final scoredResults = <PoiSearchResult>[];
 
-      for (final result in searchResults) {
+      for (final result in allSearchResults) {
         // Get coordinates for the article
         final coordinates = await _getArticleCoordinates(result['title']);
 
@@ -136,12 +162,14 @@ class PoiSearchService {
   }) async {
     try {
       // Use opensearch API for fuzzy search with suggestions
+      // Adding 'redirects' parameter to handle redirects better
       final url = Uri.https('$lang.wikipedia.org', '/w/api.php', {
         'action': 'opensearch',
         'format': 'json',
         'search': query,
         'limit': limit.toString(),
         'namespace': '0', // Main namespace (articles)
+        'redirects': 'resolve', // Handle redirects
       });
 
       final responseBody = await _apiClient.get(url);

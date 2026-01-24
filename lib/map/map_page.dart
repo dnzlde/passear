@@ -22,6 +22,7 @@ import 'wiki_poi_detail.dart';
 // Constants for search UI
 const double _kSearchDropdownMaxHeight = 400.0;
 const Duration _kSearchDebounceDelay = Duration(milliseconds: 500);
+const int _kMinSearchCharacters = 2; // Minimum characters before triggering search
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -333,7 +334,10 @@ class _MapPageState extends State<MapPage> {
 
   /// Perform POI search and show results
   Future<void> _performSearch(String query, {bool showSheet = true}) async {
-    if (query.trim().isEmpty) {
+    final trimmedQuery = query.trim();
+    
+    // Clear suggestions if query is too short
+    if (trimmedQuery.isEmpty || trimmedQuery.length < _kMinSearchCharacters) {
       if (mounted) {
         setState(() {
           _searchSuggestions = [];
@@ -352,7 +356,7 @@ class _MapPageState extends State<MapPage> {
     try {
       // Create search service with language detection
       final searchService = PoiSearchService(
-        lang: _detectLanguage(query),
+        lang: _detectLanguage(trimmedQuery),
       );
 
       // Get current map bounds
@@ -360,7 +364,7 @@ class _MapPageState extends State<MapPage> {
 
       // Perform search with context
       final results = await searchService.searchPois(
-        query: query,
+        query: trimmedQuery,
         userLocation: _userLocation,
         mapBounds: MapBounds(
           north: bounds.north,
@@ -382,7 +386,7 @@ class _MapPageState extends State<MapPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'No results found for "$query"\n'
+              'No results found for "$trimmedQuery"\n'
               'Try a different search term or check spelling',
             ),
             duration: const Duration(seconds: 3),
