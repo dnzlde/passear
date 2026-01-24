@@ -544,11 +544,18 @@ class _MapPageState extends State<MapPage> {
       16, // Zoom level
     );
 
-    // Show POI details
+    // Show POI details and add to map's POI list
     setState(() {
       _selectedPoi = poi;
       _isSearching = false;
       _searchController.clear();
+      
+      // Add the searched POI to the map's POI list if not already present
+      // This ensures it shows as a marker on the map
+      final poiExists = _pois.any((p) => p.id == poi.id);
+      if (!poiExists) {
+        _pois = [..._pois, poi];
+      }
     });
 
     // Animate the sheet to show details
@@ -1019,6 +1026,13 @@ class _MapPageState extends State<MapPage> {
                                   _isSearching = false;
                                   _searchController.clear();
                                   _searchSuggestions = [];
+                                  
+                                  // Add the searched POI to the map's POI list if not already present
+                                  // This ensures it shows as a marker on the map
+                                  final poiExists = _pois.any((p) => p.id == result.poi.id);
+                                  if (!poiExists) {
+                                    _pois = [..._pois, result.poi];
+                                  }
                                 });
                                 // Navigate to POI
                                 _mapController.move(
