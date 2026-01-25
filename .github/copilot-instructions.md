@@ -4,7 +4,7 @@ Passear (Portuguese for "to walk") is a Flutter-based cross-platform mobile appl
 
 ## Technology Stack
 
-- **Framework**: Flutter 3.6.0+
+- **Framework**: Flutter 3.x
 - **Language**: Dart (SDK ^3.6.0)
 - **Platform**: Android & iOS
 - **Maps**: 
@@ -106,7 +106,7 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on:
 - **Do not commit unformatted code**: Always run `dart format .` before committing
 - **All tests must pass**: The CI will fail if any test fails or formatting is incorrect
 - **Use the validation script**: Run `./validate_ci.sh` locally before pushing to catch issues early
-- **Google Maps API key**: Required for Google Maps features (stored in `google-maps-api-key` file)
+- **Google Maps API key**: Required for Google Maps features (local development uses `google-maps-api-key` file; production keys should be managed securely through environment variables or secret management)
 - **Location permissions**: Must be properly configured in Android and iOS manifests
 - **Platform-specific code**: Test on both Android and iOS when making platform-specific changes
 
