@@ -5,7 +5,7 @@ Passear (Portuguese for "to walk") is a Flutter-based cross-platform mobile appl
 ## Technology Stack
 
 - **Framework**: Flutter 3.x
-- **Language**: Dart (SDK ^3.6.0)
+- **Language**: Dart (SDK: >=3.6.0 <4.0.0)
 - **Platform**: Android & iOS
 - **Maps**: 
   - Flutter Map (OpenStreetMap)
