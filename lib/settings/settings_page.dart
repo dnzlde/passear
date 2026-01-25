@@ -179,9 +179,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
     try {
       await _poiService.clearCaches();
-      
+
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('POI cache cleared successfully'),
@@ -190,7 +190,7 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error clearing cache: $e'),

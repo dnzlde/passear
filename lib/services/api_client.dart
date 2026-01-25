@@ -131,7 +131,26 @@ class MockApiClient implements ApiClient {
 
     // For Wikipedia API, check query parameters to determine response type
     if (url.toString().contains('wikipedia.org/w/api.php')) {
-      if (url.queryParameters['list'] == 'geosearch') {
+      if (url.queryParameters['action'] == 'query' &&
+          url.queryParameters['list'] == 'search') {
+        // New search API for infix/substring matching
+        for (final pattern in _responses.keys) {
+          if (pattern.contains('search') ||
+              url.toString().contains(pattern)) {
+            return _responses[pattern]!;
+          }
+        }
+        return _getDefaultSearchResponse();
+      } else if (url.queryParameters['action'] == 'opensearch') {
+        // Check if there's a configured opensearch response
+        for (final pattern in _responses.keys) {
+          if (pattern.contains('opensearch') ||
+              url.toString().contains(pattern)) {
+            return _responses[pattern]!;
+          }
+        }
+        return _getDefaultOpensearchResponse();
+      } else if (url.queryParameters['list'] == 'geosearch') {
         // Check if there's a configured geosearch response
         for (final pattern in _responses.keys) {
           if (pattern.contains('geosearch') ||
@@ -149,6 +168,19 @@ class MockApiClient implements ApiClient {
           }
         }
         return _getDefaultDescriptionResponse();
+      } else if (url.queryParameters['prop'] == 'coordinates') {
+        // Check if there's a configured coordinates response based on title
+        final titles = url.queryParameters['titles'];
+        if (titles != null) {
+          final normalizedTitle = titles.replaceAll(' ', '_');
+          for (final pattern in _responses.keys) {
+            if (pattern == normalizedTitle ||
+                url.toString().contains(pattern)) {
+              return _responses[pattern]!;
+            }
+          }
+        }
+        return _getDefaultCoordinatesResponse();
       }
     }
 
@@ -182,6 +214,49 @@ class MockApiClient implements ApiClient {
           },
         },
       },
+    });
+  }
+
+  String _getDefaultOpensearchResponse() {
+    return jsonEncode([
+      'search query',
+      ['Test Result 1', 'Test Result 2'],
+      ['Description 1', 'Description 2'],
+      [
+        'https://en.wikipedia.org/wiki/Test_Result_1',
+        'https://en.wikipedia.org/wiki/Test_Result_2'
+      ],
+    ]);
+  }
+
+  String _getDefaultSearchResponse() {
+    return jsonEncode({
+      'query': {
+        'search': [
+          {
+            'title': 'Test Result 1',
+            'snippet': 'This is a test <span>description</span> for result 1',
+          },
+          {
+            'title': 'Test Result 2',
+            'snippet': 'This is a test description for result 2',
+          },
+        ],
+      },
+    });
+  }
+
+  String _getDefaultCoordinatesResponse() {
+    return jsonEncode({
+      'query': {
+        'pages': {
+          '123': {
+            'coordinates': [
+              {'lat': 32.0741, 'lon': 34.7924}
+            ]
+          }
+        }
+      }
     });
   }
 

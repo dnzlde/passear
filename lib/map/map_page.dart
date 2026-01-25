@@ -7,16 +7,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/poi.dart';
 import '../models/route.dart';
 import '../models/settings.dart';
 import '../services/poi_service.dart';
+import '../services/poi_search_service.dart';
 import '../services/routing_service.dart';
 import '../services/tts_service.dart';
 import '../services/tts/tts_orchestrator.dart';
 import '../services/settings_service.dart';
 import '../settings/settings_page.dart';
 import 'wiki_poi_detail.dart';
+
+// Constants for search UI
+const double _kSearchDropdownMaxHeight = 400.0;
+const Duration _kSearchDebounceDelay = Duration(milliseconds: 500);
+const int _kMinSearchCharacters = 2; // Minimum characters before triggering search
+const int _kMaxSearchHistory = 10; // Maximum number of search history items to keep
+const String _kSearchHistoryKey = 'search_history'; // SharedPreferences key
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -57,6 +66,14 @@ class _MapPageState extends State<MapPage> {
   int _currentInstructionIndex = 0;
   bool _voiceGuidanceEnabled = true; // Cache for performance
 
+  // Search state
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  List<PoiSearchResult> _searchSuggestions = [];
+  bool _isLoadingSearchSuggestions = false;
+  Timer? _searchDebounceTimer;
+  List<String> _searchHistory = []; // Recent search queries
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +81,7 @@ class _MapPageState extends State<MapPage> {
     _initMap();
     _startLocationTracking();
     _loadVoiceGuidanceSetting();
+    _loadSearchHistory();
   }
 
   Future<void> _initializeTts() async {
@@ -83,6 +101,8 @@ class _MapPageState extends State<MapPage> {
   void dispose() {
     _locationSubscription?.cancel();
     _ttsService?.dispose();
+    _searchDebounceTimer?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -96,6 +116,62 @@ class _MapPageState extends State<MapPage> {
       // Update routing and POI providers (outside setState since they don't affect UI state)
       _routingService.updateProvider(settings.routingProvider);
       _poiService.updateProvider(settings.poiProvider);
+    }
+  }
+
+  /// Load search history from SharedPreferences
+  Future<void> _loadSearchHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final history = prefs.getStringList(_kSearchHistoryKey) ?? [];
+      if (mounted) {
+        setState(() {
+          _searchHistory = history;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading search history: $e');
+    }
+  }
+
+  /// Save search query to history
+  Future<void> _saveToSearchHistory(String query) async {
+    if (query.trim().isEmpty) return;
+
+    try {
+      // Remove if already exists (to move it to top)
+      _searchHistory.remove(query);
+      // Add to beginning
+      _searchHistory.insert(0, query);
+      // Limit to max items
+      if (_searchHistory.length > _kMaxSearchHistory) {
+        _searchHistory = _searchHistory.sublist(0, _kMaxSearchHistory);
+      }
+
+      // Save to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_kSearchHistoryKey, _searchHistory);
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Error saving search history: $e');
+    }
+  }
+
+  /// Clear all search history
+  Future<void> _clearSearchHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kSearchHistoryKey);
+      if (mounted) {
+        setState(() {
+          _searchHistory = [];
+        });
+      }
+    } catch (e) {
+      debugPrint('Error clearing search history: $e');
     }
   }
 
@@ -317,6 +393,399 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
+  /// Perform POI search and show results
+  Future<void> _performSearch(String query, {bool showSheet = true}) async {
+    final trimmedQuery = query.trim();
+    
+    // Clear suggestions if query is too short
+    if (trimmedQuery.isEmpty || trimmedQuery.length < _kMinSearchCharacters) {
+      if (mounted) {
+        setState(() {
+          _searchSuggestions = [];
+          _isLoadingSearchSuggestions = false;
+        });
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoadingSearchSuggestions = true;
+      });
+    }
+
+    try {
+      // Create search service with language detection
+      final searchService = PoiSearchService(
+        lang: _detectLanguage(trimmedQuery),
+      );
+
+      // Get current map bounds
+      final bounds = _mapController.camera.visibleBounds;
+
+      // Perform search with context
+      final results = await searchService.searchPois(
+        query: trimmedQuery,
+        userLocation: _userLocation,
+        mapBounds: MapBounds(
+          north: bounds.north,
+          south: bounds.south,
+          east: bounds.east,
+          west: bounds.west,
+        ),
+        limit: 10,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _searchSuggestions = results;
+        _isLoadingSearchSuggestions = false;
+      });
+
+      if (results.isEmpty && showSheet) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No results found for "$trimmedQuery"\n'
+              'Try a different search term or check spelling',
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
+      // Show search results in a bottom sheet only if requested
+      if (showSheet && results.isNotEmpty) {
+        _showSearchResults(results);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingSearchSuggestions = false;
+        _searchSuggestions = [];
+      });
+      if (showSheet) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Search failed: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Detect language from query text to use appropriate Wikipedia
+  String _detectLanguage(String query) {
+    // Check for Hebrew characters
+    if (RegExp(r'[\u0590-\u05FF]').hasMatch(query)) {
+      return 'he';
+    }
+    // Check for Russian characters
+    if (RegExp(r'[\u0400-\u04FF]').hasMatch(query)) {
+      return 'ru';
+    }
+    // Check for Arabic characters
+    if (RegExp(r'[\u0600-\u06FF]').hasMatch(query)) {
+      return 'ar';
+    }
+    // Check for Chinese characters
+    if (RegExp(r'[\u4E00-\u9FFF]').hasMatch(query)) {
+      return 'zh';
+    }
+    // Check for Japanese characters
+    if (RegExp(r'[\u3040-\u309F\u30A0-\u30FF]').hasMatch(query)) {
+      return 'ja';
+    }
+    // Default to English
+    return 'en';
+  }
+
+  /// Build the search dropdown content with history and suggestions
+  Widget _buildSearchDropdownContent() {
+    final query = _searchController.text;
+    final showHistory = query.isEmpty || query.length < _kMinSearchCharacters;
+
+    // Show history when query is empty or too short
+    if (showHistory && _searchHistory.isNotEmpty) {
+      return ListView(
+        shrinkWrap: true,
+        children: [
+          // History header
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Recent Searches',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                TextButton(
+                  onPressed: _clearSearchHistory,
+                  child: const Text('Clear', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          // History items
+          ..._searchHistory.map((historyQuery) {
+            return ListTile(
+              leading: const Icon(Icons.history, color: Colors.grey),
+              title: Text(historyQuery),
+              onTap: () {
+                // Fill search field with history item and trigger search
+                _searchController.text = historyQuery;
+                _performSearch(historyQuery, showSheet: false);
+              },
+            );
+          }),
+        ],
+      );
+    }
+
+    // Show search suggestions
+    if (_searchSuggestions.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('No results found'),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: _searchSuggestions.length,
+      itemBuilder: (context, index) {
+        final result = _searchSuggestions[index];
+        return ListTile(
+          leading: Icon(
+            _getCategoryIcon(result.poi.category),
+            color: _getInterestLevelColor(result.poi.interestLevel),
+          ),
+          title: Text(result.poi.name),
+          subtitle: result.poi.description.isNotEmpty
+              ? Text(
+                  result.poi.description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )
+              : null,
+          trailing: Text(
+            '${result.relevanceScore.toStringAsFixed(0)}',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.secondary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          onTap: () {
+            // Save to history
+            _saveToSearchHistory(result.poi.name);
+            
+            // Close search mode
+            setState(() {
+              _isSearching = false;
+              _searchController.clear();
+              _searchSuggestions = [];
+              
+              // Add the searched POI to the map's POI list if not already present
+              // This ensures it shows as a marker on the map
+              final poiExists = _pois.any((p) => p.id == result.poi.id);
+              if (!poiExists) {
+                _pois = [..._pois, result.poi];
+              }
+            });
+            // Navigate to POI
+            _mapController.move(
+              LatLng(result.poi.lat, result.poi.lon),
+              16,
+            );
+            // Show POI details
+            _showPoiDetails(result.poi);
+          },
+        );
+      },
+    );
+  }
+
+  /// Show search results in a bottom sheet
+  void _showSearchResults(List<PoiSearchResult> results) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Search Results (${results.length})',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: results.length,
+                    itemBuilder: (context, index) {
+                      final result = results[index];
+                      final poi = result.poi;
+                      return ListTile(
+                        leading: Icon(
+                          _getCategoryIcon(poi.category),
+                          color: _getInterestLevelColor(poi.interestLevel),
+                        ),
+                        title: Text(
+                          poi.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (poi.description.isNotEmpty)
+                              Text(
+                                poi.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Relevance: ${result.relevanceScore.toStringAsFixed(1)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                        isThreeLine: true,
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToSearchResult(poi);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Navigate to a search result POI
+  void _navigateToSearchResult(Poi poi) {
+    // Save to search history
+    _saveToSearchHistory(poi.name);
+    
+    // Move map to the POI location
+    _mapController.move(
+      LatLng(poi.lat, poi.lon),
+      16, // Zoom level
+    );
+
+    // Show POI details and add to map's POI list
+    setState(() {
+      _selectedPoi = poi;
+      _isSearching = false;
+      _searchController.clear();
+      
+      // Add the searched POI to the map's POI list if not already present
+      // This ensures it shows as a marker on the map
+      final poiExists = _pois.any((p) => p.id == poi.id);
+      if (!poiExists) {
+        _pois = [..._pois, poi];
+      }
+    });
+
+    // Animate the sheet to show details
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (_sheetController.isAttached && mounted) {
+        _sheetController.animateTo(
+          0.4,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  /// Get icon for POI category
+  IconData _getCategoryIcon(PoiCategory category) {
+    switch (category) {
+      case PoiCategory.museum:
+        return Icons.museum;
+      case PoiCategory.historicalSite:
+        return Icons.castle;
+      case PoiCategory.landmark:
+        return Icons.landscape;
+      case PoiCategory.religiousSite:
+        return Icons.church;
+      case PoiCategory.park:
+        return Icons.park;
+      case PoiCategory.monument:
+        return Icons.account_balance;
+      case PoiCategory.university:
+        return Icons.school;
+      case PoiCategory.theater:
+        return Icons.theater_comedy;
+      case PoiCategory.gallery:
+        return Icons.palette;
+      case PoiCategory.architecture:
+        return Icons.architecture;
+      case PoiCategory.generic:
+        return Icons.place;
+    }
+  }
+
+  /// Get color for interest level
+  Color _getInterestLevelColor(PoiInterestLevel level) {
+    switch (level) {
+      case PoiInterestLevel.high:
+        return Colors.amber;
+      case PoiInterestLevel.medium:
+        return Colors.blue;
+      case PoiInterestLevel.low:
+        return Colors.grey;
+    }
+  }
+
   Future<void> _startNavigation(LatLng destination) async {
     if (_userLocation == null) {
       // Show error message if user location is not available
@@ -512,10 +981,65 @@ class _MapPageState extends State<MapPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Passear'),
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search attractions...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: colorScheme.onPrimary.withOpacity(0.7)),
+                ),
+                style: TextStyle(color: colorScheme.onPrimary),
+                onChanged: (query) {
+                  // Cancel previous timer
+                  _searchDebounceTimer?.cancel();
+                  
+                  // Debounce search to avoid excessive API calls
+                  _searchDebounceTimer = Timer(_kSearchDebounceDelay, () {
+                    _performSearch(query, showSheet: false);
+                  });
+                },
+                onSubmitted: (query) {
+                  _searchDebounceTimer?.cancel();
+                  if (query.isNotEmpty) {
+                    _performSearch(query, showSheet: true);
+                  }
+                },
+              )
+            : const Text('Passear'),
         actions: [
+          if (_isSearching)
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Close search',
+              onPressed: () {
+                _searchDebounceTimer?.cancel();
+                setState(() {
+                  _isSearching = false;
+                  _searchController.clear();
+                  _searchSuggestions = [];
+                  _isLoadingSearchSuggestions = false;
+                });
+              },
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: 'Search attractions',
+              onPressed: () {
+                setState(() {
+                  _isSearching = true;
+                });
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Settings',
@@ -628,6 +1152,28 @@ class _MapPageState extends State<MapPage> {
               left: 0,
               right: 0,
               child: Center(child: CircularProgressIndicator()),
+            ),
+          // Search suggestions dropdown
+          if (_isSearching && (_searchSuggestions.isNotEmpty || _isLoadingSearchSuggestions || _searchHistory.isNotEmpty))
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Material(
+                elevation: 4,
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: _kSearchDropdownMaxHeight),
+                  color: Theme.of(context).colorScheme.surface,
+                  child: _isLoadingSearchSuggestions
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      : _buildSearchDropdownContent(),
+                ),
+              ),
             ),
           // Route loading indicator
           if (_isLoadingRoute)
