@@ -5,17 +5,21 @@ import '../services/tts/tts_orchestrator.dart';
 import '../services/poi_service.dart';
 import '../services/llm_service.dart';
 import '../services/settings_service.dart';
+import '../services/guide_chat_service.dart';
 import '../models/poi.dart';
+import 'guide_chat_page.dart';
 
 class WikiPoiDetail extends StatefulWidget {
   final Poi poi;
   final ScrollController? scrollController;
   final Function(LatLng)? onNavigate;
+  final LatLng? userLocation;
   const WikiPoiDetail({
     super.key,
     required this.poi,
     this.scrollController,
     this.onNavigate,
+    this.userLocation,
   });
 
   @override
@@ -388,6 +392,37 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     );
   }
 
+  void _openGuideChat() {
+    // Check if user location is available
+    if (widget.userLocation == null) {
+      _showSnackBar('Location not available. Please enable location services.');
+      return;
+    }
+
+    // Check if LLM is configured
+    if (llmService == null) {
+      _showLlmNotConfiguredDialog();
+      return;
+    }
+
+    // Create chat service
+    final chatService = GuideChatService(
+      poiService: poiService,
+      llmService: llmService!,
+    );
+
+    // Navigate to chat page
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => GuideChatPage(
+          userLocation: widget.userLocation!,
+          chatService: chatService,
+          ttsService: tts,
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     tts?.dispose();
@@ -745,6 +780,20 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                   if (description.isNotEmpty && !isLoadingDescription)
                     Column(
                       children: [
+                        // Ask the Guide button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _openGuideChat,
+                            icon: const Icon(Icons.chat),
+                            label: const Text("Ask the Guide"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.indigo,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             Expanded(

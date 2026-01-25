@@ -292,6 +292,48 @@ Story:''';
     return '${poiName}_${poiDescription.hashCode}_${style.name}';
   }
 
+  /// Chat with AI guide about nearby POIs
+  /// Returns a response based on the provided POI context and user question
+  Future<String> chatWithGuide({
+    required String userQuestion,
+    required List<Map<String, String>> poisContext,
+  }) async {
+    // Validate configuration
+    if (!config.isValid) {
+      throw LlmException(
+          'LLM service is not properly configured. Please set up your API key in settings.');
+    }
+
+    // Build context from nearby POIs
+    final contextBuilder = StringBuffer();
+    contextBuilder.writeln('Nearby Points of Interest:');
+    contextBuilder.writeln();
+
+    for (var i = 0; i < poisContext.length; i++) {
+      final poi = poisContext[i];
+      contextBuilder.writeln('${i + 1}. ${poi['name']}');
+      if (poi['description'] != null && poi['description']!.isNotEmpty) {
+        contextBuilder.writeln('   ${poi['description']}');
+      }
+      contextBuilder.writeln();
+    }
+
+    // Build the prompt
+    final prompt = '''You are a knowledgeable tour guide assistant. Answer the user's question based ONLY on the information provided about nearby points of interest. If the answer cannot be found in the provided context, politely say you don't have that information.
+
+$contextBuilder
+
+User Question: $userQuestion
+
+Provide a helpful, concise answer (2-3 paragraphs maximum) based on the available information:''';
+
+    try {
+      return await _makeApiCall(prompt, maxTokens: 400);
+    } catch (e) {
+      throw LlmException('Failed to get guide response: $e');
+    }
+  }
+
   /// Clear the story cache
   void clearCache() {
     _storyCache.clear();
