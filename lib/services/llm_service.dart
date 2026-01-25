@@ -4,11 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 /// Style for AI-generated stories
-enum StoryStyle {
-  neutral,
-  humorous,
-  forChildren,
-}
+enum StoryStyle { neutral, humorous, forChildren }
 
 extension StoryStyleExtension on StoryStyle {
   String get displayName {
@@ -90,7 +86,8 @@ class LlmService {
     // Validate configuration
     if (!config.isValid) {
       throw LlmException(
-          'LLM service is not properly configured. Please set up your API key in settings.');
+        'LLM service is not properly configured. Please set up your API key in settings.',
+      );
     }
 
     // Build the prompt
@@ -139,8 +136,10 @@ Be STRICT: When in doubt, answer NO. Quality over quantity.''';
 
     try {
       debugPrint('hasMoreContent: Checking content for POI: $poiName');
-      final response =
-          await _makeApiCall(prompt, maxTokens: contentCheckMaxTokens);
+      final response = await _makeApiCall(
+        prompt,
+        maxTokens: contentCheckMaxTokens,
+      );
       final answer = response.trim().toUpperCase();
       debugPrint('hasMoreContent: LLM response: "$answer"');
       final result = answer.startsWith('YES');
@@ -169,7 +168,8 @@ Be STRICT: When in doubt, answer NO. Quality over quantity.''';
     // Validate configuration
     if (!config.isValid) {
       throw LlmException(
-          'LLM service is not properly configured. Please set up your API key in settings.');
+        'LLM service is not properly configured. Please set up your API key in settings.',
+      );
     }
 
     final prompt =
@@ -196,8 +196,10 @@ Only continue if you have genuinely interesting NEW information.
 Extended story with NEW fascinating details:''';
 
     try {
-      final response =
-          await _makeApiCall(prompt, maxTokens: extendedStoryMaxTokens);
+      final response = await _makeApiCall(
+        prompt,
+        maxTokens: extendedStoryMaxTokens,
+      );
 
       // Cache the result
       _storyCache[cacheKey] = response;
@@ -233,7 +235,7 @@ Story:''';
     final requestBody = {
       'model': config.model,
       'messages': [
-        {'role': 'user', 'content': prompt}
+        {'role': 'user', 'content': prompt},
       ],
       'temperature': 0.7,
       'max_tokens': maxTokens ?? standardStoryMaxTokens,
@@ -267,7 +269,8 @@ Story:''';
     } else {
       final errorMessage = _extractErrorMessage(response.body);
       throw LlmException(
-          'LLM API error (${response.statusCode}): $errorMessage');
+        'LLM API error (${response.statusCode}): $errorMessage',
+      );
     }
   }
 
@@ -301,7 +304,8 @@ Story:''';
     // Validate configuration
     if (!config.isValid) {
       throw LlmException(
-          'LLM service is not properly configured. Please set up your API key in settings.');
+        'LLM service is not properly configured. Please set up your API key in settings.',
+      );
     }
 
     // Build context from nearby POIs
@@ -319,7 +323,8 @@ Story:''';
     }
 
     // Build the prompt
-    final prompt = '''You are a knowledgeable tour guide assistant. Answer the user's question based ONLY on the information provided about nearby points of interest. If the answer cannot be found in the provided context, politely say you don't have that information.
+    final prompt =
+        '''You are a knowledgeable tour guide assistant. Answer the user's question based ONLY on the information provided about nearby points of interest. If the answer cannot be found in the provided context, politely say you don't have that information.
 
 $contextBuilder
 

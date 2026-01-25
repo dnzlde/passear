@@ -54,10 +54,7 @@ class GuideChatService {
 
     // Build context from POIs
     final poisContext = poisWithDescriptions.map((poi) {
-      return {
-        'name': poi.name,
-        'description': poi.description,
-      };
+      return {'name': poi.name, 'description': poi.description};
     }).toList();
 
     // Ask the LLM

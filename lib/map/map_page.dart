@@ -23,8 +23,10 @@ import 'wiki_poi_detail.dart';
 // Constants for search UI
 const double _kSearchDropdownMaxHeight = 400.0;
 const Duration _kSearchDebounceDelay = Duration(milliseconds: 500);
-const int _kMinSearchCharacters = 2; // Minimum characters before triggering search
-const int _kMaxSearchHistory = 10; // Maximum number of search history items to keep
+const int _kMinSearchCharacters =
+    2; // Minimum characters before triggering search
+const int _kMaxSearchHistory =
+    10; // Maximum number of search history items to keep
 const String _kSearchHistoryKey = 'search_history'; // SharedPreferences key
 
 class MapPage extends StatefulWidget {
@@ -396,7 +398,7 @@ class _MapPageState extends State<MapPage> {
   /// Perform POI search and show results
   Future<void> _performSearch(String query, {bool showSheet = true}) async {
     final trimmedQuery = query.trim();
-    
+
     // Clear suggestions if query is too short
     if (trimmedQuery.isEmpty || trimmedQuery.length < _kMinSearchCharacters) {
       if (mounted) {
@@ -579,7 +581,7 @@ class _MapPageState extends State<MapPage> {
                 )
               : null,
           trailing: Text(
-            '${result.relevanceScore.toStringAsFixed(0)}',
+            result.relevanceScore.toStringAsFixed(0),
             style: TextStyle(
               color: Theme.of(context).colorScheme.secondary,
               fontWeight: FontWeight.bold,
@@ -588,13 +590,13 @@ class _MapPageState extends State<MapPage> {
           onTap: () {
             // Save to history
             _saveToSearchHistory(result.poi.name);
-            
+
             // Close search mode
             setState(() {
               _isSearching = false;
               _searchController.clear();
               _searchSuggestions = [];
-              
+
               // Add the searched POI to the map's POI list if not already present
               // This ensures it shows as a marker on the map
               final poiExists = _pois.any((p) => p.id == result.poi.id);
@@ -603,10 +605,7 @@ class _MapPageState extends State<MapPage> {
               }
             });
             // Navigate to POI
-            _mapController.move(
-              LatLng(result.poi.lat, result.poi.lon),
-              16,
-            );
+            _mapController.move(LatLng(result.poi.lat, result.poi.lon), 16);
             // Show POI details
             _showPoiDetails(result.poi);
           },
@@ -637,8 +636,9 @@ class _MapPageState extends State<MapPage> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.grey[100],
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -713,7 +713,7 @@ class _MapPageState extends State<MapPage> {
   void _navigateToSearchResult(Poi poi) {
     // Save to search history
     _saveToSearchHistory(poi.name);
-    
+
     // Move map to the POI location
     _mapController.move(
       LatLng(poi.lat, poi.lon),
@@ -725,7 +725,7 @@ class _MapPageState extends State<MapPage> {
       _selectedPoi = poi;
       _isSearching = false;
       _searchController.clear();
-      
+
       // Add the searched POI to the map's POI list if not already present
       // This ensures it shows as a marker on the map
       final poiExists = _pois.any((p) => p.id == poi.id);
@@ -983,7 +983,7 @@ class _MapPageState extends State<MapPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: colorScheme.primary,
@@ -995,13 +995,15 @@ class _MapPageState extends State<MapPage> {
                 decoration: InputDecoration(
                   hintText: 'Search attractions...',
                   border: InputBorder.none,
-                  hintStyle: TextStyle(color: colorScheme.onPrimary.withOpacity(0.7)),
+                  hintStyle: TextStyle(
+                    color: colorScheme.onPrimary.withValues(alpha: 0.7),
+                  ),
                 ),
                 style: TextStyle(color: colorScheme.onPrimary),
                 onChanged: (query) {
                   // Cancel previous timer
                   _searchDebounceTimer?.cancel();
-                  
+
                   // Debounce search to avoid excessive API calls
                   _searchDebounceTimer = Timer(_kSearchDebounceDelay, () {
                     _performSearch(query, showSheet: false);
@@ -1154,7 +1156,10 @@ class _MapPageState extends State<MapPage> {
               child: Center(child: CircularProgressIndicator()),
             ),
           // Search suggestions dropdown
-          if (_isSearching && (_searchSuggestions.isNotEmpty || _isLoadingSearchSuggestions || _searchHistory.isNotEmpty))
+          if (_isSearching &&
+              (_searchSuggestions.isNotEmpty ||
+                  _isLoadingSearchSuggestions ||
+                  _searchHistory.isNotEmpty))
             Positioned(
               top: 0,
               left: 0,
@@ -1162,7 +1167,9 @@ class _MapPageState extends State<MapPage> {
               child: Material(
                 elevation: 4,
                 child: Container(
-                  constraints: const BoxConstraints(maxHeight: _kSearchDropdownMaxHeight),
+                  constraints: const BoxConstraints(
+                    maxHeight: _kSearchDropdownMaxHeight,
+                  ),
                   color: Theme.of(context).colorScheme.surface,
                   child: _isLoadingSearchSuggestions
                       ? const Center(

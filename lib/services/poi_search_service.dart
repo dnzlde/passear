@@ -26,9 +26,11 @@ class PoiSearchService {
   final String lang;
   final ApiClient _apiClient;
 
-  PoiSearchService(
-      {this.lang = 'en', ApiClient? apiClient, http.Client? httpClient})
-      : _apiClient = apiClient ?? HttpApiClient(httpClient ?? http.Client());
+  PoiSearchService({
+    this.lang = 'en',
+    ApiClient? apiClient,
+    http.Client? httpClient,
+  }) : _apiClient = apiClient ?? HttpApiClient(httpClient ?? http.Client());
 
   /// Search for POIs by name with context-aware relevance scoring
   ///
@@ -51,16 +53,16 @@ class PoiSearchService {
     try {
       // For Hebrew, try multiple search variants to improve results
       List<String> searchQueries = [query];
-      
+
       if (lang == 'he' && !query.startsWith('ה')) {
         // Add variant with definite article for Hebrew
         searchQueries.add('ה$query');
       }
-      
+
       // Try each search variant and collect results
       final allSearchResults = <Map<String, dynamic>>[];
       final seenTitles = <String>{};
-      
+
       for (final searchQuery in searchQueries) {
         final results = await _searchWikipedia(searchQuery, limit: limit * 2);
         // Add unique results only
@@ -71,7 +73,7 @@ class PoiSearchService {
             allSearchResults.add(result);
           }
         }
-        
+
         // If we have enough results from the first query, no need to try more
         if (allSearchResults.length >= limit * 2) {
           break;
@@ -136,17 +138,20 @@ class PoiSearchService {
             textMatchScore: result['matchScore'] ?? 1.0,
           );
 
-          scoredResults.add(PoiSearchResult(
-            poi: updatedPoi,
-            relevanceScore: relevanceScore,
-            matchedText: result['title'],
-          ));
+          scoredResults.add(
+            PoiSearchResult(
+              poi: updatedPoi,
+              relevanceScore: relevanceScore,
+              matchedText: result['title'],
+            ),
+          );
         }
       }
 
       // Sort by relevance score (highest first) and take top results
-      scoredResults
-          .sort((a, b) => b.relevanceScore.compareTo(a.relevanceScore));
+      scoredResults.sort(
+        (a, b) => b.relevanceScore.compareTo(a.relevanceScore),
+      );
       return scoredResults.take(limit).toList();
     } catch (e) {
       debugPrint('Error searching POIs: $e');
@@ -191,7 +196,7 @@ class PoiSearchService {
           if (snippet != null) {
             snippet = snippet.replaceAll(RegExp(r'<[^>]*>'), '');
           }
-          
+
           results.add({
             'title': result['title'],
             'description': snippet,
@@ -307,7 +312,11 @@ class PoiSearchService {
 
   /// Calculate distance between two points in meters using Haversine formula
   double _calculateDistance(
-      double lat1, double lon1, double lat2, double lon2) {
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const earthRadius = 6371000.0; // meters
 
     final dLat = _degreesToRadians(lat2 - lat1);

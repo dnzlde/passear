@@ -85,9 +85,7 @@ class SettingsService {
   /// Update tour audio enabled setting
   Future<void> updateTourAudioEnabled(bool enabled) async {
     final currentSettings = await loadSettings();
-    final updatedSettings = currentSettings.copyWith(
-      tourAudioEnabled: enabled,
-    );
+    final updatedSettings = currentSettings.copyWith(tourAudioEnabled: enabled);
     await saveSettings(updatedSettings);
   }
 
@@ -122,8 +120,9 @@ class SettingsService {
   /// Update LLM API endpoint
   Future<void> updateLlmApiEndpoint(String apiEndpoint) async {
     final currentSettings = await loadSettings();
-    final updatedSettings =
-        currentSettings.copyWith(llmApiEndpoint: apiEndpoint);
+    final updatedSettings = currentSettings.copyWith(
+      llmApiEndpoint: apiEndpoint,
+    );
     await saveSettings(updatedSettings);
   }
 

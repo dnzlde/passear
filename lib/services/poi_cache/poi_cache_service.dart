@@ -43,9 +43,7 @@ class PoiCacheService {
   // Track background refresh operations
   final List<Future<void>> _backgroundOperations = [];
 
-  PoiCacheService({
-    this.config = const PoiCacheConfig(),
-  });
+  PoiCacheService({this.config = const PoiCacheConfig()});
 
   /// Initialize the cache service
   Future<void> initialize() async {
@@ -267,7 +265,8 @@ class PoiCacheService {
     if (size <= config.maxTiles) return;
 
     debugPrint(
-        'POI Cache: Performing LRU eviction (size=$size, max=${config.maxTiles})');
+      'POI Cache: Performing LRU eviction (size=$size, max=${config.maxTiles})',
+    );
 
     // Get all entries with their last access times
     final keys = await _storage.getAllKeys();

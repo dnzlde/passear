@@ -6,10 +6,7 @@ import 'package:passear/services/tts/tts_models.dart';
 void main() {
   group('TtsRequest', () {
     test('should create request with required fields', () {
-      final request = TtsRequest(
-        text: 'Hello world',
-        defaultLang: 'en-US',
-      );
+      final request = TtsRequest(text: 'Hello world', defaultLang: 'en-US');
 
       expect(request.text, 'Hello world');
       expect(request.defaultLang, 'en-US');
@@ -38,10 +35,7 @@ void main() {
   group('TtsAudio', () {
     test('should store audio bytes and mime type', () {
       final bytes = Uint8List.fromList([1, 2, 3, 4, 5]);
-      final audio = TtsAudio(
-        bytes: bytes,
-        mimeType: 'audio/mpeg',
-      );
+      final audio = TtsAudio(bytes: bytes, mimeType: 'audio/mpeg');
 
       expect(audio.bytes, bytes);
       expect(audio.mimeType, 'audio/mpeg');
@@ -72,20 +66,14 @@ void main() {
 
   group('TextRun', () {
     test('should create text run', () {
-      final run = TextRun(
-        text: 'Hello',
-        language: 'en-US',
-      );
+      final run = TextRun(text: 'Hello', language: 'en-US');
 
       expect(run.text, 'Hello');
       expect(run.language, 'en-US');
     });
 
     test('should have string representation', () {
-      final run = TextRun(
-        text: 'Hello',
-        language: 'en-US',
-      );
+      final run = TextRun(text: 'Hello', language: 'en-US');
 
       expect(run.toString(), contains('Hello'));
       expect(run.toString(), contains('en-US'));

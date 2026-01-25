@@ -30,8 +30,10 @@ class OpenAiTtsEngine implements TtsEngine {
       throw Exception('Synthesis cancelled before starting');
     }
 
-    debugPrint('$engineName: Synthesizing text (${request.text.length} chars) '
-        'in language ${request.defaultLang}');
+    debugPrint(
+      '$engineName: Synthesizing text (${request.text.length} chars) '
+      'in language ${request.defaultLang}',
+    );
 
     try {
       final startTime = DateTime.now();
@@ -62,23 +64,27 @@ class OpenAiTtsEngine implements TtsEngine {
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
         debugPrint(
-            '$engineName: Synthesis completed in ${duration.inMilliseconds}ms, '
-            '${bytes.length} bytes');
+          '$engineName: Synthesis completed in ${duration.inMilliseconds}ms, '
+          '${bytes.length} bytes',
+        );
         return TtsAudio(
           bytes: Uint8List.fromList(bytes),
           mimeType: 'audio/mpeg',
         );
       } else if (response.statusCode == 401) {
         throw Exception(
-            'OpenAI API authentication failed (401): Invalid API key');
+          'OpenAI API authentication failed (401): Invalid API key',
+        );
       } else if (response.statusCode == 429) {
         throw Exception('OpenAI API rate limit exceeded (429)');
       } else if (response.statusCode >= 500) {
         throw Exception(
-            'OpenAI API server error (${response.statusCode}): ${response.body}');
+          'OpenAI API server error (${response.statusCode}): ${response.body}',
+        );
       } else {
         throw Exception(
-            'OpenAI API request failed (${response.statusCode}): ${response.body}');
+          'OpenAI API request failed (${response.statusCode}): ${response.body}',
+        );
       }
     } on http.ClientException catch (e) {
       debugPrint('$engineName: Network error: $e');

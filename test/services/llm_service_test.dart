@@ -10,10 +10,7 @@ void main() {
     test('generates story successfully with valid API response', () async {
       final mockClient = MockClient((request) async {
         // Verify request headers - use contains to handle charset additions
-        expect(
-          request.headers['Content-Type'],
-          contains('application/json'),
-        );
+        expect(request.headers['Content-Type'], contains('application/json'));
         expect(request.headers['Authorization'], 'Bearer test-api-key');
 
         // Verify request body
@@ -57,7 +54,7 @@ void main() {
       final mockClient = MockClient((request) async {
         return http.Response(
           jsonEncode({
-            'error': {'message': 'Invalid API key'}
+            'error': {'message': 'Invalid API key'},
           }),
           401,
         );
@@ -83,7 +80,7 @@ void main() {
       final mockClient = MockClient((request) async {
         return http.Response(
           jsonEncode({
-            'error': {'message': 'Server error'}
+            'error': {'message': 'Server error'},
           }),
           500,
         );
@@ -130,9 +127,7 @@ void main() {
           jsonEncode({
             'choices': [
               {
-                'message': {
-                  'content': 'Cached story',
-                },
+                'message': {'content': 'Cached story'},
               },
             ],
           }),
@@ -227,9 +222,7 @@ void main() {
           jsonEncode({
             'choices': [
               {
-                'message': {
-                  'content': 'Story $callCount',
-                },
+                'message': {'content': 'Story $callCount'},
               },
             ],
           }),
@@ -266,7 +259,7 @@ void main() {
       final mockClient = MockClient((request) async {
         return http.Response(
           jsonEncode({
-            'error': {'message': 'Rate limit exceeded'}
+            'error': {'message': 'Rate limit exceeded'},
           }),
           429,
         );
@@ -312,10 +305,7 @@ void main() {
     });
 
     test('isValid returns false when endpoint is empty', () {
-      final config = LlmConfig(
-        apiEndpoint: '',
-        apiKey: 'test-api-key',
-      );
+      final config = LlmConfig(apiEndpoint: '', apiKey: 'test-api-key');
 
       expect(config.isValid, false);
     });
@@ -333,14 +323,8 @@ void main() {
         StoryStyle.neutral.promptModifier,
         contains('professional and informative'),
       );
-      expect(
-        StoryStyle.humorous.promptModifier,
-        contains('light humor'),
-      );
-      expect(
-        StoryStyle.forChildren.promptModifier,
-        contains('children'),
-      );
+      expect(StoryStyle.humorous.promptModifier, contains('light humor'));
+      expect(StoryStyle.forChildren.promptModifier, contains('children'));
     });
   });
 
@@ -474,8 +458,10 @@ void main() {
         originalStory: 'Original story text',
       );
 
-      expect(extendedStory,
-          'This is a detailed extended story with much more information.');
+      expect(
+        extendedStory,
+        'This is a detailed extended story with much more information.',
+      );
     });
 
     test('caches extended stories separately from regular stories', () async {
@@ -486,9 +472,7 @@ void main() {
           jsonEncode({
             'choices': [
               {
-                'message': {
-                  'content': 'Story $callCount',
-                },
+                'message': {'content': 'Story $callCount'},
               },
             ],
           }),
@@ -539,6 +523,134 @@ void main() {
           poiName: 'Test POI',
           poiDescription: 'A test description',
           originalStory: 'Original',
+        ),
+        throwsA(isA<LlmException>()),
+      );
+    });
+  });
+
+  group('chatWithGuide', () {
+    test('generates chat response successfully', () async {
+      final mockClient = MockClient((request) async {
+        final body = jsonDecode(request.body);
+        final messages = body['messages'] as List;
+        final userMessage = messages.first['content'] as String;
+
+        // Verify the prompt includes POI context
+        expect(userMessage, contains('Nearby Points of Interest'));
+        expect(userMessage, contains('User Question:'));
+
+        return http.Response(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {
+                  'content':
+                      'This is a helpful response about the nearby POIs.',
+                },
+              },
+            ],
+          }),
+          200,
+        );
+      });
+
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: 'test-api-key',
+      );
+
+      final service = LlmService(config: config, client: mockClient);
+
+      final response = await service.chatWithGuide(
+        userQuestion: 'What is interesting around here?',
+        poisContext: [
+          {
+            'name': 'Test Museum',
+            'description': 'A famous museum with ancient artifacts.',
+          },
+          {
+            'name': 'Central Park',
+            'description': 'A large public park in the city center.',
+          },
+        ],
+      );
+
+      expect(response, 'This is a helpful response about the nearby POIs.');
+    });
+
+    test('throws LlmException when configuration is invalid', () async {
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: '', // Empty API key
+      );
+
+      final service = LlmService(config: config);
+
+      expect(
+        () => service.chatWithGuide(
+          userQuestion: 'What is nearby?',
+          poisContext: [],
+        ),
+        throwsA(isA<LlmException>()),
+      );
+    });
+
+    test('handles empty POI context gracefully', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {
+                  'content':
+                      'I don\'t have information about any nearby places.',
+                },
+              },
+            ],
+          }),
+          200,
+        );
+      });
+
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: 'test-api-key',
+      );
+
+      final service = LlmService(config: config, client: mockClient);
+
+      final response = await service.chatWithGuide(
+        userQuestion: 'What is nearby?',
+        poisContext: [],
+      );
+
+      expect(response, contains('don\'t have information'));
+    });
+
+    test('throws LlmException on API error', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'error': {'message': 'API error occurred'}
+          }),
+          500,
+        );
+      });
+
+      final config = LlmConfig(
+        apiEndpoint: 'https://api.example.com/chat/completions',
+        apiKey: 'test-api-key',
+      );
+
+      final service = LlmService(config: config, client: mockClient);
+
+      expect(
+        () => service.chatWithGuide(
+          userQuestion: 'What is nearby?',
+          poisContext: [
+            {'name': 'Test', 'description': 'Test'},
+          ],
         ),
         throwsA(isA<LlmException>()),
       );

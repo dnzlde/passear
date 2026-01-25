@@ -210,19 +210,22 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   Future<void> _checkForMoreContent() async {
     if (llmService == null || aiStory == null) {
       debugPrint(
-          '_checkForMoreContent: Skipping check - llmService or aiStory is null');
+        '_checkForMoreContent: Skipping check - llmService or aiStory is null',
+      );
       return;
     }
 
     // Only check for more content for important POIs (high or medium interest level)
     if (currentPoi.interestLevel == PoiInterestLevel.low) {
       debugPrint(
-          '_checkForMoreContent: Skipping check - POI has low interest level: ${currentPoi.name}');
+        '_checkForMoreContent: Skipping check - POI has low interest level: ${currentPoi.name}',
+      );
       return;
     }
 
     debugPrint(
-        '_checkForMoreContent: Starting check for POI: ${currentPoi.name} (interest level: ${currentPoi.interestLevel})');
+      '_checkForMoreContent: Starting check for POI: ${currentPoi.name} (interest level: ${currentPoi.interestLevel})',
+    );
     setState(() {
       isCheckingMoreContent = true;
     });
@@ -234,7 +237,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       );
 
       debugPrint(
-          '_checkForMoreContent: Result for ${currentPoi.name}: $hasMore');
+        '_checkForMoreContent: Result for ${currentPoi.name}: $hasMore',
+      );
       if (mounted) {
         setState(() {
           hasMoreContent = hasMore;
@@ -256,7 +260,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     if (llmService == null || aiStory == null) return;
 
     debugPrint(
-        '_generateExtendedStory: Starting generation for ${currentPoi.name}');
+      '_generateExtendedStory: Starting generation for ${currentPoi.name}',
+    );
     setState(() {
       isGeneratingExtendedStory = true;
     });
@@ -270,7 +275,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       );
 
       debugPrint(
-          '_generateExtendedStory: Generation complete, length: ${extended.length}');
+        '_generateExtendedStory: Generation complete, length: ${extended.length}',
+      );
       setState(() {
         extendedStory = extended;
         isGeneratingExtendedStory = false;
@@ -303,7 +309,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     }
 
     debugPrint(
-        '_playAudio: Starting playback for text of length ${text.length}');
+      '_playAudio: Starting playback for text of length ${text.length}',
+    );
 
     // Stop any currently playing audio first
     if (isPlayingAudio || isPausedAudio) {
@@ -355,18 +362,19 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     }
   }
 
-  Future<void> _stopAudio() async {
-    if (tts == null) return;
-
-    await tts!.stop();
-    if (mounted) {
-      setState(() {
-        isPlayingAudio = false;
-        isPausedAudio = false;
-        currentAudioText = null;
-      });
-    }
-  }
+  // Method removed as it was unused
+  // Future<void> _stopAudio() async {
+  //   if (tts == null) return;
+  //
+  //   await tts!.stop();
+  //   if (mounted) {
+  //     setState(() {
+  //       isPlayingAudio = false;
+  //       isPausedAudio = false;
+  //       currentAudioText = null;
+  //     });
+  //   }
+  // }
 
   void _showLlmNotConfiguredDialog() {
     showDialog(
@@ -387,9 +395,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _openGuideChat() {
@@ -460,9 +468,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                 LinearProgressIndicator(
                   value: synthesisProgress / synthesisTotal,
                   backgroundColor: Colors.grey[300],
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    Colors.blue,
-                  ),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -504,7 +510,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                   if (!tourAudioEnabled)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
                         color: Colors.orange.withValues(alpha: 0.1),
@@ -590,8 +598,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : const Icon(Icons.auto_awesome),
                           label: const Text('AI Story'),
@@ -646,7 +655,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                 Text(
                                   aiStory!,
                                   style: const TextStyle(
-                                      fontSize: 16, height: 1.5),
+                                    fontSize: 16,
+                                    height: 1.5,
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
                                 Wrap(
@@ -657,11 +668,15 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                       onPressed: tourAudioEnabled
                                           ? () => _playAudio(aiStory!)
                                           : null,
-                                      icon:
-                                          const Icon(Icons.volume_up, size: 16),
-                                      label: Text(tourAudioEnabled
-                                          ? 'Play Again'
-                                          : 'Audio Disabled'),
+                                      icon: const Icon(
+                                        Icons.volume_up,
+                                        size: 16,
+                                      ),
+                                      label: Text(
+                                        tourAudioEnabled
+                                            ? 'Play Again'
+                                            : 'Audio Disabled',
+                                      ),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.purple,
                                         foregroundColor: Colors.white,
@@ -675,8 +690,10 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                         !isGeneratingExtendedStory)
                                       ElevatedButton.icon(
                                         onPressed: _generateExtendedStory,
-                                        icon: const Icon(Icons.read_more,
-                                            size: 16),
+                                        icon: const Icon(
+                                          Icons.read_more,
+                                          size: 16,
+                                        ),
                                         label: const Text('Tell Me More'),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.deepPurple,
@@ -694,7 +711,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                           width: 16,
                                           height: 16,
                                           child: CircularProgressIndicator(
-                                              strokeWidth: 2),
+                                            strokeWidth: 2,
+                                          ),
                                         ),
                                       ),
                                   ],
@@ -749,7 +767,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                 Text(
                                   extendedStory!,
                                   style: const TextStyle(
-                                      fontSize: 16, height: 1.5),
+                                    fontSize: 16,
+                                    height: 1.5,
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
                                 ElevatedButton.icon(
@@ -757,9 +777,11 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                       ? () => _playAudio(extendedStory!)
                                       : null,
                                   icon: const Icon(Icons.volume_up, size: 16),
-                                  label: Text(tourAudioEnabled
-                                      ? 'Play Again'
-                                      : 'Audio Disabled'),
+                                  label: Text(
+                                    tourAudioEnabled
+                                        ? 'Play Again'
+                                        : 'Audio Disabled',
+                                  ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.deepPurple,
                                     foregroundColor: Colors.white,
@@ -805,7 +827,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                         : (isPausedAudio
                                             ? _resumeAudio
                                             : (tourAudioEnabled
-                                                ? () => _playAudio(description)
+                                                ? () => _playAudio(
+                                                      description,
+                                                    )
                                                 : null))),
                                 icon: Icon(
                                   isSynthesizingAudio
@@ -843,8 +867,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: () {
-                                    widget
-                                        .onNavigate!(LatLng(poi.lat, poi.lon));
+                                    widget.onNavigate!(
+                                      LatLng(poi.lat, poi.lon),
+                                    );
                                   },
                                   icon: const Icon(Icons.directions_walk),
                                   label: const Text("Navigate"),

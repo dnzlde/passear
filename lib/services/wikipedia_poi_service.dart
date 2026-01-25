@@ -111,20 +111,26 @@ class WikipediaPoiService {
     if (data['error'] != null) {
       final errorInfo = data['error'];
       throw Exception(
-          'Wikipedia API error: ${errorInfo['code']} - ${errorInfo['info']}');
+        'Wikipedia API error: ${errorInfo['code']} - ${errorInfo['info']}',
+      );
     }
 
     final query = data['query'];
     if (query == null) {
       // Log unexpected response structure
       debugPrint(
-          'WARNING: Wikipedia API returned unexpected response structure: $data');
+        'WARNING: Wikipedia API returned unexpected response structure: $data',
+      );
       return [];
     }
     final results = query['geosearch'] as List?;
     if (results == null) return [];
     return results.map((e) {
-      return WikipediaPoi(title: e['title'], lat: e['lat'], lon: e['lon']);
+      return WikipediaPoi(
+        title: e['title'],
+        lat: (e['lat'] as num).toDouble(),
+        lon: (e['lon'] as num).toDouble(),
+      );
     }).toList();
   }
 

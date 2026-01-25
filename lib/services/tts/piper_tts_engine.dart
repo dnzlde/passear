@@ -8,7 +8,6 @@ import 'tts_models.dart';
 class PiperTtsEngine implements TtsEngine {
   final FlutterTts _tts = FlutterTts();
   bool _isInitialized = false;
-  void Function()? _completionHandler;
 
   @override
   String get engineName => 'Piper TTS (fallback)';
@@ -50,8 +49,10 @@ class PiperTtsEngine implements TtsEngine {
       throw Exception('Synthesis cancelled before starting');
     }
 
-    debugPrint('$engineName: Synthesizing text (${request.text.length} chars) '
-        'in language ${request.defaultLang}');
+    debugPrint(
+      '$engineName: Synthesizing text (${request.text.length} chars) '
+      'in language ${request.defaultLang}',
+    );
 
     try {
       final startTime = DateTime.now();
@@ -71,14 +72,12 @@ class PiperTtsEngine implements TtsEngine {
 
       final duration = DateTime.now().difference(startTime);
       debugPrint(
-          '$engineName: Synthesis completed in ${duration.inMilliseconds}ms');
+        '$engineName: Synthesis completed in ${duration.inMilliseconds}ms',
+      );
 
       // Return empty audio data - the actual TTS will be handled by flutter_tts
       // This is a simplified fallback implementation
-      return TtsAudio(
-        bytes: Uint8List(0),
-        mimeType: 'audio/wav',
-      );
+      return TtsAudio(bytes: Uint8List(0), mimeType: 'audio/wav');
     } catch (e) {
       debugPrint('$engineName: Error: $e');
       rethrow;
@@ -158,7 +157,8 @@ class PiperTtsEngine implements TtsEngine {
 
     // Default fallback to en-US
     debugPrint(
-        '$engineName: Unknown language "$language", falling back to en-US');
+      '$engineName: Unknown language "$language", falling back to en-US',
+    );
     return 'en-US';
   }
 

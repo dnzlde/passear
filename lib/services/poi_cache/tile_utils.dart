@@ -7,11 +7,7 @@ class TileCoordinate {
   final int y;
   final int z;
 
-  const TileCoordinate({
-    required this.x,
-    required this.y,
-    required this.z,
-  });
+  const TileCoordinate({required this.x, required this.y, required this.z});
 
   @override
   bool operator ==(Object other) =>
@@ -86,12 +82,7 @@ class TileUtils {
     final southRad = math.atan(sinh(math.pi * (1 - 2 * (tile.y + 1) / n)));
     final south = southRad * 180.0 / math.pi;
 
-    return GeoBounds(
-      north: north,
-      south: south,
-      east: east,
-      west: west,
-    );
+    return GeoBounds(north: north, south: south, east: east, west: west);
   }
 
   /// Get all tiles that cover the given viewport bounds

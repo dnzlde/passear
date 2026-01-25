@@ -12,12 +12,11 @@ void main() {
     setUp(() {
       // Set up method channel mock
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        const MethodChannel('flutter_tts'),
-        (MethodCall methodCall) async {
-          return null;
-        },
-      );
+          .setMockMethodCallHandler(const MethodChannel('flutter_tts'), (
+        MethodCall methodCall,
+      ) async {
+        return null;
+      });
 
       engine = PiperTtsEngine();
     });
@@ -31,10 +30,7 @@ void main() {
     });
 
     test('should synthesize with default language', () async {
-      final request = TtsRequest(
-        text: 'Hello world',
-        defaultLang: 'en-US',
-      );
+      final request = TtsRequest(text: 'Hello world', defaultLang: 'en-US');
 
       final audio = await engine.synthesize(request);
 
@@ -42,17 +38,16 @@ void main() {
       expect(audio.mimeType, 'audio/wav');
     });
 
-    test('should handle unsupported language by falling back to en-US',
-        () async {
-      final request = TtsRequest(
-        text: 'Test text',
-        defaultLang: 'xyz-ZZ',
-      );
+    test(
+      'should handle unsupported language by falling back to en-US',
+      () async {
+        final request = TtsRequest(text: 'Test text', defaultLang: 'xyz-ZZ');
 
-      // Should not throw
-      final audio = await engine.synthesize(request);
-      expect(audio.mimeType, 'audio/wav');
-    });
+        // Should not throw
+        final audio = await engine.synthesize(request);
+        expect(audio.mimeType, 'audio/wav');
+      },
+    );
 
     test('should map common languages correctly', () async {
       final languages = [
@@ -69,10 +64,7 @@ void main() {
       ];
 
       for (final lang in languages) {
-        final request = TtsRequest(
-          text: 'Test',
-          defaultLang: lang,
-        );
+        final request = TtsRequest(text: 'Test', defaultLang: lang);
 
         // Should not throw
         await engine.synthesize(request);
@@ -83,10 +75,7 @@ void main() {
       final token = CancellationToken();
       token.cancel();
 
-      final request = TtsRequest(
-        text: 'Hello world',
-        defaultLang: 'en-US',
-      );
+      final request = TtsRequest(text: 'Hello world', defaultLang: 'en-US');
 
       expect(
         () => engine.synthesize(request, cancellationToken: token),

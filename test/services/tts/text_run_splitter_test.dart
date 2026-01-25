@@ -70,8 +70,10 @@ void main() {
     });
 
     test('should handle multiple languages in one text', () {
-      final runs =
-          TextRunSplitter.split('English שלום مرحبا Привет 你好', 'en-US');
+      final runs = TextRunSplitter.split(
+        'English שלום مرحبا Привет 你好',
+        'en-US',
+      );
       expect(runs.length, greaterThanOrEqualTo(4));
 
       final languages = runs.map((r) => r.language).toSet();

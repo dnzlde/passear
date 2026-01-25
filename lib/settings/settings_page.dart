@@ -496,8 +496,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline,
-                            size: 20, color: Colors.blue[700]),
+                        Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: Colors.blue[700],
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -622,8 +625,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline,
-                            size: 20, color: Colors.blue[700]),
+                        Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: Colors.blue[700],
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -957,15 +963,18 @@ class _SettingsPageState extends State<SettingsPage> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Hits: $hits',
-                                      style:
-                                          TextStyle(color: Colors.blue[900])),
-                                  Text('Misses: $misses',
-                                      style:
-                                          TextStyle(color: Colors.blue[900])),
-                                  Text('Hit Rate: $hitRate%',
-                                      style:
-                                          TextStyle(color: Colors.blue[900])),
+                                  Text(
+                                    'Hits: $hits',
+                                    style: TextStyle(color: Colors.blue[900]),
+                                  ),
+                                  Text(
+                                    'Misses: $misses',
+                                    style: TextStyle(color: Colors.blue[900]),
+                                  ),
+                                  Text(
+                                    'Hit Rate: $hitRate%',
+                                    style: TextStyle(color: Colors.blue[900]),
+                                  ),
                                 ],
                               ),
                             ],
@@ -1001,10 +1010,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       Text(
                         '~${(_settings.maxCacheTiles * 2.4).toStringAsFixed(0)} km² area',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: Colors.grey[600]),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey[600],
+                            ),
                       ),
                     ],
                   ),
@@ -1077,8 +1085,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline,
-                            size: 20, color: Colors.orange[700]),
+                        Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: Colors.orange[700],
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(

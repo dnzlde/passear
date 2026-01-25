@@ -32,9 +32,11 @@ class _GuideChatPageState extends State<GuideChatPage> {
   void initState() {
     super.initState();
     // Add welcome message
-    _messages.add(ChatMessage.assistant(
-      'Hello! I\'m your AI guide. Ask me anything about the nearby places!',
-    ));
+    _messages.add(
+      ChatMessage.assistant(
+        'Hello! I\'m your AI guide. Ask me anything about the nearby places!',
+      ),
+    );
   }
 
   @override
@@ -96,9 +98,11 @@ class _GuideChatPageState extends State<GuideChatPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _messages.add(ChatMessage.error(
-            'An unexpected error occurred. Please try again.',
-          ));
+          _messages.add(
+            ChatMessage.error(
+              'An unexpected error occurred. Please try again.',
+            ),
+          );
           _isLoading = false;
         });
         _scrollToBottom();
@@ -193,7 +197,7 @@ class _GuideChatPageState extends State<GuideChatPage> {
                 BoxShadow(
                   offset: const Offset(0, -2),
                   blurRadius: 4,
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                 ),
               ],
             ),
@@ -306,11 +310,7 @@ class _GuideChatPageState extends State<GuideChatPage> {
             const SizedBox(width: 8),
             CircleAvatar(
               backgroundColor: Theme.of(context).colorScheme.secondary,
-              child: const Icon(
-                Icons.person,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: const Icon(Icons.person, color: Colors.white, size: 20),
             ),
           ],
         ],
