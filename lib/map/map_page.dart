@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/poi.dart';
 import '../models/route.dart';
 import '../models/settings.dart';
@@ -23,6 +24,8 @@ import 'wiki_poi_detail.dart';
 const double _kSearchDropdownMaxHeight = 400.0;
 const Duration _kSearchDebounceDelay = Duration(milliseconds: 500);
 const int _kMinSearchCharacters = 2; // Minimum characters before triggering search
+const int _kMaxSearchHistory = 10; // Maximum number of search history items to keep
+const String _kSearchHistoryKey = 'search_history'; // SharedPreferences key
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -69,6 +72,7 @@ class _MapPageState extends State<MapPage> {
   List<PoiSearchResult> _searchSuggestions = [];
   bool _isLoadingSearchSuggestions = false;
   Timer? _searchDebounceTimer;
+  List<String> _searchHistory = []; // Recent search queries
 
   @override
   void initState() {
@@ -77,6 +81,7 @@ class _MapPageState extends State<MapPage> {
     _initMap();
     _startLocationTracking();
     _loadVoiceGuidanceSetting();
+    _loadSearchHistory();
   }
 
   Future<void> _initializeTts() async {
@@ -111,6 +116,62 @@ class _MapPageState extends State<MapPage> {
       // Update routing and POI providers (outside setState since they don't affect UI state)
       _routingService.updateProvider(settings.routingProvider);
       _poiService.updateProvider(settings.poiProvider);
+    }
+  }
+
+  /// Load search history from SharedPreferences
+  Future<void> _loadSearchHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final history = prefs.getStringList(_kSearchHistoryKey) ?? [];
+      if (mounted) {
+        setState(() {
+          _searchHistory = history;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading search history: $e');
+    }
+  }
+
+  /// Save search query to history
+  Future<void> _saveToSearchHistory(String query) async {
+    if (query.trim().isEmpty) return;
+
+    try {
+      // Remove if already exists (to move it to top)
+      _searchHistory.remove(query);
+      // Add to beginning
+      _searchHistory.insert(0, query);
+      // Limit to max items
+      if (_searchHistory.length > _kMaxSearchHistory) {
+        _searchHistory = _searchHistory.sublist(0, _kMaxSearchHistory);
+      }
+
+      // Save to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_kSearchHistoryKey, _searchHistory);
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Error saving search history: $e');
+    }
+  }
+
+  /// Clear all search history
+  Future<void> _clearSearchHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kSearchHistoryKey);
+      if (mounted) {
+        setState(() {
+          _searchHistory = [];
+        });
+      }
+    } catch (e) {
+      debugPrint('Error clearing search history: $e');
     }
   }
 
@@ -442,6 +503,118 @@ class _MapPageState extends State<MapPage> {
     return 'en';
   }
 
+  /// Build the search dropdown content with history and suggestions
+  Widget _buildSearchDropdownContent() {
+    final query = _searchController.text;
+    final showHistory = query.isEmpty || query.length < _kMinSearchCharacters;
+
+    // Show history when query is empty or too short
+    if (showHistory && _searchHistory.isNotEmpty) {
+      return ListView(
+        shrinkWrap: true,
+        children: [
+          // History header
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Recent Searches',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                TextButton(
+                  onPressed: _clearSearchHistory,
+                  child: const Text('Clear', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          // History items
+          ..._searchHistory.map((historyQuery) {
+            return ListTile(
+              leading: const Icon(Icons.history, color: Colors.grey),
+              title: Text(historyQuery),
+              onTap: () {
+                // Fill search field with history item and trigger search
+                _searchController.text = historyQuery;
+                _performSearch(historyQuery, showSheet: false);
+              },
+            );
+          }),
+        ],
+      );
+    }
+
+    // Show search suggestions
+    if (_searchSuggestions.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('No results found'),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: _searchSuggestions.length,
+      itemBuilder: (context, index) {
+        final result = _searchSuggestions[index];
+        return ListTile(
+          leading: Icon(
+            _getCategoryIcon(result.poi.category),
+            color: _getInterestLevelColor(result.poi.interestLevel),
+          ),
+          title: Text(result.poi.name),
+          subtitle: result.poi.description.isNotEmpty
+              ? Text(
+                  result.poi.description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )
+              : null,
+          trailing: Text(
+            '${result.relevanceScore.toStringAsFixed(0)}',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.secondary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          onTap: () {
+            // Save to history
+            _saveToSearchHistory(result.poi.name);
+            
+            // Close search mode
+            setState(() {
+              _isSearching = false;
+              _searchController.clear();
+              _searchSuggestions = [];
+              
+              // Add the searched POI to the map's POI list if not already present
+              // This ensures it shows as a marker on the map
+              final poiExists = _pois.any((p) => p.id == result.poi.id);
+              if (!poiExists) {
+                _pois = [..._pois, result.poi];
+              }
+            });
+            // Navigate to POI
+            _mapController.move(
+              LatLng(result.poi.lat, result.poi.lon),
+              16,
+            );
+            // Show POI details
+            _showPoiDetails(result.poi);
+          },
+        );
+      },
+    );
+  }
+
   /// Show search results in a bottom sheet
   void _showSearchResults(List<PoiSearchResult> results) {
     showModalBottomSheet(
@@ -538,6 +711,9 @@ class _MapPageState extends State<MapPage> {
 
   /// Navigate to a search result POI
   void _navigateToSearchResult(Poi poi) {
+    // Save to search history
+    _saveToSearchHistory(poi.name);
+    
     // Move map to the POI location
     _mapController.move(
       LatLng(poi.lat, poi.lon),
@@ -978,7 +1154,7 @@ class _MapPageState extends State<MapPage> {
               child: Center(child: CircularProgressIndicator()),
             ),
           // Search suggestions dropdown
-          if (_isSearching && (_searchSuggestions.isNotEmpty || _isLoadingSearchSuggestions))
+          if (_isSearching && (_searchSuggestions.isNotEmpty || _isLoadingSearchSuggestions || _searchHistory.isNotEmpty))
             Positioned(
               top: 0,
               left: 0,
@@ -995,56 +1171,7 @@ class _MapPageState extends State<MapPage> {
                             child: CircularProgressIndicator(),
                           ),
                         )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: _searchSuggestions.length,
-                          itemBuilder: (context, index) {
-                            final result = _searchSuggestions[index];
-                            return ListTile(
-                              leading: Icon(
-                                _getCategoryIcon(result.poi.category),
-                                color: _getInterestLevelColor(result.poi.interestLevel),
-                              ),
-                              title: Text(result.poi.name),
-                              subtitle: result.poi.description.isNotEmpty
-                                  ? Text(
-                                      result.poi.description,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    )
-                                  : null,
-                              trailing: Text(
-                                '${result.relevanceScore.toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.secondary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              onTap: () {
-                                // Close search mode
-                                setState(() {
-                                  _isSearching = false;
-                                  _searchController.clear();
-                                  _searchSuggestions = [];
-                                  
-                                  // Add the searched POI to the map's POI list if not already present
-                                  // This ensures it shows as a marker on the map
-                                  final poiExists = _pois.any((p) => p.id == result.poi.id);
-                                  if (!poiExists) {
-                                    _pois = [..._pois, result.poi];
-                                  }
-                                });
-                                // Navigate to POI
-                                _mapController.move(
-                                  LatLng(result.poi.lat, result.poi.lon),
-                                  16,
-                                );
-                                // Show POI details
-                                _showPoiDetails(result.poi);
-                              },
-                            );
-                          },
-                        ),
+                      : _buildSearchDropdownContent(),
                 ),
               ),
             ),
