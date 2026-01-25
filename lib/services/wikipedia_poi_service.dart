@@ -126,10 +126,13 @@ class WikipediaPoiService {
     final results = query['geosearch'] as List?;
     if (results == null) return [];
     return results.map((e) {
+      // Safely convert lat/lon to double with default values if invalid
+      final lat = e['lat'];
+      final lon = e['lon'];
       return WikipediaPoi(
         title: e['title'],
-        lat: (e['lat'] as num).toDouble(),
-        lon: (e['lon'] as num).toDouble(),
+        lat: lat is num ? lat.toDouble() : 0.0,
+        lon: lon is num ? lon.toDouble() : 0.0,
       );
     }).toList();
   }

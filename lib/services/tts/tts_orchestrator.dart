@@ -663,7 +663,7 @@ class TtsOrchestrator implements TtsService {
 
     debugPrint('TtsOrchestrator: Using engine: $engineUsed');
 
-    _QueueItem queueItem;
+    final _QueueItem queueItem;
 
     // Save audio to file if we have bytes
     if (audio.bytes.isNotEmpty) {
