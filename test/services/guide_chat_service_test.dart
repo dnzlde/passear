@@ -66,10 +66,10 @@ void main() {
                 {
                   'message': {
                     'content':
-                        'This is a mock response about nearby points of interest.'
-                  }
-                }
-              ]
+                        'This is a mock response about nearby points of interest.',
+                  },
+                },
+              ],
             }),
             200,
           );
@@ -77,7 +77,7 @@ void main() {
 
         return http.Response(
           jsonEncode({
-            'error': {'message': 'Unknown request'}
+            'error': {'message': 'Unknown request'},
           }),
           400,
         );

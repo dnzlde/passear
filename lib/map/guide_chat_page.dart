@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/chat_message.dart';
+import '../models/poi.dart';
 import '../services/guide_chat_service.dart';
 import '../services/tts_service.dart';
 
@@ -9,12 +10,14 @@ class GuideChatPage extends StatefulWidget {
   final LatLng userLocation;
   final GuideChatService chatService;
   final TtsService? ttsService;
+  final Poi? referencePoi;
 
   const GuideChatPage({
     super.key,
     required this.userLocation,
     required this.chatService,
     this.ttsService,
+    this.referencePoi,
   });
 
   @override
@@ -31,12 +34,14 @@ class _GuideChatPageState extends State<GuideChatPage> {
   @override
   void initState() {
     super.initState();
-    // Add welcome message
-    _messages.add(
-      ChatMessage.assistant(
-        'Hello! I\'m your AI guide. Ask me anything about the nearby places!',
-      ),
-    );
+    // Add welcome message with optional POI reference
+    String welcomeMessage =
+        'Hello! I\'m your AI guide. Ask me anything about the nearby places!';
+    if (widget.referencePoi != null) {
+      welcomeMessage =
+          'Hello! I\'m your AI guide. You can ask me about ${widget.referencePoi!.name} or other nearby places!';
+    }
+    _messages.add(ChatMessage.assistant(welcomeMessage));
   }
 
   @override

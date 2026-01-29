@@ -419,13 +419,14 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       llmService: llmService!,
     );
 
-    // Navigate to chat page
+    // Navigate to chat page with POI reference
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => GuideChatPage(
           userLocation: widget.userLocation!,
           chatService: chatService,
           ttsService: tts,
+          referencePoi: currentPoi,
         ),
       ),
     );
@@ -586,28 +587,51 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                       ),
                     ),
                   const SizedBox(height: 16),
-                  // AI Story section
+                  // AI Story and Ask Guide buttons section
                   if (!isLoadingDescription && description.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ElevatedButton.icon(
-                          onPressed:
-                              isGeneratingStory ? null : _generateAiStory,
-                          icon: isGeneratingStory
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.auto_awesome),
-                          label: const Text('AI Story'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.purple,
-                            foregroundColor: Colors.white,
-                          ),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed:
+                                  isGeneratingStory ? null : _generateAiStory,
+                              icon: isGeneratingStory
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.auto_awesome, size: 18),
+                              label: const Text('AI Story'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.purple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: _openGuideChat,
+                              icon: const Icon(Icons.chat, size: 18),
+                              label: const Text('Ask Guide'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.indigo,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         if (isGeneratingStory)
                           const Padding(
@@ -802,20 +826,6 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                   if (description.isNotEmpty && !isLoadingDescription)
                     Column(
                       children: [
-                        // Ask the Guide button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _openGuideChat,
-                            icon: const Icon(Icons.chat),
-                            label: const Text("Ask the Guide"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.indigo,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
                         Row(
                           children: [
                             Expanded(

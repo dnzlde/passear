@@ -17,8 +17,11 @@ import '../services/routing_service.dart';
 import '../services/tts_service.dart';
 import '../services/tts/tts_orchestrator.dart';
 import '../services/settings_service.dart';
+import '../services/llm_service.dart';
+import '../services/guide_chat_service.dart';
 import '../settings/settings_page.dart';
 import 'wiki_poi_detail.dart';
+import 'guide_chat_page.dart';
 
 // Constants for search UI
 const double _kSearchDropdownMaxHeight = 400.0;
@@ -849,6 +852,69 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
+  void _openGuideChat() async {
+    // Check if user location is available
+    if (_userLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Location not available. Please enable location services.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Load settings to get LLM configuration
+    final settings = await _settingsService.loadSettings();
+    if (settings.llmApiKey.isEmpty) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('LLM Not Configured'),
+          content: const Text(
+            'To use AI guide chat, please configure your LLM API key in the app settings.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Create LLM service
+    final llmService = LlmService(
+      config: LlmConfig(
+        apiEndpoint: settings.llmApiEndpoint,
+        apiKey: settings.llmApiKey,
+        model: settings.llmModel,
+      ),
+    );
+
+    // Create chat service
+    final chatService = GuideChatService(
+      poiService: _poiService,
+      llmService: llmService,
+    );
+
+    if (!mounted) return;
+    // Navigate to chat page without POI reference
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => GuideChatPage(
+          userLocation: _userLocation!,
+          chatService: chatService,
+          ttsService: _ttsService,
+        ),
+      ),
+    );
+  }
+
   void _updateNavigationProgress() {
     if (_currentRoute == null || _userLocation == null) return;
 
@@ -1389,6 +1455,18 @@ class _MapPageState extends State<MapPage> {
                 ),
               ),
             ),
+          // AI Guide Chat button (left side)
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: FloatingActionButton(
+              heroTag: "guide_chat",
+              onPressed: _openGuideChat,
+              tooltip: 'Ask the AI guide',
+              backgroundColor: Colors.indigo,
+              child: const Icon(Icons.chat),
+            ),
+          ),
           Positioned(
             bottom: 16,
             right: 16,

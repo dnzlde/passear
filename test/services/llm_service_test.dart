@@ -632,7 +632,7 @@ void main() {
       final mockClient = MockClient((request) async {
         return http.Response(
           jsonEncode({
-            'error': {'message': 'API error occurred'}
+            'error': {'message': 'API error occurred'},
           }),
           500,
         );
