@@ -1463,7 +1463,6 @@ class _MapPageState extends State<MapPage> {
               heroTag: "guide_chat",
               onPressed: _openGuideChat,
               tooltip: 'Ask the AI guide',
-              backgroundColor: Colors.indigo,
               child: const Icon(Icons.chat),
             ),
           ),
