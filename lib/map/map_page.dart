@@ -1455,50 +1455,53 @@ class _MapPageState extends State<MapPage> {
                 ),
               ),
             ),
-          // AI Guide Chat button (left side)
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: FloatingActionButton(
-              heroTag: "guide_chat",
-              onPressed: _openGuideChat,
-              tooltip: 'Ask the AI guide',
-              child: const Icon(Icons.psychology),
+          // AI Guide Chat button (left side) - hide when POI sheet is visible
+          if (_selectedPoi == null)
+            Positioned(
+              bottom: 16,
+              left: 16,
+              child: FloatingActionButton(
+                heroTag: "guide_chat",
+                onPressed: _openGuideChat,
+                tooltip: 'Ask the AI guide',
+                child: const Icon(Icons.psychology),
+              ),
             ),
-          ),
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FloatingActionButton(
-                  heroTag: "reset_north",
-                  onPressed: () {
-                    _mapController.rotate(0.0);
-                    setState(() {
-                      _mapRotation = 0.0;
-                    });
-                  },
-                  tooltip: 'Reset map orientation to north',
-                  child: AnimatedRotation(
-                    turns: _mapRotation /
-                        360.0, // Rotate with map to show orientation
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOut,
-                    child: const Icon(Icons.navigation),
+          // Map control buttons (right side) - hide when POI sheet is visible
+          if (_selectedPoi == null)
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FloatingActionButton(
+                    heroTag: "reset_north",
+                    onPressed: () {
+                      _mapController.rotate(0.0);
+                      setState(() {
+                        _mapRotation = 0.0;
+                      });
+                    },
+                    tooltip: 'Reset map orientation to north',
+                    child: AnimatedRotation(
+                      turns: _mapRotation /
+                          360.0, // Rotate with map to show orientation
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      child: const Icon(Icons.navigation),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: "my_location",
-                  onPressed: _centerToCurrentLocation,
-                  tooltip: 'Center to my location',
-                  child: const Icon(Icons.my_location),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  FloatingActionButton(
+                    heroTag: "my_location",
+                    onPressed: _centerToCurrentLocation,
+                    tooltip: 'Center to my location',
+                    child: const Icon(Icons.my_location),
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
