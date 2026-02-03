@@ -52,8 +52,8 @@ class TileUtils {
     final n = math.pow(2.0, zoom).toDouble();
     final tileY =
         (1.0 - math.log(math.tan(latRad) + 1.0 / math.cos(latRad)) / math.pi) /
-            2.0 *
-            n;
+        2.0 *
+        n;
     return tileY.floor();
   }
 

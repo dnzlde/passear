@@ -21,7 +21,7 @@ class TtsOrchestrator implements TtsService {
   final AudioPlayer _primaryPlayer = AudioPlayer();
   final AudioPlayer _secondaryPlayer = AudioPlayer();
   late AudioPlayer
-      _activePlayer; // Points to either _primaryPlayer or _secondaryPlayer
+  _activePlayer; // Points to either _primaryPlayer or _secondaryPlayer
 
   final CancellationToken _cancellationToken = CancellationToken();
   final List<String> _tempFiles = [];
@@ -335,7 +335,7 @@ class TtsOrchestrator implements TtsService {
           avAudioSessionCategory: AVAudioSessionCategory.playback,
           avAudioSessionCategoryOptions:
               AVAudioSessionCategoryOptions.duckOthers |
-                  AVAudioSessionCategoryOptions.mixWithOthers,
+              AVAudioSessionCategoryOptions.mixWithOthers,
           avAudioSessionMode: AVAudioSessionMode.spokenAudio,
           avAudioSessionRouteSharingPolicy:
               AVAudioSessionRouteSharingPolicy.defaultPolicy,
@@ -398,8 +398,9 @@ class TtsOrchestrator implements TtsService {
     _cancellationToken.reset();
 
     // Determine which player to use for preparation
-    final AudioPlayer preparingPlayer =
-        _activePlayer == _primaryPlayer ? _secondaryPlayer : _primaryPlayer;
+    final AudioPlayer preparingPlayer = _activePlayer == _primaryPlayer
+        ? _secondaryPlayer
+        : _primaryPlayer;
 
     await _initAudioSession();
     await _initPersistentCache(); // Ensure persistent cache is ready
@@ -929,9 +930,7 @@ class _QueueItem {
   final String? text; // Text for direct TTS (null for file)
   final String? language; // Language for direct TTS
 
-  _QueueItem.file(this.filePath)
-      : text = null,
-        language = null;
+  _QueueItem.file(this.filePath) : text = null, language = null;
 
   _QueueItem.direct(this.text, this.language) : filePath = null;
 

@@ -20,9 +20,9 @@ class RoutingService {
     RoutingProvider? primaryProvider,
     RoutingProvider? fallbackProvider,
     ApiClient? apiClient,
-  })  : _primaryProvider = primaryProvider,
-        _fallbackProvider = fallbackProvider ?? FallbackRoutingProvider(),
-        _apiClient = apiClient;
+  }) : _primaryProvider = primaryProvider,
+       _fallbackProvider = fallbackProvider ?? FallbackRoutingProvider(),
+       _apiClient = apiClient;
 
   /// Create routing provider based on settings
   RoutingProvider _createProvider(settings.RoutingProvider providerType) {

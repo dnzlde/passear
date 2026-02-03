@@ -853,8 +853,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         provider == PoiProvider.wikipedia
                             ? Icons.menu_book
                             : provider == PoiProvider.overpass
-                                ? Icons.location_on
-                                : Icons.place,
+                            ? Icons.location_on
+                            : Icons.place,
                       ),
                     );
                   }),
@@ -1011,8 +1011,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       Text(
                         '~${(_settings.maxCacheTiles * 2.4).toStringAsFixed(0)} km² area',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[600],
-                            ),
+                          color: Colors.grey[600],
+                        ),
                       ),
                     ],
                   ),

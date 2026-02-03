@@ -195,45 +195,47 @@ class _GuideChatPageState extends State<GuideChatPage> {
             ),
 
           // Input field
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              boxShadow: [
-                BoxShadow(
-                  offset: const Offset(0, -2),
-                  blurRadius: 4,
-                  color: Colors.black.withValues(alpha: 0.1),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      decoration: const InputDecoration(
-                        hintText: 'Ask about nearby places...',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
-                      maxLines: null,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                      enabled: !_isLoading,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.send),
-                    onPressed: _isLoading ? null : _sendMessage,
-                    color: Theme.of(context).colorScheme.primary,
+          SafeArea(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                boxShadow: [
+                  BoxShadow(
+                    offset: const Offset(0, -2),
+                    blurRadius: 4,
+                    color: Colors.black.withValues(alpha: 0.1),
                   ),
                 ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _textController,
+                        decoration: const InputDecoration(
+                          hintText: 'Ask about nearby places...',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        maxLines: null,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _sendMessage(),
+                        enabled: !_isLoading,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.send),
+                      onPressed: _isLoading ? null : _sendMessage,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -249,14 +251,16 @@ class _GuideChatPageState extends State<GuideChatPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
             CircleAvatar(
-              backgroundColor:
-                  isError ? Colors.red : Theme.of(context).colorScheme.primary,
+              backgroundColor: isError
+                  ? Colors.red
+                  : Theme.of(context).colorScheme.primary,
               child: Icon(
                 isError ? Icons.error : Icons.support_agent,
                 color: Colors.white,
@@ -272,8 +276,8 @@ class _GuideChatPageState extends State<GuideChatPage> {
                 color: isUser
                     ? Theme.of(context).colorScheme.primary
                     : isError
-                        ? Colors.red.shade50
-                        : Colors.grey.shade200,
+                    ? Colors.red.shade50
+                    : Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -285,8 +289,8 @@ class _GuideChatPageState extends State<GuideChatPage> {
                       color: isUser
                           ? Colors.white
                           : isError
-                              ? Colors.red.shade900
-                              : Colors.black87,
+                          ? Colors.red.shade900
+                          : Colors.black87,
                     ),
                   ),
                   if (!isUser && !isError && widget.ttsService != null) ...[

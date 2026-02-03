@@ -55,11 +55,12 @@ class PoiCacheService {
   String createFiltersHash(AppSettings settings) {
     final filterData = {
       'provider': settings.poiProvider.name,
-      'categories': settings.enabledCategories.entries
-          .where((e) => e.value)
-          .map((e) => e.key.name)
-          .toList()
-        ..sort(),
+      'categories':
+          settings.enabledCategories.entries
+              .where((e) => e.value)
+              .map((e) => e.key.name)
+              .toList()
+            ..sort(),
       // maxCount deliberately excluded - cache all POIs, filter at display time
     };
     final jsonString = jsonEncode(filterData);
@@ -199,18 +200,21 @@ class PoiCacheService {
       final completer = Completer<void>();
       _inflightRequests[cacheKey] = completer;
 
-      final future = _fetchAndCacheTile(
-        tile: tile,
-        cacheKey: cacheKey,
-        fetchFunction: fetchFunction,
-      ).then((_) {
-        _inflightRequests.remove(cacheKey);
-        completer.complete();
-      }).catchError((error) {
-        _inflightRequests.remove(cacheKey);
-        completer.completeError(error);
-        debugPrint('POI Cache: Error fetching tile $cacheKey: $error');
-      });
+      final future =
+          _fetchAndCacheTile(
+                tile: tile,
+                cacheKey: cacheKey,
+                fetchFunction: fetchFunction,
+              )
+              .then((_) {
+                _inflightRequests.remove(cacheKey);
+                completer.complete();
+              })
+              .catchError((error) {
+                _inflightRequests.remove(cacheKey);
+                completer.completeError(error);
+                debugPrint('POI Cache: Error fetching tile $cacheKey: $error');
+              });
 
       futures.add(future);
 

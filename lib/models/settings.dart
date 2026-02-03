@@ -115,7 +115,8 @@ class AppSettings {
         orElse: () => PoiProvider.wikipedia,
       ),
       llmApiKey: json['llmApiKey'] as String? ?? '',
-      llmApiEndpoint: json['llmApiEndpoint'] as String? ??
+      llmApiEndpoint:
+          json['llmApiEndpoint'] as String? ??
           'https://api.openai.com/v1/chat/completions',
       llmModel: json['llmModel'] as String? ?? 'gpt-3.5-turbo',
       ttsVoice: json['ttsVoice'] as String? ?? 'alloy',

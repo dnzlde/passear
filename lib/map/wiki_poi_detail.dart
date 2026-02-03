@@ -597,8 +597,9 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                           runSpacing: 8,
                           children: [
                             ElevatedButton.icon(
-                              onPressed:
-                                  isGeneratingStory ? null : _generateAiStory,
+                              onPressed: isGeneratingStory
+                                  ? null
+                                  : _generateAiStory,
                               icon: isGeneratingStory
                                   ? const SizedBox(
                                       width: 16,
@@ -833,33 +834,33 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                 onPressed: isSynthesizingAudio
                                     ? null // Disable during synthesis
                                     : (isPlayingAudio
-                                        ? _pauseAudio
-                                        : (isPausedAudio
-                                            ? _resumeAudio
-                                            : (tourAudioEnabled
-                                                ? () => _playAudio(
-                                                      description,
-                                                    )
-                                                : null))),
+                                          ? _pauseAudio
+                                          : (isPausedAudio
+                                                ? _resumeAudio
+                                                : (tourAudioEnabled
+                                                      ? () => _playAudio(
+                                                          description,
+                                                        )
+                                                      : null))),
                                 icon: Icon(
                                   isSynthesizingAudio
                                       ? Icons.hourglass_empty
                                       : (isPlayingAudio
-                                          ? Icons.pause
-                                          : (isPausedAudio
-                                              ? Icons.play_arrow
-                                              : Icons.volume_up)),
+                                            ? Icons.pause
+                                            : (isPausedAudio
+                                                  ? Icons.play_arrow
+                                                  : Icons.volume_up)),
                                 ),
                                 label: Text(
                                   isSynthesizingAudio
                                       ? "Preparing..."
                                       : (isPlayingAudio
-                                          ? "Pause"
-                                          : (isPausedAudio
-                                              ? "Resume"
-                                              : (tourAudioEnabled
-                                                  ? "Listen"
-                                                  : "Audio Disabled"))),
+                                            ? "Pause"
+                                            : (isPausedAudio
+                                                  ? "Resume"
+                                                  : (tourAudioEnabled
+                                                        ? "Listen"
+                                                        : "Audio Disabled"))),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: isPlayingAudio
@@ -867,8 +868,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                                       : (isPausedAudio ? Colors.green : null),
                                   foregroundColor:
                                       (isPlayingAudio || isPausedAudio)
-                                          ? Colors.white
-                                          : null,
+                                      ? Colors.white
+                                      : null,
                                 ),
                               ),
                             ),
