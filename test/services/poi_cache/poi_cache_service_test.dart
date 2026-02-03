@@ -10,19 +10,21 @@ import 'package:passear/services/poi_cache/poi_tile_storage.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const MethodChannel pathProviderChannel =
-      MethodChannel('plugins.flutter.io/path_provider');
+  const MethodChannel pathProviderChannel = MethodChannel(
+    'plugins.flutter.io/path_provider',
+  );
 
   setUpAll(() {
     // Mock path_provider plugin
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(pathProviderChannel,
-            (MethodCall methodCall) async {
-      if (methodCall.method == 'getApplicationDocumentsDirectory') {
-        return '/tmp/test_app_documents';
-      }
-      return null;
-    });
+        .setMockMethodCallHandler(pathProviderChannel, (
+          MethodCall methodCall,
+        ) async {
+          if (methodCall.method == 'getApplicationDocumentsDirectory') {
+            return '/tmp/test_app_documents';
+          }
+          return null;
+        });
   });
 
   tearDownAll(() {
@@ -385,7 +387,7 @@ void main() {
               lon: 34.0,
               description: '',
               audio: '',
-            )
+            ),
           ],
           updatedAt: DateTime.now(),
           lastAccessedAt: DateTime.now(),

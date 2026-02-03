@@ -43,9 +43,7 @@ class PoiCacheService {
   // Track background refresh operations
   final List<Future<void>> _backgroundOperations = [];
 
-  PoiCacheService({
-    this.config = const PoiCacheConfig(),
-  });
+  PoiCacheService({this.config = const PoiCacheConfig()});
 
   /// Initialize the cache service
   Future<void> initialize() async {
@@ -57,11 +55,12 @@ class PoiCacheService {
   String createFiltersHash(AppSettings settings) {
     final filterData = {
       'provider': settings.poiProvider.name,
-      'categories': settings.enabledCategories.entries
-          .where((e) => e.value)
-          .map((e) => e.key.name)
-          .toList()
-        ..sort(),
+      'categories':
+          settings.enabledCategories.entries
+              .where((e) => e.value)
+              .map((e) => e.key.name)
+              .toList()
+            ..sort(),
       // maxCount deliberately excluded - cache all POIs, filter at display time
     };
     final jsonString = jsonEncode(filterData);
@@ -201,18 +200,21 @@ class PoiCacheService {
       final completer = Completer<void>();
       _inflightRequests[cacheKey] = completer;
 
-      final future = _fetchAndCacheTile(
-        tile: tile,
-        cacheKey: cacheKey,
-        fetchFunction: fetchFunction,
-      ).then((_) {
-        _inflightRequests.remove(cacheKey);
-        completer.complete();
-      }).catchError((error) {
-        _inflightRequests.remove(cacheKey);
-        completer.completeError(error);
-        debugPrint('POI Cache: Error fetching tile $cacheKey: $error');
-      });
+      final future =
+          _fetchAndCacheTile(
+                tile: tile,
+                cacheKey: cacheKey,
+                fetchFunction: fetchFunction,
+              )
+              .then((_) {
+                _inflightRequests.remove(cacheKey);
+                completer.complete();
+              })
+              .catchError((error) {
+                _inflightRequests.remove(cacheKey);
+                completer.completeError(error);
+                debugPrint('POI Cache: Error fetching tile $cacheKey: $error');
+              });
 
       futures.add(future);
 
@@ -267,7 +269,8 @@ class PoiCacheService {
     if (size <= config.maxTiles) return;
 
     debugPrint(
-        'POI Cache: Performing LRU eviction (size=$size, max=${config.maxTiles})');
+      'POI Cache: Performing LRU eviction (size=$size, max=${config.maxTiles})',
+    );
 
     // Get all entries with their last access times
     final keys = await _storage.getAllKeys();

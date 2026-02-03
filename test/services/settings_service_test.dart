@@ -80,50 +80,41 @@ void main() {
       },
     );
 
-    test(
-      'AppSettings should have correct defaults for audio settings',
-      () {
-        final settings = AppSettings();
-        expect(settings.voiceGuidanceEnabled, true);
-        expect(settings.tourAudioEnabled, true);
-      },
-    );
+    test('AppSettings should have correct defaults for audio settings', () {
+      final settings = AppSettings();
+      expect(settings.voiceGuidanceEnabled, true);
+      expect(settings.tourAudioEnabled, true);
+    });
 
-    test(
-      'AppSettings copyWith should work correctly for audio settings',
-      () {
-        final settings = AppSettings(
-          voiceGuidanceEnabled: true,
-          tourAudioEnabled: true,
-        );
-        final updated = settings.copyWith(
-          voiceGuidanceEnabled: false,
-          tourAudioEnabled: false,
-        );
+    test('AppSettings copyWith should work correctly for audio settings', () {
+      final settings = AppSettings(
+        voiceGuidanceEnabled: true,
+        tourAudioEnabled: true,
+      );
+      final updated = settings.copyWith(
+        voiceGuidanceEnabled: false,
+        tourAudioEnabled: false,
+      );
 
-        expect(updated.voiceGuidanceEnabled, false);
-        expect(updated.tourAudioEnabled, false);
-        expect(settings.voiceGuidanceEnabled, true); // Original unchanged
-        expect(settings.tourAudioEnabled, true); // Original unchanged
-      },
-    );
+      expect(updated.voiceGuidanceEnabled, false);
+      expect(updated.tourAudioEnabled, false);
+      expect(settings.voiceGuidanceEnabled, true); // Original unchanged
+      expect(settings.tourAudioEnabled, true); // Original unchanged
+    });
 
-    test(
-      'AppSettings toJson and fromJson should preserve audio settings',
-      () {
-        final original = AppSettings(
-          voiceGuidanceEnabled: false,
-          tourAudioEnabled: false,
-          maxPoiCount: 30,
-        );
-        final json = original.toJson();
-        final restored = AppSettings.fromJson(json);
+    test('AppSettings toJson and fromJson should preserve audio settings', () {
+      final original = AppSettings(
+        voiceGuidanceEnabled: false,
+        tourAudioEnabled: false,
+        maxPoiCount: 30,
+      );
+      final json = original.toJson();
+      final restored = AppSettings.fromJson(json);
 
-        expect(restored.voiceGuidanceEnabled, false);
-        expect(restored.tourAudioEnabled, false);
-        expect(restored.maxPoiCount, 30);
-      },
-    );
+      expect(restored.voiceGuidanceEnabled, false);
+      expect(restored.tourAudioEnabled, false);
+      expect(restored.maxPoiCount, 30);
+    });
 
     test(
       'should update tour audio setting without affecting other settings',

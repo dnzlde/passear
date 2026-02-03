@@ -8,5 +8,6 @@ abstract class TtsService {
   bool get isSynthesizing; // Add this to track synthesis progress
   void setCompletionCallback(void Function() callback);
   void setProgressCallback(
-      void Function(int current, int total) callback); // Add progress tracking
+    void Function(int current, int total) callback,
+  ); // Add progress tracking
 }

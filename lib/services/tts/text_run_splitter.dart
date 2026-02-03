@@ -32,7 +32,8 @@ class TextRunSplitter {
     for (int i = 0; i < runs.length; i++) {
       final run = runs[i];
       final text = run.chars.join();
-      final isWhitespaceOrPunct = text.trim().isEmpty ||
+      final isWhitespaceOrPunct =
+          text.trim().isEmpty ||
           text.length == 1 &&
               RegExp(r'[\s\p{P}]', unicode: true).hasMatch(text);
 
@@ -86,10 +87,7 @@ class TextRunSplitter {
 
     // Convert to TextRun objects
     return mergedRuns
-        .map((run) => TextRun(
-              text: run.chars.join(),
-              language: run.language,
-            ))
+        .map((run) => TextRun(text: run.chars.join(), language: run.language))
         .where((run) => run.text.trim().isNotEmpty)
         .toList();
   }
@@ -191,8 +189,5 @@ class _CharRun {
   final String language;
   final List<String> chars;
 
-  _CharRun({
-    required this.language,
-    required this.chars,
-  });
+  _CharRun({required this.language, required this.chars});
 }

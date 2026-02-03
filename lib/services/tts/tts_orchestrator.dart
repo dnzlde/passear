@@ -21,7 +21,7 @@ class TtsOrchestrator implements TtsService {
   final AudioPlayer _primaryPlayer = AudioPlayer();
   final AudioPlayer _secondaryPlayer = AudioPlayer();
   late AudioPlayer
-      _activePlayer; // Points to either _primaryPlayer or _secondaryPlayer
+  _activePlayer; // Points to either _primaryPlayer or _secondaryPlayer
 
   final CancellationToken _cancellationToken = CancellationToken();
   final List<String> _tempFiles = [];
@@ -122,8 +122,9 @@ class TtsOrchestrator implements TtsService {
     if (_persistentCacheDir == null) return;
 
     try {
-      final metadataFile =
-          File('${_persistentCacheDir!.path}/$_cacheMetadataFile');
+      final metadataFile = File(
+        '${_persistentCacheDir!.path}/$_cacheMetadataFile',
+      );
       if (await metadataFile.exists()) {
         final jsonStr = await metadataFile.readAsString();
         final Map<String, dynamic> metadata = json.decode(jsonStr);
@@ -145,7 +146,8 @@ class TtsOrchestrator implements TtsService {
         }
 
         debugPrint(
-            'TtsOrchestrator: Loaded ${_persistentCache.length} cached items');
+          'TtsOrchestrator: Loaded ${_persistentCache.length} cached items',
+        );
       }
     } catch (e) {
       debugPrint('TtsOrchestrator: Error loading cache metadata: $e');
@@ -159,12 +161,14 @@ class TtsOrchestrator implements TtsService {
     try {
       final metadata = {
         'cache': _persistentCache,
-        'accessTimes': _cacheAccessTimes
-            .map((key, value) => MapEntry(key, value.toIso8601String())),
+        'accessTimes': _cacheAccessTimes.map(
+          (key, value) => MapEntry(key, value.toIso8601String()),
+        ),
       };
 
-      final metadataFile =
-          File('${_persistentCacheDir!.path}/$_cacheMetadataFile');
+      final metadataFile = File(
+        '${_persistentCacheDir!.path}/$_cacheMetadataFile',
+      );
       await metadataFile.writeAsString(json.encode(metadata));
     } catch (e) {
       debugPrint('TtsOrchestrator: Error saving cache metadata: $e');
@@ -200,7 +204,8 @@ class TtsOrchestrator implements TtsService {
       if (cacheSize <= _maxCacheSizeBytes) return;
 
       debugPrint(
-          'TtsOrchestrator: Cache size ($cacheSize bytes) exceeds limit, cleaning...');
+        'TtsOrchestrator: Cache size ($cacheSize bytes) exceeds limit, cleaning...',
+      );
 
       // Sort entries by access time (oldest first)
       final sortedEntries = _cacheAccessTimes.entries.toList()
@@ -209,8 +214,9 @@ class TtsOrchestrator implements TtsService {
       // Remove oldest entries until we're under the limit
       int removedSize = 0;
       for (final entry in sortedEntries) {
-        if (cacheSize - removedSize <= _maxCacheSizeBytes * 0.8)
+        if (cacheSize - removedSize <= _maxCacheSizeBytes * 0.8) {
           break; // Keep 20% buffer
+        }
 
         final cacheKey = entry.key;
         if (_persistentCache.containsKey(cacheKey)) {
@@ -225,7 +231,8 @@ class TtsOrchestrator implements TtsService {
               }
             } catch (e) {
               debugPrint(
-                  'TtsOrchestrator: Error deleting cache file $filePath: $e');
+                'TtsOrchestrator: Error deleting cache file $filePath: $e',
+              );
             }
           }
 
@@ -268,7 +275,8 @@ class TtsOrchestrator implements TtsService {
       await _saveCacheMetadata();
 
       debugPrint(
-          'TtsOrchestrator: Loaded ${queueItems.length} items from persistent cache');
+        'TtsOrchestrator: Loaded ${queueItems.length} items from persistent cache',
+      );
       return queueItems;
     } catch (e) {
       debugPrint('TtsOrchestrator: Error loading from persistent cache: $e');
@@ -278,7 +286,9 @@ class TtsOrchestrator implements TtsService {
 
   /// Save audio to persistent cache
   Future<void> _saveToPersistentCache(
-      String cacheKey, List<String> tempFilePaths) async {
+    String cacheKey,
+    List<String> tempFilePaths,
+  ) async {
     if (_persistentCacheDir == null || tempFilePaths.isEmpty) return;
 
     try {
@@ -291,7 +301,6 @@ class TtsOrchestrator implements TtsService {
           final extension = tempFile.path.endsWith('.mp3') ? 'mp3' : 'wav';
           final persistentPath =
               '${_persistentCacheDir!.path}/${cacheKey}_$i.$extension';
-          final persistentFile = File(persistentPath);
 
           await tempFile.copy(persistentPath);
           persistentPaths.add(persistentPath);
@@ -304,7 +313,8 @@ class TtsOrchestrator implements TtsService {
         await _saveCacheMetadata();
 
         debugPrint(
-            'TtsOrchestrator: Saved ${persistentPaths.length} files to persistent cache');
+          'TtsOrchestrator: Saved ${persistentPaths.length} files to persistent cache',
+        );
 
         // Clean old files if needed
         await _cleanOldCacheFiles();
@@ -325,7 +335,7 @@ class TtsOrchestrator implements TtsService {
           avAudioSessionCategory: AVAudioSessionCategory.playback,
           avAudioSessionCategoryOptions:
               AVAudioSessionCategoryOptions.duckOthers |
-                  AVAudioSessionCategoryOptions.mixWithOthers,
+              AVAudioSessionCategoryOptions.mixWithOthers,
           avAudioSessionMode: AVAudioSessionMode.spokenAudio,
           avAudioSessionRouteSharingPolicy:
               AVAudioSessionRouteSharingPolicy.defaultPolicy,
@@ -388,8 +398,9 @@ class TtsOrchestrator implements TtsService {
     _cancellationToken.reset();
 
     // Determine which player to use for preparation
-    final AudioPlayer preparingPlayer =
-        _activePlayer == _primaryPlayer ? _secondaryPlayer : _primaryPlayer;
+    final AudioPlayer preparingPlayer = _activePlayer == _primaryPlayer
+        ? _secondaryPlayer
+        : _primaryPlayer;
 
     await _initAudioSession();
     await _initPersistentCache(); // Ensure persistent cache is ready
@@ -494,7 +505,9 @@ class TtsOrchestrator implements TtsService {
 
   /// Prepare new audio on a player and swap to it
   Future<void> _prepareAndSwapPlayer(
-      AudioPlayer targetPlayer, List<_QueueItem> queue) async {
+    AudioPlayer targetPlayer,
+    List<_QueueItem> queue,
+  ) async {
     // Activate audio session
     try {
       if (_audioSession != null) {
@@ -513,7 +526,8 @@ class TtsOrchestrator implements TtsService {
         if (firstItem.isFile) {
           await targetPlayer.setFilePath(firstItem.filePath!);
           debugPrint(
-              'TtsOrchestrator: Preloaded first audio file on new player');
+            'TtsOrchestrator: Preloaded first audio file on new player',
+          );
         }
         // Note: Direct TTS (isDirect) doesn't need preloading
       } catch (e) {
@@ -545,7 +559,9 @@ class TtsOrchestrator implements TtsService {
   }
 
   Future<void> _synthesizeAllRuns(
-      List<TextRun> runs, List<_QueueItem> targetQueue) async {
+    List<TextRun> runs,
+    List<_QueueItem> targetQueue,
+  ) async {
     int synthesizedCount = 0;
 
     // Only report progress for OpenAI mode (file-based synthesis with delays)
@@ -601,12 +617,14 @@ class TtsOrchestrator implements TtsService {
     // Check chunk cache first
     if (_chunkCache.containsKey(chunkCacheKey)) {
       debugPrint(
-          'TtsOrchestrator: Reusing cached chunk for "${run.text}" in ${run.language}');
+        'TtsOrchestrator: Reusing cached chunk for "${run.text}" in ${run.language}',
+      );
       return _chunkCache[chunkCacheKey];
     }
 
     debugPrint(
-        'TtsOrchestrator: Synthesizing run in ${run.language}: "${run.text}"');
+      'TtsOrchestrator: Synthesizing run in ${run.language}: "${run.text}"',
+    );
 
     final request = TtsRequest(
       text: run.text,
@@ -646,7 +664,7 @@ class TtsOrchestrator implements TtsService {
 
     debugPrint('TtsOrchestrator: Using engine: $engineUsed');
 
-    _QueueItem? queueItem;
+    final _QueueItem queueItem;
 
     // Save audio to file if we have bytes
     if (audio.bytes.isNotEmpty) {
@@ -660,7 +678,8 @@ class TtsOrchestrator implements TtsService {
         _tempFiles.add(tempFile.path);
 
         debugPrint(
-            'TtsOrchestrator: Saved audio file: ${tempFile.path} (${audio.bytes.length} bytes)');
+          'TtsOrchestrator: Saved audio file: ${tempFile.path} (${audio.bytes.length} bytes)',
+        );
 
         queueItem = _QueueItem.file(tempFile.path);
       } catch (e) {
@@ -670,16 +689,16 @@ class TtsOrchestrator implements TtsService {
     } else {
       // For Piper fallback with empty bytes, queue for direct playback
       debugPrint(
-          'TtsOrchestrator: No audio bytes, queuing for flutter_tts playback');
+        'TtsOrchestrator: No audio bytes, queuing for flutter_tts playback',
+      );
       queueItem = _QueueItem.direct(run.text, run.language);
     }
 
     // Cache this chunk for future reuse
-    if (queueItem != null) {
-      _chunkCache[chunkCacheKey] = queueItem;
-      debugPrint(
-          'TtsOrchestrator: Cached chunk for "${run.text}" in ${run.language}');
-    }
+    _chunkCache[chunkCacheKey] = queueItem;
+    debugPrint(
+      'TtsOrchestrator: Cached chunk for "${run.text}" in ${run.language}',
+    );
 
     return queueItem;
   }
@@ -695,7 +714,8 @@ class TtsOrchestrator implements TtsService {
 
       final queueItem = _audioQueue[_currentQueueIndex];
       debugPrint(
-          'TtsOrchestrator: Playing item ${_currentQueueIndex + 1}/${_audioQueue.length}');
+        'TtsOrchestrator: Playing item ${_currentQueueIndex + 1}/${_audioQueue.length}',
+      );
 
       try {
         if (queueItem.isFile) {
@@ -725,7 +745,8 @@ class TtsOrchestrator implements TtsService {
         } else if (queueItem.isDirect) {
           // Use flutter_tts directly
           debugPrint(
-              'TtsOrchestrator: Using flutter_tts for: "${queueItem.text}"');
+            'TtsOrchestrator: Using flutter_tts for: "${queueItem.text}"',
+          );
 
           // Update state before starting playback
           _isPlaying = true;
@@ -909,9 +930,7 @@ class _QueueItem {
   final String? text; // Text for direct TTS (null for file)
   final String? language; // Language for direct TTS
 
-  _QueueItem.file(this.filePath)
-      : text = null,
-        language = null;
+  _QueueItem.file(this.filePath) : text = null, language = null;
 
   _QueueItem.direct(this.text, this.language) : filePath = null;
 

@@ -135,8 +135,7 @@ class MockApiClient implements ApiClient {
           url.queryParameters['list'] == 'search') {
         // New search API for infix/substring matching
         for (final pattern in _responses.keys) {
-          if (pattern.contains('search') ||
-              url.toString().contains(pattern)) {
+          if (pattern.contains('search') || url.toString().contains(pattern)) {
             return _responses[pattern]!;
           }
         }
@@ -224,7 +223,7 @@ class MockApiClient implements ApiClient {
       ['Description 1', 'Description 2'],
       [
         'https://en.wikipedia.org/wiki/Test_Result_1',
-        'https://en.wikipedia.org/wiki/Test_Result_2'
+        'https://en.wikipedia.org/wiki/Test_Result_2',
       ],
     ]);
   }
@@ -252,11 +251,11 @@ class MockApiClient implements ApiClient {
         'pages': {
           '123': {
             'coordinates': [
-              {'lat': 32.0741, 'lon': 34.7924}
-            ]
-          }
-        }
-      }
+              {'lat': 32.0741, 'lon': 34.7924},
+            ],
+          },
+        },
+      },
     });
   }
 

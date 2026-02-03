@@ -34,7 +34,7 @@ class WikipediaPoiService {
   final Map<String, List<WikipediaPoi>> _searchCache = {};
 
   WikipediaPoiService({this.lang = 'en', ApiClient? apiClient})
-      : _apiClient = apiClient ?? HttpApiClient(http.Client());
+    : _apiClient = apiClient ?? HttpApiClient(http.Client());
 
   /// Fetch POIs within rectangular bounds (north, south, east, west)
   Future<List<WikipediaPoi>> fetchPoisInBounds({
@@ -111,20 +111,29 @@ class WikipediaPoiService {
     if (data['error'] != null) {
       final errorInfo = data['error'];
       throw Exception(
-          'Wikipedia API error: ${errorInfo['code']} - ${errorInfo['info']}');
+        'Wikipedia API error: ${errorInfo['code']} - ${errorInfo['info']}',
+      );
     }
 
     final query = data['query'];
     if (query == null) {
       // Log unexpected response structure
       debugPrint(
-          'WARNING: Wikipedia API returned unexpected response structure: $data');
+        'WARNING: Wikipedia API returned unexpected response structure: $data',
+      );
       return [];
     }
     final results = query['geosearch'] as List?;
     if (results == null) return [];
     return results.map((e) {
-      return WikipediaPoi(title: e['title'], lat: e['lat'], lon: e['lon']);
+      // Safely convert lat/lon to double with default values if invalid
+      final lat = e['lat'];
+      final lon = e['lon'];
+      return WikipediaPoi(
+        title: e['title'],
+        lat: lat is num ? lat.toDouble() : 0.0,
+        lon: lon is num ? lon.toDouble() : 0.0,
+      );
     }).toList();
   }
 
@@ -187,8 +196,9 @@ class WikipediaPoiService {
     );
 
     // Apply additional intelligent filtering
-    final highQualityPois =
-        pois.where((poi) => poi.interestScore >= 10.0).toList();
+    final highQualityPois = pois
+        .where((poi) => poi.interestScore >= 10.0)
+        .toList();
 
     // If we have enough high-quality POIs, return them
     if (highQualityPois.length >= maxResults) {

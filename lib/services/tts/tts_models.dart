@@ -22,10 +22,7 @@ class TtsAudio {
   final Uint8List bytes;
   final String mimeType;
 
-  const TtsAudio({
-    required this.bytes,
-    required this.mimeType,
-  });
+  const TtsAudio({required this.bytes, required this.mimeType});
 }
 
 /// Token for cancelling ongoing TTS operations
@@ -48,10 +45,7 @@ class TextRun {
   final String text;
   final String language;
 
-  const TextRun({
-    required this.text,
-    required this.language,
-  });
+  const TextRun({required this.text, required this.language});
 
   @override
   String toString() => 'TextRun(text: "$text", language: $language)';

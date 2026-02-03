@@ -203,10 +203,7 @@ void main() {
       expect(results.length, equals(2));
       // Close Museum should have higher relevance score
       expect(results[0].poi.name, equals('Close Museum'));
-      expect(
-        results[0].relevanceScore,
-        greaterThan(results[1].relevanceScore),
-      );
+      expect(results[0].relevanceScore, greaterThan(results[1].relevanceScore));
     });
 
     test('should score POIs higher when in visible map bounds', () async {
@@ -275,10 +272,7 @@ void main() {
       expect(results.length, equals(2));
       // Visible Site should have higher relevance score
       expect(results[0].poi.name, equals('Visible Site'));
-      expect(
-        results[0].relevanceScore,
-        greaterThan(results[1].relevanceScore),
-      );
+      expect(results[0].relevanceScore, greaterThan(results[1].relevanceScore));
     });
 
     test('should respect limit parameter', () async {
@@ -299,9 +293,7 @@ void main() {
 
       // Configure coordinates for all results
       for (int i = 1; i <= 5; i++) {
-        mockClient.setResponse(
-          'Result_$i',
-          '''
+        mockClient.setResponse('Result_$i', '''
           {
             "query": {
               "pages": {
@@ -313,17 +305,13 @@ void main() {
               }
             }
           }
-          ''',
-        );
+          ''');
       }
 
       mockClient.setResponse('search', searchResponse);
 
       // Act
-      final results = await service.searchPois(
-        query: 'test',
-        limit: 3,
-      );
+      final results = await service.searchPois(query: 'test', limit: 3);
 
       // Assert
       expect(results.length, lessThanOrEqualTo(3));

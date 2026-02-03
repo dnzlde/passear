@@ -17,14 +17,19 @@ import '../services/routing_service.dart';
 import '../services/tts_service.dart';
 import '../services/tts/tts_orchestrator.dart';
 import '../services/settings_service.dart';
+import '../services/llm_service.dart';
+import '../services/guide_chat_service.dart';
 import '../settings/settings_page.dart';
 import 'wiki_poi_detail.dart';
+import 'guide_chat_page.dart';
 
 // Constants for search UI
 const double _kSearchDropdownMaxHeight = 400.0;
 const Duration _kSearchDebounceDelay = Duration(milliseconds: 500);
-const int _kMinSearchCharacters = 2; // Minimum characters before triggering search
-const int _kMaxSearchHistory = 10; // Maximum number of search history items to keep
+const int _kMinSearchCharacters =
+    2; // Minimum characters before triggering search
+const int _kMaxSearchHistory =
+    10; // Maximum number of search history items to keep
 const String _kSearchHistoryKey = 'search_history'; // SharedPreferences key
 
 class MapPage extends StatefulWidget {
@@ -226,16 +231,16 @@ class _MapPageState extends State<MapPage> {
 
     _locationSubscription =
         Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-      (Position position) {
-        setState(() {
-          _userLocation = LatLng(position.latitude, position.longitude);
-          // Heading is available on some devices (compass direction)
-          _userHeading = position.heading;
-        });
-        // Update navigation progress if navigating
-        _updateNavigationProgress();
-      },
-    );
+          (Position position) {
+            setState(() {
+              _userLocation = LatLng(position.latitude, position.longitude);
+              // Heading is available on some devices (compass direction)
+              _userHeading = position.heading;
+            });
+            // Update navigation progress if navigating
+            _updateNavigationProgress();
+          },
+        );
   }
 
   Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
@@ -396,7 +401,7 @@ class _MapPageState extends State<MapPage> {
   /// Perform POI search and show results
   Future<void> _performSearch(String query, {bool showSheet = true}) async {
     final trimmedQuery = query.trim();
-    
+
     // Clear suggestions if query is too short
     if (trimmedQuery.isEmpty || trimmedQuery.length < _kMinSearchCharacters) {
       if (mounted) {
@@ -579,7 +584,7 @@ class _MapPageState extends State<MapPage> {
                 )
               : null,
           trailing: Text(
-            '${result.relevanceScore.toStringAsFixed(0)}',
+            result.relevanceScore.toStringAsFixed(0),
             style: TextStyle(
               color: Theme.of(context).colorScheme.secondary,
               fontWeight: FontWeight.bold,
@@ -588,13 +593,13 @@ class _MapPageState extends State<MapPage> {
           onTap: () {
             // Save to history
             _saveToSearchHistory(result.poi.name);
-            
+
             // Close search mode
             setState(() {
               _isSearching = false;
               _searchController.clear();
               _searchSuggestions = [];
-              
+
               // Add the searched POI to the map's POI list if not already present
               // This ensures it shows as a marker on the map
               final poiExists = _pois.any((p) => p.id == result.poi.id);
@@ -603,10 +608,7 @@ class _MapPageState extends State<MapPage> {
               }
             });
             // Navigate to POI
-            _mapController.move(
-              LatLng(result.poi.lat, result.poi.lon),
-              16,
-            );
+            _mapController.move(LatLng(result.poi.lat, result.poi.lon), 16);
             // Show POI details
             _showPoiDetails(result.poi);
           },
@@ -637,8 +639,9 @@ class _MapPageState extends State<MapPage> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.grey[100],
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -713,7 +716,7 @@ class _MapPageState extends State<MapPage> {
   void _navigateToSearchResult(Poi poi) {
     // Save to search history
     _saveToSearchHistory(poi.name);
-    
+
     // Move map to the POI location
     _mapController.move(
       LatLng(poi.lat, poi.lon),
@@ -725,7 +728,7 @@ class _MapPageState extends State<MapPage> {
       _selectedPoi = poi;
       _isSearching = false;
       _searchController.clear();
-      
+
       // Add the searched POI to the map's POI list if not already present
       // This ensures it shows as a marker on the map
       final poiExists = _pois.any((p) => p.id == poi.id);
@@ -849,13 +852,78 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
+  void _openGuideChat() async {
+    // Check if user location is available
+    if (_userLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Location not available. Please enable location services.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Load settings to get LLM configuration
+    final settings = await _settingsService.loadSettings();
+    if (settings.llmApiKey.isEmpty) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('LLM Not Configured'),
+          content: const Text(
+            'To use AI guide chat, please configure your LLM API key in the app settings.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Create LLM service
+    final llmService = LlmService(
+      config: LlmConfig(
+        apiEndpoint: settings.llmApiEndpoint,
+        apiKey: settings.llmApiKey,
+        model: settings.llmModel,
+      ),
+    );
+
+    // Create chat service
+    final chatService = GuideChatService(
+      poiService: _poiService,
+      llmService: llmService,
+    );
+
+    if (!mounted) return;
+    // Navigate to chat page without POI reference
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => GuideChatPage(
+          userLocation: _userLocation!,
+          chatService: chatService,
+          ttsService: _ttsService,
+        ),
+      ),
+    );
+  }
+
   void _updateNavigationProgress() {
     if (_currentRoute == null || _userLocation == null) return;
 
     // Find the closest instruction point
-    for (int i = _currentInstructionIndex;
-        i < _currentRoute!.instructions.length;
-        i++) {
+    for (
+      int i = _currentInstructionIndex;
+      i < _currentRoute!.instructions.length;
+      i++
+    ) {
       final instruction = _currentRoute!.instructions[i];
       final distance = const Distance().distance(
         _userLocation!,
@@ -983,7 +1051,7 @@ class _MapPageState extends State<MapPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: colorScheme.primary,
@@ -995,13 +1063,15 @@ class _MapPageState extends State<MapPage> {
                 decoration: InputDecoration(
                   hintText: 'Search attractions...',
                   border: InputBorder.none,
-                  hintStyle: TextStyle(color: colorScheme.onPrimary.withOpacity(0.7)),
+                  hintStyle: TextStyle(
+                    color: colorScheme.onPrimary.withValues(alpha: 0.7),
+                  ),
                 ),
                 style: TextStyle(color: colorScheme.onPrimary),
                 onChanged: (query) {
                   // Cancel previous timer
                   _searchDebounceTimer?.cancel();
-                  
+
                   // Debounce search to avoid excessive API calls
                   _searchDebounceTimer = Timer(_kSearchDebounceDelay, () {
                     _performSearch(query, showSheet: false);
@@ -1154,7 +1224,10 @@ class _MapPageState extends State<MapPage> {
               child: Center(child: CircularProgressIndicator()),
             ),
           // Search suggestions dropdown
-          if (_isSearching && (_searchSuggestions.isNotEmpty || _isLoadingSearchSuggestions || _searchHistory.isNotEmpty))
+          if (_isSearching &&
+              (_searchSuggestions.isNotEmpty ||
+                  _isLoadingSearchSuggestions ||
+                  _searchHistory.isNotEmpty))
             Positioned(
               top: 0,
               left: 0,
@@ -1162,7 +1235,9 @@ class _MapPageState extends State<MapPage> {
               child: Material(
                 elevation: 4,
                 child: Container(
-                  constraints: const BoxConstraints(maxHeight: _kSearchDropdownMaxHeight),
+                  constraints: const BoxConstraints(
+                    maxHeight: _kSearchDropdownMaxHeight,
+                  ),
                   color: Theme.of(context).colorScheme.surface,
                   child: _isLoadingSearchSuggestions
                       ? const Center(
@@ -1302,6 +1377,7 @@ class _MapPageState extends State<MapPage> {
                       child: WikiPoiDetail(
                         poi: _selectedPoi!,
                         scrollController: scrollController,
+                        userLocation: _userLocation,
                         onNavigate: (destination) {
                           _hidePoiDetails();
                           _startNavigation(destination);
@@ -1332,7 +1408,8 @@ class _MapPageState extends State<MapPage> {
                           Icon(
                             _getInstructionIcon(
                               _currentRoute!
-                                  .instructions[_currentInstructionIndex].type,
+                                  .instructions[_currentInstructionIndex]
+                                  .type,
                             ),
                             color: Colors.blue,
                             size: 32,
@@ -1369,7 +1446,8 @@ class _MapPageState extends State<MapPage> {
                       ),
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
-                        value: (_currentInstructionIndex + 1) /
+                        value:
+                            (_currentInstructionIndex + 1) /
                             _currentRoute!.instructions.length,
                         backgroundColor: Colors.grey[300],
                         valueColor: const AlwaysStoppedAnimation<Color>(
@@ -1381,39 +1459,54 @@ class _MapPageState extends State<MapPage> {
                 ),
               ),
             ),
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FloatingActionButton(
-                  heroTag: "reset_north",
-                  onPressed: () {
-                    _mapController.rotate(0.0);
-                    setState(() {
-                      _mapRotation = 0.0;
-                    });
-                  },
-                  tooltip: 'Reset map orientation to north',
-                  child: AnimatedRotation(
-                    turns: _mapRotation /
-                        360.0, // Rotate with map to show orientation
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOut,
-                    child: const Icon(Icons.navigation),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: "my_location",
-                  onPressed: _centerToCurrentLocation,
-                  tooltip: 'Center to my location',
-                  child: const Icon(Icons.my_location),
-                ),
-              ],
+          // AI Guide Chat button (left side) - hide when POI sheet is visible
+          if (_selectedPoi == null)
+            Positioned(
+              bottom: 16,
+              left: 16,
+              child: FloatingActionButton(
+                heroTag: "guide_chat",
+                onPressed: _openGuideChat,
+                tooltip: 'Ask the AI guide',
+                child: const Icon(Icons.psychology),
+              ),
             ),
-          ),
+          // Map control buttons (right side) - hide when POI sheet is visible
+          if (_selectedPoi == null)
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FloatingActionButton(
+                    heroTag: "reset_north",
+                    onPressed: () {
+                      _mapController.rotate(0.0);
+                      setState(() {
+                        _mapRotation = 0.0;
+                      });
+                    },
+                    tooltip: 'Reset map orientation to north',
+                    child: AnimatedRotation(
+                      turns:
+                          _mapRotation /
+                          360.0, // Rotate with map to show orientation
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      child: const Icon(Icons.navigation),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  FloatingActionButton(
+                    heroTag: "my_location",
+                    onPressed: _centerToCurrentLocation,
+                    tooltip: 'Center to my location',
+                    child: const Icon(Icons.my_location),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
