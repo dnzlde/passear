@@ -200,6 +200,12 @@ class WikipediaPoiService {
       return imageUrl;
     }
 
+    final summaryImageUrl = await _fetchWikipediaSummaryImageUrl(title);
+    if (summaryImageUrl != null && summaryImageUrl.isNotEmpty) {
+      _imageCache[title] = summaryImageUrl;
+      return summaryImageUrl;
+    }
+
     final wikidataImageUrl = await _fetchWikidataCommonsImageUrl(title);
     if (wikidataImageUrl != null && wikidataImageUrl.isNotEmpty) {
       _imageCache[title] = wikidataImageUrl;
@@ -245,6 +251,33 @@ class WikipediaPoiService {
       return 'https://commons.wikimedia.org/wiki/Special:FilePath/${Uri.encodeComponent(fileName)}';
     } catch (e) {
       debugPrint('Failed to fetch Wikidata fallback image for "$title": $e');
+      return null;
+    }
+  }
+
+  Future<String?> _fetchWikipediaSummaryImageUrl(String title) async {
+    try {
+      final normalizedTitle = title.replaceAll(' ', '_');
+      final url = Uri.https(
+        '$lang.wikipedia.org',
+        '/api/rest_v1/page/summary/$normalizedTitle',
+      );
+      final responseBody = await _apiClient.get(url);
+      final data = json.decode(responseBody) as Map<String, dynamic>;
+      final thumbnail = data['thumbnail'] as Map<String, dynamic>?;
+      final summaryImage = thumbnail?['source'] as String?;
+      if (summaryImage != null && summaryImage.isNotEmpty) {
+        return summaryImage;
+      }
+
+      final originalImage = data['originalimage'] as Map<String, dynamic>?;
+      final originalImageUrl = originalImage?['source'] as String?;
+      if (originalImageUrl != null && originalImageUrl.isNotEmpty) {
+        return originalImageUrl;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Failed to fetch summary image for "$title": $e');
       return null;
     }
   }

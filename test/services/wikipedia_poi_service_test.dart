@@ -100,6 +100,37 @@ void main() {
     });
 
     test(
+      'should fallback to Wikipedia summary image when pageimages is missing',
+      () async {
+        // Arrange
+        const pageImageResponseWithoutThumbnail = '''
+        {
+          "query": {
+            "pages": {
+              "12345": {}
+            }
+          }
+        }
+        ''';
+        const summaryResponse = '''
+        {
+          "thumbnail": {
+            "source": "https://example.com/summary-image.jpg"
+          }
+        }
+        ''';
+        mockClient.setResponse('pageimages', pageImageResponseWithoutThumbnail);
+        mockClient.setResponse('page_summary', summaryResponse);
+
+        // Act
+        final result = await service.fetchImageUrl('Tel Aviv Museum of Art');
+
+        // Assert
+        expect(result, equals('https://example.com/summary-image.jpg'));
+      },
+    );
+
+    test(
       'should fallback to Wikidata Commons image when Wikipedia thumbnail is missing',
       () async {
         // Arrange
@@ -144,7 +175,13 @@ void main() {
           }
         }
         ''';
+        const emptySummaryResponse = '''
+        {
+          "title": "Tel Aviv Museum of Art"
+        }
+        ''';
         mockClient.setResponse('pageimages', pageImageResponseWithoutThumbnail);
+        mockClient.setResponse('page_summary', emptySummaryResponse);
         mockClient.setResponse('pageprops', pagePropsResponse);
         mockClient.setResponse('wikidata.org/w/api.php', wikidataResponse);
 

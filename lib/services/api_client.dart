@@ -200,6 +200,14 @@ class MockApiClient implements ApiClient {
         return _getDefaultCoordinatesResponse();
       }
     }
+    if (url.toString().contains('wikipedia.org/api/rest_v1/page/summary/')) {
+      for (final pattern in _responses.keys) {
+        if (pattern.contains('page_summary') || url.toString().contains(pattern)) {
+          return _responses[pattern]!;
+        }
+      }
+      return _getDefaultPageSummaryResponse();
+    }
 
     // Find matching response based on URL pattern
     for (final pattern in _responses.keys) {
@@ -258,6 +266,10 @@ class MockApiClient implements ApiClient {
         },
       },
     });
+  }
+
+  String _getDefaultPageSummaryResponse() {
+    return jsonEncode({'title': 'Test Summary'});
   }
 
   String _getDefaultOpensearchResponse() {
