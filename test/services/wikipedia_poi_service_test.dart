@@ -99,6 +99,68 @@ void main() {
       expect(result, equals('https://example.com/tel-aviv-museum.jpg'));
     });
 
+    test(
+      'should fallback to Wikidata Commons image when Wikipedia thumbnail is missing',
+      () async {
+        // Arrange
+        const pageImageResponseWithoutThumbnail = '''
+        {
+          "query": {
+            "pages": {
+              "12345": {}
+            }
+          }
+        }
+        ''';
+        const pagePropsResponse = '''
+        {
+          "query": {
+            "pages": {
+              "12345": {
+                "pageprops": {
+                  "wikibase_item": "Q214012"
+                }
+              }
+            }
+          }
+        }
+        ''';
+        const wikidataResponse = '''
+        {
+          "entities": {
+            "Q214012": {
+              "claims": {
+                "P18": [
+                  {
+                    "mainsnak": {
+                      "datavalue": {
+                        "value": "Tel Aviv Museum of Art.jpg"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+        ''';
+        mockClient.setResponse('pageimages', pageImageResponseWithoutThumbnail);
+        mockClient.setResponse('pageprops', pagePropsResponse);
+        mockClient.setResponse('wikidata.org/w/api.php', wikidataResponse);
+
+        // Act
+        final result = await service.fetchImageUrl('Tel Aviv Museum of Art');
+
+        // Assert
+        expect(
+          result,
+          equals(
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Tel%20Aviv%20Museum%20of%20Art.jpg',
+          ),
+        );
+      },
+    );
+
     test('should handle description fetch failure gracefully', () async {
       // Arrange - configure empty/null response
       const emptyResponse = '''

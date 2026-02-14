@@ -176,6 +176,15 @@ class MockApiClient implements ApiClient {
           }
         }
         return _getDefaultPageImageResponse();
+      } else if (url.queryParameters['prop'] == 'pageprops') {
+        // Check if there's a configured pageprops response
+        for (final pattern in _responses.keys) {
+          if (pattern.contains('pageprops') ||
+              url.toString().contains(pattern)) {
+            return _responses[pattern]!;
+          }
+        }
+        return _getDefaultPagePropsResponse();
       } else if (url.queryParameters['prop'] == 'coordinates') {
         // Check if there's a configured coordinates response based on title
         final titles = url.queryParameters['titles'];
@@ -233,6 +242,18 @@ class MockApiClient implements ApiClient {
             'thumbnail': {
               'source': 'https://example.com/test-poi-image.jpg',
             },
+          },
+        },
+      },
+    });
+  }
+
+  String _getDefaultPagePropsResponse() {
+    return jsonEncode({
+      'query': {
+        'pages': {
+          '123': {
+            'pageprops': {'wikibase_item': 'Q123'},
           },
         },
       },

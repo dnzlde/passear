@@ -176,27 +176,75 @@ class WikipediaPoiService {
       return _imageCache[title];
     }
 
-    final url = Uri.https('$lang.wikipedia.org', '/w/api.php', {
-      'action': 'query',
-      'format': 'json',
-      'prop': 'pageimages',
-      'pithumbsize': '640',
-      'titles': title,
-    });
-
+    String? imageUrl;
     try {
+      final url = Uri.https('$lang.wikipedia.org', '/w/api.php', {
+        'action': 'query',
+        'format': 'json',
+        'prop': 'pageimages',
+        'pithumbsize': '640',
+        'titles': title,
+      });
       final responseBody = await _apiClient.get(url);
       final data = json.decode(responseBody);
       final pages = data['query']['pages'] as Map<String, dynamic>;
+      if (pages.isEmpty) return null;
       final page = pages.values.first;
-      final imageUrl = page['thumbnail']?['source'];
-
-      if (imageUrl != null) {
-        _imageCache[title] = imageUrl;
-      }
-
-      return imageUrl;
+      imageUrl = page['thumbnail']?['source'];
     } catch (e) {
+      debugPrint('Failed to fetch Wikipedia page image for "$title": $e');
+    }
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      _imageCache[title] = imageUrl;
+      return imageUrl;
+    }
+
+    final wikidataImageUrl = await _fetchWikidataCommonsImageUrl(title);
+    if (wikidataImageUrl != null && wikidataImageUrl.isNotEmpty) {
+      _imageCache[title] = wikidataImageUrl;
+      return wikidataImageUrl;
+    }
+
+    return null;
+  }
+
+  Future<String?> _fetchWikidataCommonsImageUrl(String title) async {
+    try {
+      final pagePropsUrl = Uri.https('$lang.wikipedia.org', '/w/api.php', {
+        'action': 'query',
+        'format': 'json',
+        'prop': 'pageprops',
+        'titles': title,
+      });
+      final pagePropsBody = await _apiClient.get(pagePropsUrl);
+      final pagePropsData = json.decode(pagePropsBody);
+      final pages = pagePropsData['query']['pages'] as Map<String, dynamic>;
+      if (pages.isEmpty) return null;
+      final page = pages.values.first as Map<String, dynamic>;
+      final wikibaseItem = page['pageprops']?['wikibase_item'] as String?;
+      if (wikibaseItem == null || wikibaseItem.isEmpty) return null;
+
+      final wikidataUrl = Uri.https('www.wikidata.org', '/w/api.php', {
+        'action': 'wbgetentities',
+        'format': 'json',
+        'ids': wikibaseItem,
+        'props': 'claims',
+      });
+      final wikidataBody = await _apiClient.get(wikidataUrl);
+      final wikidataData = json.decode(wikidataBody);
+      final entities = wikidataData['entities'] as Map<String, dynamic>;
+      final entity = entities[wikibaseItem] as Map<String, dynamic>?;
+      final claims = entity?['claims'] as Map<String, dynamic>?;
+      final p18 = claims?['P18'] as List?;
+      if (p18 == null || p18.isEmpty) return null;
+
+      final fileName = p18.first['mainsnak']?['datavalue']?['value'] as String?;
+      if (fileName == null || fileName.isEmpty) return null;
+
+      return 'https://commons.wikimedia.org/wiki/Special:FilePath/${Uri.encodeComponent(fileName)}';
+    } catch (e) {
+      debugPrint('Failed to fetch Wikidata fallback image for "$title": $e');
       return null;
     }
   }
