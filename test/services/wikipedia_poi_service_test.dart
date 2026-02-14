@@ -75,6 +75,129 @@ void main() {
       );
     });
 
+    test('should fetch image url successfully', () async {
+      // Arrange
+      const mockResponse = '''
+      {
+        "query": {
+          "pages": {
+            "12345": {
+              "thumbnail": {
+                "source": "https://example.com/tel-aviv-museum.jpg"
+              }
+            }
+          }
+        }
+      }
+      ''';
+      mockClient.setResponse('pageimages', mockResponse);
+
+      // Act
+      final result = await service.fetchImageUrl('Tel Aviv Museum');
+
+      // Assert
+      expect(result, equals('https://example.com/tel-aviv-museum.jpg'));
+    });
+
+    test(
+      'should fallback to Wikipedia summary image when pageimages is missing',
+      () async {
+        // Arrange
+        const pageImageResponseWithoutThumbnail = '''
+        {
+          "query": {
+            "pages": {
+              "12345": {}
+            }
+          }
+        }
+        ''';
+        const summaryResponse = '''
+        {
+          "thumbnail": {
+            "source": "https://example.com/summary-image.jpg"
+          }
+        }
+        ''';
+        mockClient.setResponse('pageimages', pageImageResponseWithoutThumbnail);
+        mockClient.setResponse('page_summary', summaryResponse);
+
+        // Act
+        final result = await service.fetchImageUrl('Tel Aviv Museum of Art');
+
+        // Assert
+        expect(result, equals('https://example.com/summary-image.jpg'));
+      },
+    );
+
+    test(
+      'should fallback to Wikidata Commons image when Wikipedia thumbnail is missing',
+      () async {
+        // Arrange
+        const pageImageResponseWithoutThumbnail = '''
+        {
+          "query": {
+            "pages": {
+              "12345": {}
+            }
+          }
+        }
+        ''';
+        const pagePropsResponse = '''
+        {
+          "query": {
+            "pages": {
+              "12345": {
+                "pageprops": {
+                  "wikibase_item": "Q214012"
+                }
+              }
+            }
+          }
+        }
+        ''';
+        const wikidataResponse = '''
+        {
+          "entities": {
+            "Q214012": {
+              "claims": {
+                "P18": [
+                  {
+                    "mainsnak": {
+                      "datavalue": {
+                        "value": "Tel Aviv Museum of Art.jpg"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+        ''';
+        const emptySummaryResponse = '''
+        {
+          "title": "Tel Aviv Museum of Art"
+        }
+        ''';
+        mockClient.setResponse('pageimages', pageImageResponseWithoutThumbnail);
+        mockClient.setResponse('page_summary', emptySummaryResponse);
+        mockClient.setResponse('pageprops', pagePropsResponse);
+        mockClient.setResponse('wikidata.org/w/api.php', wikidataResponse);
+
+        // Act
+        final result = await service.fetchImageUrl('Tel Aviv Museum of Art');
+
+        // Assert
+        expect(
+          result,
+          equals(
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Tel%20Aviv%20Museum%20of%20Art.jpg',
+          ),
+        );
+      },
+    );
+
     test('should handle description fetch failure gracefully', () async {
       // Arrange - configure empty/null response
       const emptyResponse = '''
@@ -135,6 +258,7 @@ void main() {
       expect(result, hasLength(1));
       expect(result[0].title, equals('Tel Aviv Museum of Art'));
       expect(result[0].description, contains('major art museum'));
+      expect(result[0].imageUrl, isNotNull);
       expect(result[0].interestScore, greaterThan(0.0));
       expect(result[0].category.name, equals('museum'));
       expect(result[0].interestLevel.name, equals('high'));

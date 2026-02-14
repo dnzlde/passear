@@ -70,6 +70,7 @@ class PoiService {
             lat: wikiPoi.lat,
             lon: wikiPoi.lon,
             description: wikiPoi.description ?? '',
+            imageUrl: wikiPoi.imageUrl,
             audio: '',
             interestScore: wikiPoi.interestScore,
             category: wikiPoi.category,
@@ -152,6 +153,7 @@ class PoiService {
         lat: wikiPoi.lat,
         lon: wikiPoi.lon,
         description: wikiPoi.description ?? '',
+        imageUrl: wikiPoi.imageUrl,
         audio: '', // will be generated/added later
         interestScore: wikiPoi.interestScore,
         category: wikiPoi.category,
@@ -163,14 +165,23 @@ class PoiService {
 
   /// Fetch description for a specific POI on-demand
   Future<Poi> fetchPoiDescription(Poi poi) async {
-    if (poi.isDescriptionLoaded) {
-      return poi; // Description already loaded
+    if (poi.isDescriptionLoaded &&
+        poi.imageUrl != null &&
+        poi.imageUrl!.isNotEmpty) {
+      return poi; // Description and image already loaded
     }
 
     try {
       final description = await _getWikiService().fetchDescription(poi.name);
-      if (description != null && description.isNotEmpty) {
-        return poi.copyWithDescription(description);
+      final imageUrl = await _getWikiService().fetchImageUrl(poi.name);
+      final hasDescription = description != null && description.isNotEmpty;
+
+      if (hasDescription || imageUrl != null) {
+        return poi.copyWith(
+          description: hasDescription ? description : poi.description,
+          imageUrl: imageUrl,
+          isDescriptionLoaded: hasDescription || poi.isDescriptionLoaded,
+        );
       }
       // If description is null or empty, return original POI without marking as loaded
       return poi;

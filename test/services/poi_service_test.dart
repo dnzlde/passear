@@ -148,10 +148,24 @@ void main() {
         }
       }
       ''';
+      const mockPageImageResponse = '''
+      {
+        "query": {
+          "pages": {
+            "12345": {
+              "thumbnail": {
+                "source": "https://example.com/test-museum.jpg"
+              }
+            }
+          }
+        }
+      }
+      ''';
       mockClient.setResponse(
-        'wikipedia.org/w/api.php',
+        'extracts',
         mockDescriptionResponse,
       );
+      mockClient.setResponse('pageimages', mockPageImageResponse);
 
       final poi = Poi(
         id: 'test-museum',
@@ -169,6 +183,7 @@ void main() {
       // Assert
       expect(result.isDescriptionLoaded, isTrue);
       expect(result.description, contains('fascinating place'));
+      expect(result.imageUrl, equals('https://example.com/test-museum.jpg'));
       expect(
         result.name,
         equals(poi.name),
@@ -196,5 +211,47 @@ void main() {
       expect(result, equals(poi)); // Should return the same POI instance
       expect(result.description, equals('Already loaded description'));
     });
+
+    test(
+      'should fetch image for POI when description is loaded but image is missing',
+      () async {
+        // Arrange
+        const mockPageImageResponse = '''
+        {
+          "query": {
+            "pages": {
+              "12345": {
+                "thumbnail": {
+                  "source": "https://example.com/loaded-description-image.jpg"
+                }
+              }
+            }
+          }
+        }
+        ''';
+        mockClient.setResponse('pageimages', mockPageImageResponse);
+
+        final poi = Poi(
+          id: 'test-poi-image',
+          name: 'Test POI',
+          lat: 32.0741,
+          lon: 34.7924,
+          description: 'Already loaded description',
+          audio: '',
+          isDescriptionLoaded: true,
+        );
+
+        // Act
+        final result = await service.fetchPoiDescription(poi);
+
+        // Assert
+        expect(result.description, equals('Already loaded description'));
+        expect(
+          result.imageUrl,
+          equals('https://example.com/loaded-description-image.jpg'),
+        );
+        expect(result.isDescriptionLoaded, isTrue);
+      },
+    );
   });
 }

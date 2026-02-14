@@ -167,6 +167,24 @@ class MockApiClient implements ApiClient {
           }
         }
         return _getDefaultDescriptionResponse();
+      } else if (url.queryParameters['prop'] == 'pageimages') {
+        // Check if there's a configured pageimages response
+        for (final pattern in _responses.keys) {
+          if (pattern.contains('pageimages') ||
+              url.toString().contains(pattern)) {
+            return _responses[pattern]!;
+          }
+        }
+        return _getDefaultPageImageResponse();
+      } else if (url.queryParameters['prop'] == 'pageprops') {
+        // Check if there's a configured pageprops response
+        for (final pattern in _responses.keys) {
+          if (pattern.contains('pageprops') ||
+              url.toString().contains(pattern)) {
+            return _responses[pattern]!;
+          }
+        }
+        return _getDefaultPagePropsResponse();
       } else if (url.queryParameters['prop'] == 'coordinates') {
         // Check if there's a configured coordinates response based on title
         final titles = url.queryParameters['titles'];
@@ -181,6 +199,14 @@ class MockApiClient implements ApiClient {
         }
         return _getDefaultCoordinatesResponse();
       }
+    }
+    if (url.toString().contains('wikipedia.org/api/rest_v1/page/summary/')) {
+      for (final pattern in _responses.keys) {
+        if (pattern.contains('page_summary') || url.toString().contains(pattern)) {
+          return _responses[pattern]!;
+        }
+      }
+      return _getDefaultPageSummaryResponse();
     }
 
     // Find matching response based on URL pattern
@@ -214,6 +240,36 @@ class MockApiClient implements ApiClient {
         },
       },
     });
+  }
+
+  String _getDefaultPageImageResponse() {
+    return jsonEncode({
+      'query': {
+        'pages': {
+          '123': {
+            'thumbnail': {
+              'source': 'https://example.com/test-poi-image.jpg',
+            },
+          },
+        },
+      },
+    });
+  }
+
+  String _getDefaultPagePropsResponse() {
+    return jsonEncode({
+      'query': {
+        'pages': {
+          '123': {
+            'pageprops': {'wikibase_item': 'Q123'},
+          },
+        },
+      },
+    });
+  }
+
+  String _getDefaultPageSummaryResponse() {
+    return jsonEncode({'title': 'Test Summary'});
   }
 
   String _getDefaultOpensearchResponse() {

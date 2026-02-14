@@ -12,6 +12,7 @@ class WikipediaPoi {
   final double lat;
   final double lon;
   String? description;
+  String? imageUrl;
   double interestScore;
   PoiCategory category;
   PoiInterestLevel interestLevel;
@@ -21,6 +22,7 @@ class WikipediaPoi {
     required this.lat,
     required this.lon,
     this.description,
+    this.imageUrl,
     this.interestScore = 0.0,
     this.category = PoiCategory.generic,
     this.interestLevel = PoiInterestLevel.low,
@@ -31,6 +33,7 @@ class WikipediaPoiService {
   final String lang;
   final ApiClient _apiClient;
   final Map<String, String> _descriptionCache = {};
+  final Map<String, String> _imageCache = {};
   final Map<String, List<WikipediaPoi>> _searchCache = {};
 
   WikipediaPoiService({this.lang = 'en', ApiClient? apiClient})
@@ -168,6 +171,117 @@ class WikipediaPoiService {
     }
   }
 
+  Future<String?> fetchImageUrl(String title) async {
+    if (_imageCache.containsKey(title)) {
+      return _imageCache[title];
+    }
+
+    String? imageUrl;
+    try {
+      final url = Uri.https('$lang.wikipedia.org', '/w/api.php', {
+        'action': 'query',
+        'format': 'json',
+        'prop': 'pageimages',
+        'pithumbsize': '640',
+        'titles': title,
+      });
+      final responseBody = await _apiClient.get(url);
+      final data = json.decode(responseBody);
+      final pages = data['query']['pages'] as Map<String, dynamic>;
+      if (pages.isEmpty) return null;
+      final page = pages.values.first;
+      imageUrl = page['thumbnail']?['source'];
+    } catch (e) {
+      debugPrint('Failed to fetch Wikipedia page image for "$title": $e');
+    }
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      _imageCache[title] = imageUrl;
+      return imageUrl;
+    }
+
+    final summaryImageUrl = await _fetchWikipediaSummaryImageUrl(title);
+    if (summaryImageUrl != null && summaryImageUrl.isNotEmpty) {
+      _imageCache[title] = summaryImageUrl;
+      return summaryImageUrl;
+    }
+
+    final wikidataImageUrl = await _fetchWikidataCommonsImageUrl(title);
+    if (wikidataImageUrl != null && wikidataImageUrl.isNotEmpty) {
+      _imageCache[title] = wikidataImageUrl;
+      return wikidataImageUrl;
+    }
+
+    return null;
+  }
+
+  Future<String?> _fetchWikidataCommonsImageUrl(String title) async {
+    try {
+      final pagePropsUrl = Uri.https('$lang.wikipedia.org', '/w/api.php', {
+        'action': 'query',
+        'format': 'json',
+        'prop': 'pageprops',
+        'titles': title,
+      });
+      final pagePropsBody = await _apiClient.get(pagePropsUrl);
+      final pagePropsData = json.decode(pagePropsBody);
+      final pages = pagePropsData['query']['pages'] as Map<String, dynamic>;
+      if (pages.isEmpty) return null;
+      final page = pages.values.first as Map<String, dynamic>;
+      final wikibaseItem = page['pageprops']?['wikibase_item'] as String?;
+      if (wikibaseItem == null || wikibaseItem.isEmpty) return null;
+
+      final wikidataUrl = Uri.https('www.wikidata.org', '/w/api.php', {
+        'action': 'wbgetentities',
+        'format': 'json',
+        'ids': wikibaseItem,
+        'props': 'claims',
+      });
+      final wikidataBody = await _apiClient.get(wikidataUrl);
+      final wikidataData = json.decode(wikidataBody);
+      final entities = wikidataData['entities'] as Map<String, dynamic>;
+      final entity = entities[wikibaseItem] as Map<String, dynamic>?;
+      final claims = entity?['claims'] as Map<String, dynamic>?;
+      final p18 = claims?['P18'] as List?;
+      if (p18 == null || p18.isEmpty) return null;
+
+      final fileName = p18.first['mainsnak']?['datavalue']?['value'] as String?;
+      if (fileName == null || fileName.isEmpty) return null;
+
+      return 'https://commons.wikimedia.org/wiki/Special:FilePath/${Uri.encodeComponent(fileName)}';
+    } catch (e) {
+      debugPrint('Failed to fetch Wikidata fallback image for "$title": $e');
+      return null;
+    }
+  }
+
+  Future<String?> _fetchWikipediaSummaryImageUrl(String title) async {
+    try {
+      final normalizedTitle = title.replaceAll(' ', '_');
+      final url = Uri.https(
+        '$lang.wikipedia.org',
+        '/api/rest_v1/page/summary/$normalizedTitle',
+      );
+      final responseBody = await _apiClient.get(url);
+      final data = json.decode(responseBody) as Map<String, dynamic>;
+      final thumbnail = data['thumbnail'] as Map<String, dynamic>?;
+      final summaryImage = thumbnail?['source'] as String?;
+      if (summaryImage != null && summaryImage.isNotEmpty) {
+        return summaryImage;
+      }
+
+      final originalImage = data['originalimage'] as Map<String, dynamic>?;
+      final originalImageUrl = originalImage?['source'] as String?;
+      if (originalImageUrl != null && originalImageUrl.isNotEmpty) {
+        return originalImageUrl;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Failed to fetch summary image for "$title": $e');
+      return null;
+    }
+  }
+
   Future<List<WikipediaPoi>> fetchNearbyWithDescriptions(
     double lat,
     double lon, {
@@ -244,6 +358,7 @@ class WikipediaPoiService {
   ) async {
     for (final poi in pois) {
       poi.description = await fetchDescription(poi.title);
+      poi.imageUrl = await fetchImageUrl(poi.title);
       poi.interestScore = PoiInterestScorer.calculateScore(
         poi.title,
         poi.description,
@@ -285,6 +400,7 @@ class WikipediaPoiService {
         poi.interestScore,
         poi.category,
       );
+      poi.imageUrl = await fetchImageUrl(poi.title);
     }
   }
 
@@ -343,6 +459,7 @@ class WikipediaPoiService {
   /// Clear caches (useful for testing or memory management)
   void clearCaches() {
     _descriptionCache.clear();
+    _imageCache.clear();
     _searchCache.clear();
   }
 }

@@ -24,6 +24,7 @@ class Poi {
   final double lat;
   final double lon;
   final String description;
+  final String? imageUrl;
   final String audio;
   final double interestScore;
   final PoiCategory category;
@@ -36,6 +37,7 @@ class Poi {
     required this.lat,
     required this.lon,
     required this.description,
+    this.imageUrl,
     required this.audio,
     this.interestScore = 0.0,
     this.category = PoiCategory.generic,
@@ -50,6 +52,7 @@ class Poi {
       lat: json['lat'],
       lon: json['lon'],
       description: json['description'],
+      imageUrl: json['imageUrl'],
       audio: json['audio'],
       interestScore: json['interestScore']?.toDouble() ?? 0.0,
       category: PoiCategory.values.firstWhere(
@@ -71,6 +74,7 @@ class Poi {
       'lat': lat,
       'lon': lon,
       'description': description,
+      'imageUrl': imageUrl,
       'audio': audio,
       'interestScore': interestScore,
       'category': category.name,
@@ -79,19 +83,26 @@ class Poi {
     };
   }
 
-  /// Create a copy of this POI with an updated description
-  Poi copyWithDescription(String newDescription) {
+  /// Creates a copy of this POI with optionally updated fields.
+  /// [description], [imageUrl], and [isDescriptionLoaded] override current
+  /// values when provided.
+  Poi copyWith({
+    String? description,
+    String? imageUrl,
+    bool? isDescriptionLoaded,
+  }) {
     return Poi(
       id: id,
       name: name,
       lat: lat,
       lon: lon,
-      description: newDescription,
+      description: description ?? this.description,
+      imageUrl: imageUrl ?? this.imageUrl,
       audio: audio,
       interestScore: interestScore,
       category: category,
       interestLevel: interestLevel,
-      isDescriptionLoaded: true,
+      isDescriptionLoaded: isDescriptionLoaded ?? this.isDescriptionLoaded,
     );
   }
 }
