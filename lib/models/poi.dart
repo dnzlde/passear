@@ -83,8 +83,14 @@ class Poi {
     };
   }
 
-  /// Create a copy of this POI with an updated description
-  Poi copyWith({String? description, String? imageUrl, bool? isDescriptionLoaded}) {
+  /// Creates a copy of this POI with optionally updated fields.
+  /// [description], [imageUrl], and [isDescriptionLoaded] override current
+  /// values when provided.
+  Poi copyWith({
+    String? description,
+    String? imageUrl,
+    bool? isDescriptionLoaded,
+  }) {
     return Poi(
       id: id,
       name: name,

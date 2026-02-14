@@ -172,17 +172,13 @@ class PoiService {
     try {
       final description = await _getWikiService().fetchDescription(poi.name);
       final imageUrl = await _getWikiService().fetchImageUrl(poi.name);
+      final hasDescription = description != null && description.isNotEmpty;
 
-      if ((description != null && description.isNotEmpty) || imageUrl != null) {
+      if (hasDescription || imageUrl != null) {
         return poi.copyWith(
-          description: description != null && description.isNotEmpty
-              ? description
-              : poi.description,
+          description: hasDescription ? description : poi.description,
           imageUrl: imageUrl,
-          isDescriptionLoaded:
-              description != null && description.isNotEmpty
-                  ? true
-                  : poi.isDescriptionLoaded,
+          isDescriptionLoaded: hasDescription || poi.isDescriptionLoaded,
         );
       }
       // If description is null or empty, return original POI without marking as loaded
