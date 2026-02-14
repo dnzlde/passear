@@ -25,8 +25,8 @@ import 'guide_chat_page.dart';
 // Constants for search UI
 const double _kSearchDropdownMaxHeight = 400.0;
 const Duration _kSearchDebounceDelay = Duration(milliseconds: 500);
-const Duration _kPoiDebounceDelay = Duration(milliseconds: 400);
-const Duration _kPoiThrottleDelay = Duration(milliseconds: 1500);
+const Duration _kPoiGestureDebounceDelay = Duration(milliseconds: 400);
+const Duration _kPoiRequestThrottleDelay = Duration(milliseconds: 1500);
 const double _kPoiMovementThresholdRatio = 0.25;
 const double _kPoiMovementThresholdMinMeters = 50.0;
 const int _kMinSearchCharacters =
@@ -35,6 +35,8 @@ const int _kMaxSearchHistory =
     10; // Maximum number of search history items to keep
 const String _kSearchHistoryKey = 'search_history'; // SharedPreferences key
 
+/// Calculates the minimum center movement (in meters) required before
+/// triggering a new POI request for the current viewport size.
 double calculatePoiMovementThresholdMeters(double visibleRadiusMeters) {
   return max(
     _kPoiMovementThresholdMinMeters,
@@ -42,6 +44,8 @@ double calculatePoiMovementThresholdMeters(double visibleRadiusMeters) {
   );
 }
 
+/// Decides whether POIs should be reloaded based on map-center movement.
+/// Initial loads always return true.
 bool shouldLoadPoisForMovement({
   required bool isInitialLoad,
   required LatLng? lastPoiRequestCenter,
@@ -274,7 +278,7 @@ class _MapPageState extends State<MapPage> {
   Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
     final now = DateTime.now();
     if (!isInitialLoad &&
-        now.difference(_lastRequestTime) < _kPoiThrottleDelay) {
+        now.difference(_lastRequestTime) < _kPoiRequestThrottleDelay) {
       return;
     }
 
@@ -376,7 +380,7 @@ class _MapPageState extends State<MapPage> {
 
   void _scheduleDebouncedPoiLoad() {
     _poiDebounceTimer?.cancel();
-    _poiDebounceTimer = Timer(_kPoiDebounceDelay, () {
+    _poiDebounceTimer = Timer(_kPoiGestureDebounceDelay, () {
       if (mounted) {
         _loadPoisInView();
       }
