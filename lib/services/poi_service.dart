@@ -165,8 +165,10 @@ class PoiService {
 
   /// Fetch description for a specific POI on-demand
   Future<Poi> fetchPoiDescription(Poi poi) async {
-    if (poi.isDescriptionLoaded) {
-      return poi; // Description already loaded
+    if (poi.isDescriptionLoaded &&
+        poi.imageUrl != null &&
+        poi.imageUrl!.isNotEmpty) {
+      return poi; // Description and image already loaded
     }
 
     try {

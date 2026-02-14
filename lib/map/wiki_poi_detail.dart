@@ -59,7 +59,7 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
     _initializeTts();
 
     // Load description if not already loaded
-    if (!currentPoi.isDescriptionLoaded) {
+    if (_shouldLoadMetadata(currentPoi)) {
       _loadDescription();
     }
 
@@ -131,7 +131,8 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
   }
 
   Future<void> _loadDescription() async {
-    if (isLoadingDescription || currentPoi.isDescriptionLoaded) return;
+    if (isLoadingDescription) return;
+    if (!_shouldLoadMetadata(currentPoi)) return;
 
     if (mounted) {
       setState(() {
@@ -155,6 +156,12 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
       }
       // Handle error gracefully - the POI will remain without a description
     }
+  }
+
+  bool _shouldLoadMetadata(Poi poi) {
+    return !poi.isDescriptionLoaded ||
+        poi.imageUrl == null ||
+        poi.imageUrl!.isEmpty;
   }
 
   Future<void> _generateAiStory() async {
