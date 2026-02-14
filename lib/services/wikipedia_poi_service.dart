@@ -12,6 +12,7 @@ class WikipediaPoi {
   final double lat;
   final double lon;
   String? description;
+  String? imageUrl;
   double interestScore;
   PoiCategory category;
   PoiInterestLevel interestLevel;
@@ -21,6 +22,7 @@ class WikipediaPoi {
     required this.lat,
     required this.lon,
     this.description,
+    this.imageUrl,
     this.interestScore = 0.0,
     this.category = PoiCategory.generic,
     this.interestLevel = PoiInterestLevel.low,
@@ -31,6 +33,7 @@ class WikipediaPoiService {
   final String lang;
   final ApiClient _apiClient;
   final Map<String, String> _descriptionCache = {};
+  final Map<String, String> _imageCache = {};
   final Map<String, List<WikipediaPoi>> _searchCache = {};
 
   WikipediaPoiService({this.lang = 'en', ApiClient? apiClient})
@@ -168,6 +171,36 @@ class WikipediaPoiService {
     }
   }
 
+  Future<String?> fetchImageUrl(String title) async {
+    if (_imageCache.containsKey(title)) {
+      return _imageCache[title];
+    }
+
+    final url = Uri.https('$lang.wikipedia.org', '/w/api.php', {
+      'action': 'query',
+      'format': 'json',
+      'prop': 'pageimages',
+      'pithumbsize': '640',
+      'titles': title,
+    });
+
+    try {
+      final responseBody = await _apiClient.get(url);
+      final data = json.decode(responseBody);
+      final pages = data['query']['pages'] as Map<String, dynamic>;
+      final page = pages.values.first;
+      final imageUrl = page['thumbnail']?['source'];
+
+      if (imageUrl != null) {
+        _imageCache[title] = imageUrl;
+      }
+
+      return imageUrl;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<List<WikipediaPoi>> fetchNearbyWithDescriptions(
     double lat,
     double lon, {
@@ -244,6 +277,7 @@ class WikipediaPoiService {
   ) async {
     for (final poi in pois) {
       poi.description = await fetchDescription(poi.title);
+      poi.imageUrl = await fetchImageUrl(poi.title);
       poi.interestScore = PoiInterestScorer.calculateScore(
         poi.title,
         poi.description,
@@ -285,6 +319,7 @@ class WikipediaPoiService {
         poi.interestScore,
         poi.category,
       );
+      poi.imageUrl = await fetchImageUrl(poi.title);
     }
   }
 
@@ -343,6 +378,7 @@ class WikipediaPoiService {
   /// Clear caches (useful for testing or memory management)
   void clearCaches() {
     _descriptionCache.clear();
+    _imageCache.clear();
     _searchCache.clear();
   }
 }

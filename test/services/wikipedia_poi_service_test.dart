@@ -75,6 +75,30 @@ void main() {
       );
     });
 
+    test('should fetch image url successfully', () async {
+      // Arrange
+      const mockResponse = '''
+      {
+        "query": {
+          "pages": {
+            "12345": {
+              "thumbnail": {
+                "source": "https://example.com/tel-aviv-museum.jpg"
+              }
+            }
+          }
+        }
+      }
+      ''';
+      mockClient.setResponse('pageimages', mockResponse);
+
+      // Act
+      final result = await service.fetchImageUrl('Tel Aviv Museum');
+
+      // Assert
+      expect(result, equals('https://example.com/tel-aviv-museum.jpg'));
+    });
+
     test('should handle description fetch failure gracefully', () async {
       // Arrange - configure empty/null response
       const emptyResponse = '''
@@ -135,6 +159,7 @@ void main() {
       expect(result, hasLength(1));
       expect(result[0].title, equals('Tel Aviv Museum of Art'));
       expect(result[0].description, contains('major art museum'));
+      expect(result[0].imageUrl, isNotNull);
       expect(result[0].interestScore, greaterThan(0.0));
       expect(result[0].category.name, equals('museum'));
       expect(result[0].interestLevel.name, equals('high'));

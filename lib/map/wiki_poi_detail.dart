@@ -553,6 +553,19 @@ class _WikiPoiDetailState extends State<WikiPoiDetail> {
                         ),
                       ),
                     ),
+                  if (poi.imageUrl != null && poi.imageUrl!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          poi.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const SizedBox.shrink(),
+                        ),
+                      ),
+                    ),
                   // Description section with loading state
                   if (isLoadingDescription)
                     const Padding(

@@ -148,10 +148,24 @@ void main() {
         }
       }
       ''';
+      const mockPageImageResponse = '''
+      {
+        "query": {
+          "pages": {
+            "12345": {
+              "thumbnail": {
+                "source": "https://example.com/test-museum.jpg"
+              }
+            }
+          }
+        }
+      }
+      ''';
       mockClient.setResponse(
-        'wikipedia.org/w/api.php',
+        'extracts',
         mockDescriptionResponse,
       );
+      mockClient.setResponse('pageimages', mockPageImageResponse);
 
       final poi = Poi(
         id: 'test-museum',
@@ -169,6 +183,7 @@ void main() {
       // Assert
       expect(result.isDescriptionLoaded, isTrue);
       expect(result.description, contains('fascinating place'));
+      expect(result.imageUrl, equals('https://example.com/test-museum.jpg'));
       expect(
         result.name,
         equals(poi.name),

@@ -70,6 +70,7 @@ class PoiService {
             lat: wikiPoi.lat,
             lon: wikiPoi.lon,
             description: wikiPoi.description ?? '',
+            imageUrl: wikiPoi.imageUrl,
             audio: '',
             interestScore: wikiPoi.interestScore,
             category: wikiPoi.category,
@@ -152,6 +153,7 @@ class PoiService {
         lat: wikiPoi.lat,
         lon: wikiPoi.lon,
         description: wikiPoi.description ?? '',
+        imageUrl: wikiPoi.imageUrl,
         audio: '', // will be generated/added later
         interestScore: wikiPoi.interestScore,
         category: wikiPoi.category,
@@ -169,8 +171,19 @@ class PoiService {
 
     try {
       final description = await _getWikiService().fetchDescription(poi.name);
-      if (description != null && description.isNotEmpty) {
-        return poi.copyWithDescription(description);
+      final imageUrl = await _getWikiService().fetchImageUrl(poi.name);
+
+      if ((description != null && description.isNotEmpty) || imageUrl != null) {
+        return poi.copyWith(
+          description: description != null && description.isNotEmpty
+              ? description
+              : poi.description,
+          imageUrl: imageUrl,
+          isDescriptionLoaded:
+              description != null && description.isNotEmpty
+                  ? true
+                  : poi.isDescriptionLoaded,
+        );
       }
       // If description is null or empty, return original POI without marking as loaded
       return poi;
