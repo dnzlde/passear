@@ -1,4 +1,5 @@
 // lib/services/overpass_poi_service.dart
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/poi.dart';
@@ -8,9 +9,16 @@ import 'api_client.dart';
 /// Uses the Overpass API to query OSM data for points of interest
 class OverpassPoiService {
   final ApiClient _apiClient;
+  static Future<void> _requestQueue = Future<void>.value();
+  static DateTime _lastRequestTimestamp = DateTime.fromMillisecondsSinceEpoch(
+    0,
+  );
 
   // Public Overpass API endpoint
   static const String _baseUrl = 'overpass-api.de';
+  static const Duration _minRequestInterval = Duration(milliseconds: 700);
+  static const Duration _retryDelay = Duration(seconds: 1);
+  static const int _maxAttempts = 2;
 
   OverpassPoiService({ApiClient? apiClient})
     : _apiClient = apiClient ?? HttpApiClient(null);
@@ -23,35 +31,77 @@ class OverpassPoiService {
     required double west,
     int maxResults = 50,
   }) async {
-    try {
-      // Build Overpass QL query for tourism and historic POIs
-      final query = _buildOverpassQuery(north, south, east, west, maxResults);
+    Object? lastError;
+    for (var attempt = 1; attempt <= _maxAttempts; attempt++) {
+      try {
+        // Build Overpass QL query for tourism and historic POIs
+        final query = _buildOverpassQuery(north, south, east, west, maxResults);
 
-      debugPrint('Overpass API query: $query');
+        debugPrint('Overpass API query: $query');
 
-      // Build the URI with query parameters
-      final uri = Uri.https(_baseUrl, '/api/interpreter', {'data': query});
+        // Build the URI with query parameters
+        final uri = Uri.https(_baseUrl, '/api/interpreter', {'data': query});
 
-      final responseBody = await _apiClient.get(uri);
-      final data = jsonDecode(responseBody) as Map<String, dynamic>;
-      final elements = data['elements'] as List<dynamic>? ?? [];
+        final responseBody = await _enqueueOverpassRequest(() {
+          return _apiClient.get(uri);
+        });
+        final data = jsonDecode(responseBody) as Map<String, dynamic>;
+        final elements = data['elements'] as List<dynamic>? ?? [];
 
-      final pois = <Poi>[];
-      for (final element in elements) {
-        if (element is Map<String, dynamic>) {
-          final poi = _parsePoi(element);
-          if (poi != null) {
-            pois.add(poi);
+        final pois = <Poi>[];
+        for (final element in elements) {
+          if (element is Map<String, dynamic>) {
+            final poi = _parsePoi(element);
+            if (poi != null) {
+              pois.add(poi);
+            }
           }
         }
+
+        debugPrint('Overpass API returned ${pois.length} POIs');
+        return pois;
+      } catch (e) {
+        lastError = e;
+        debugPrint('Error fetching Overpass POIs (attempt $attempt): $e');
+
+        final shouldRetry = attempt < _maxAttempts && _isRetryableError(e);
+        if (shouldRetry) {
+          await Future.delayed(_retryDelay);
+          continue;
+        }
+      }
+    }
+
+    throw lastError ?? Exception('Unknown Overpass fetch error');
+  }
+
+  Future<T> _enqueueOverpassRequest<T>(Future<T> Function() request) {
+    final completer = Completer<T>();
+
+    _requestQueue = _requestQueue.then((_) async {
+      final elapsed = DateTime.now().difference(_lastRequestTimestamp);
+      if (elapsed < _minRequestInterval) {
+        await Future.delayed(_minRequestInterval - elapsed);
       }
 
-      debugPrint('Overpass API returned ${pois.length} POIs');
-      return pois;
-    } catch (e) {
-      debugPrint('Error fetching Overpass POIs: $e');
-      rethrow;
-    }
+      try {
+        final result = await request();
+        _lastRequestTimestamp = DateTime.now();
+        completer.complete(result);
+      } catch (e, stackTrace) {
+        _lastRequestTimestamp = DateTime.now();
+        completer.completeError(e, stackTrace);
+      }
+    });
+
+    return completer.future;
+  }
+
+  bool _isRetryableError(Object error) {
+    final message = error.toString();
+    return message.contains('HTTP 429') ||
+        message.contains('HTTP 504') ||
+        error is TimeoutException;
   }
 
   /// Build Overpass QL query for POIs

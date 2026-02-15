@@ -276,6 +276,13 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
+    if (_isLoadingPois) return;
+    if (isInitialLoad &&
+        _hasPerformedInitialLoad &&
+        _lastPoiRequestCenter != null) {
+      return;
+    }
+
     final now = DateTime.now();
     if (!isInitialLoad &&
         now.difference(_lastRequestTime) < _kPoiRequestThrottleDelay) {
