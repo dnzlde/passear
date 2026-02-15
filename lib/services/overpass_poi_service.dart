@@ -9,13 +9,12 @@ import 'api_client.dart';
 /// Uses the Overpass API to query OSM data for points of interest
 class OverpassPoiService {
   final ApiClient _apiClient;
-  Future<void> _requestQueue = Future<void>.value();
-  DateTime _lastRequestTimestamp = DateTime.fromMillisecondsSinceEpoch(0);
 
   // Public Overpass API endpoint
   static const String _baseUrl = 'overpass-api.de';
-  static const Duration _minRequestInterval = Duration(milliseconds: 700);
   static const Duration _retryDelay = Duration(seconds: 1);
+  // Keep timeout short to avoid long UI stalls when Overpass is overloaded.
+  static const Duration _requestTimeout = Duration(seconds: 12);
   static const int _maxAttempts = 2;
 
   OverpassPoiService({ApiClient? apiClient})
@@ -40,9 +39,12 @@ class OverpassPoiService {
         // Build the URI with query parameters
         final uri = Uri.https(_baseUrl, '/api/interpreter', {'data': query});
 
-        final responseBody = await _enqueueOverpassRequest(() {
-          return _apiClient.get(uri);
-        });
+        final responseBody = await _apiClient.get(uri).timeout(
+          _requestTimeout,
+          onTimeout: () => throw TimeoutException(
+            'Overpass API request timed out after ${_requestTimeout.inSeconds}s',
+          ),
+        );
         final data = jsonDecode(responseBody) as Map<String, dynamic>;
         final elements = data['elements'] as List<dynamic>? ?? [];
 
@@ -72,28 +74,6 @@ class OverpassPoiService {
 
     if (lastError != null) throw lastError;
     throw StateError('Overpass fetch failed without captured error');
-  }
-
-  Future<T> _enqueueOverpassRequest<T>(Future<T> Function() request) {
-    final completer = Completer<T>();
-
-    _requestQueue = _requestQueue.then((_) async {
-      final elapsed = DateTime.now().difference(_lastRequestTimestamp);
-      if (elapsed < _minRequestInterval) {
-        await Future.delayed(_minRequestInterval - elapsed);
-      }
-
-      try {
-        final result = await request();
-        _lastRequestTimestamp = DateTime.now();
-        completer.complete(result);
-      } catch (e, stackTrace) {
-        _lastRequestTimestamp = DateTime.now();
-        completer.completeError(e, stackTrace);
-      }
-    });
-
-    return completer.future;
   }
 
   bool _isRetryableError(Object error) {

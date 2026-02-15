@@ -79,6 +79,7 @@ class _MapPageState extends State<MapPage> {
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
   LatLng? _lastPoiRequestCenter;
   bool _isLoadingPois = false;
+  bool _hasPendingPoiReload = false;
   Poi? _selectedPoi;
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
@@ -276,7 +277,10 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
-    if (_isLoadingPois) return;
+    if (_isLoadingPois) {
+      _hasPendingPoiReload = true;
+      return;
+    }
     if (isInitialLoad &&
         _hasPerformedInitialLoad &&
         _lastPoiRequestCenter != null) {
@@ -344,6 +348,7 @@ class _MapPageState extends State<MapPage> {
 
       if (!mounted) return; // Check before setState
       setState(() => _isLoadingPois = true);
+      _hasPendingPoiReload = false;
 
       // Use rectangular bounds for precise POI discovery
       final pois = await _poiService.fetchInBounds(
@@ -357,7 +362,6 @@ class _MapPageState extends State<MapPage> {
       if (!mounted) return; // Check before setState
       setState(() {
         _pois = pois;
-        _isLoadingPois = false;
       });
       _lastPoiRequestCenter = center;
 
@@ -367,9 +371,6 @@ class _MapPageState extends State<MapPage> {
         );
       }
     } catch (e) {
-      if (!mounted) return; // Check before setState
-      setState(() => _isLoadingPois = false);
-
       if (isInitialLoad) {
         // Reset flag to allow retry
         _hasPerformedInitialLoad = false;
@@ -382,6 +383,18 @@ class _MapPageState extends State<MapPage> {
 
       // Handle error gracefully - could show a snackbar
       debugPrint('Error loading POIs: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingPois = false);
+      }
+      _triggerPendingPoiReload();
+    }
+  }
+
+  void _triggerPendingPoiReload() {
+    if (_hasPendingPoiReload) {
+      _hasPendingPoiReload = false;
+      _scheduleDebouncedPoiLoad();
     }
   }
 
