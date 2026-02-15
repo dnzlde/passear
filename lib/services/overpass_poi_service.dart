@@ -50,7 +50,7 @@ class OverpassPoiService {
       return pois;
     } catch (e) {
       debugPrint('Error fetching Overpass POIs: $e');
-      return [];
+      rethrow;
     }
   }
 
