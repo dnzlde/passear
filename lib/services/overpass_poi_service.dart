@@ -9,10 +9,8 @@ import 'api_client.dart';
 /// Uses the Overpass API to query OSM data for points of interest
 class OverpassPoiService {
   final ApiClient _apiClient;
-  static Future<void> _requestQueue = Future<void>.value();
-  static DateTime _lastRequestTimestamp = DateTime.fromMillisecondsSinceEpoch(
-    0,
-  );
+  Future<void> _requestQueue = Future<void>.value();
+  DateTime _lastRequestTimestamp = DateTime.fromMillisecondsSinceEpoch(0);
 
   // Public Overpass API endpoint
   static const String _baseUrl = 'overpass-api.de';
@@ -72,7 +70,8 @@ class OverpassPoiService {
       }
     }
 
-    throw lastError ?? Exception('Unknown Overpass fetch error');
+    if (lastError != null) throw lastError;
+    throw StateError('Overpass fetch failed without captured error');
   }
 
   Future<T> _enqueueOverpassRequest<T>(Future<T> Function() request) {
