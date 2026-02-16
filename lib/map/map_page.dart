@@ -61,6 +61,15 @@ bool shouldLoadPoisForMovement({
   return movedDistance >= movementThresholdMeters;
 }
 
+/// A POI response is applied only if it belongs to the latest requested
+/// viewport version.
+bool shouldApplyPoiResponse({
+  required int requestVersion,
+  required int latestRequestVersion,
+}) {
+  return requestVersion == latestRequestVersion;
+}
+
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
 
@@ -77,6 +86,7 @@ class _MapPageState extends State<MapPage> {
   LatLng _mapCenter = const LatLng(32.0741, 34.7924); // fallback: Azrieli
   final MapController _mapController = MapController();
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
+  int _poiRequestVersion = 0;
   LatLng? _lastPoiRequestCenter;
   bool _isLoadingPois = false;
   bool _hasPendingPoiReload = false;
@@ -277,6 +287,10 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
+    // Monotonic version used to invalidate stale async responses from older
+    // viewport requests when a newer request is scheduled.
+    final requestVersion = ++_poiRequestVersion;
+
     if (_isLoadingPois) {
       _hasPendingPoiReload = true;
       return;
@@ -360,6 +374,17 @@ class _MapPageState extends State<MapPage> {
       );
 
       if (!mounted) return; // Check before setState
+      if (!shouldApplyPoiResponse(
+        requestVersion: requestVersion,
+        latestRequestVersion: _poiRequestVersion,
+      )) {
+        // Another newer request was scheduled while this request was in-flight.
+        // Ignore this stale payload so it cannot overwrite fresher viewport data.
+        debugPrint(
+          'POI: Ignoring stale response v$requestVersion (latest v$_poiRequestVersion)',
+        );
+        return;
+      }
       setState(() {
         _pois = pois;
       });

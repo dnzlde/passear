@@ -33,5 +33,16 @@ void main() {
 
       expect(shouldLoad, isFalse);
     });
+
+    test('applies only latest POI response version', () {
+      expect(
+        shouldApplyPoiResponse(requestVersion: 3, latestRequestVersion: 3),
+        isTrue,
+      );
+      expect(
+        shouldApplyPoiResponse(requestVersion: 2, latestRequestVersion: 3),
+        isFalse,
+      );
+    });
   });
 }
