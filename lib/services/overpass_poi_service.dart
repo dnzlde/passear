@@ -1,6 +1,7 @@
 // lib/services/overpass_poi_service.dart
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/poi.dart';
 import 'api_client.dart';
@@ -12,13 +13,19 @@ class OverpassPoiService {
 
   // Public Overpass API endpoint
   static const String _baseUrl = 'overpass-api.de';
-  static const Duration _retryDelay = Duration(seconds: 1);
   // Keep timeout short to avoid long UI stalls when Overpass is overloaded.
   static const Duration _requestTimeout = Duration(seconds: 12);
-  static const int _maxAttempts = 2;
+  static const int _maxAttempts = 3;
 
-  OverpassPoiService({ApiClient? apiClient})
-    : _apiClient = apiClient ?? HttpApiClient(null);
+  // Exponential backoff parameters
+  static const Duration _baseDelay = Duration(seconds: 1);
+  static const Duration _maxDelay = Duration(seconds: 8);
+
+  final Random _random;
+
+  OverpassPoiService({ApiClient? apiClient, Random? random})
+      : _apiClient = apiClient ?? HttpApiClient(null),
+        _random = random ?? Random();
 
   /// Fetch POIs within bounds using Overpass API
   Future<List<Poi>> fetchPoisInBounds({
@@ -40,11 +47,11 @@ class OverpassPoiService {
         final uri = Uri.https(_baseUrl, '/api/interpreter', {'data': query});
 
         final responseBody = await _apiClient.get(uri).timeout(
-          _requestTimeout,
-          onTimeout: () => throw TimeoutException(
-            'Overpass API request timed out after ${_requestTimeout.inSeconds}s',
-          ),
-        );
+              _requestTimeout,
+              onTimeout: () => throw TimeoutException(
+                'Overpass API request timed out after ${_requestTimeout.inSeconds}s',
+              ),
+            );
         final data = jsonDecode(responseBody) as Map<String, dynamic>;
         final elements = data['elements'] as List<dynamic>? ?? [];
 
@@ -66,7 +73,9 @@ class OverpassPoiService {
 
         final shouldRetry = attempt < _maxAttempts && _isRetryableError(e);
         if (shouldRetry) {
-          await Future.delayed(_retryDelay);
+          final delay = _calculateDelay(attempt);
+          debugPrint('Retrying in ${delay.inMilliseconds}ms...');
+          await Future.delayed(delay);
           continue;
         }
       }
@@ -79,8 +88,27 @@ class OverpassPoiService {
   bool _isRetryableError(Object error) {
     final message = error.toString();
     return message.contains('HTTP 429') ||
-        message.contains('HTTP 504') ||
+        _is5xxError(message) ||
         error is TimeoutException;
+  }
+
+  static bool _is5xxError(String message) {
+    final match = RegExp(r'HTTP 5\d\d').firstMatch(message);
+    return match != null;
+  }
+
+  /// Calculates retry delay using exponential backoff with jitter.
+  /// delay = min(maxDelay, baseDelay * 2^(attempt-1)) * jitter
+  /// where jitter is a random factor in [0.5, 1.0).
+  @visibleForTesting
+  Duration calculateDelay(int attempt) => _calculateDelay(attempt);
+
+  Duration _calculateDelay(int attempt) {
+    final exponentialMs =
+        _baseDelay.inMilliseconds * pow(2, attempt - 1).toInt();
+    final cappedMs = min(exponentialMs, _maxDelay.inMilliseconds);
+    final jitter = 0.5 + _random.nextDouble() * 0.5;
+    return Duration(milliseconds: (cappedMs * jitter).round());
   }
 
   /// Build Overpass QL query for POIs
