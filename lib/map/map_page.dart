@@ -1,6 +1,5 @@
 // lib/map/map_page.dart
 import 'dart:async';
-// ignore: unused_import
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -26,11 +25,50 @@ import 'guide_chat_page.dart';
 // Constants for search UI
 const double _kSearchDropdownMaxHeight = 400.0;
 const Duration _kSearchDebounceDelay = Duration(milliseconds: 500);
+const Duration _kPoiGestureDebounceDelay = Duration(milliseconds: 400);
+const Duration _kPoiRequestThrottleDelay = Duration(milliseconds: 1500);
+const double _kPoiMovementThresholdRatio = 0.25;
+const double _kPoiMovementThresholdMinMeters = 50.0;
 const int _kMinSearchCharacters =
     2; // Minimum characters before triggering search
 const int _kMaxSearchHistory =
     10; // Maximum number of search history items to keep
 const String _kSearchHistoryKey = 'search_history'; // SharedPreferences key
+
+/// Calculates the minimum center movement (in meters) required before
+/// triggering a new POI request for the current viewport size.
+double calculatePoiMovementThresholdMeters(double visibleRadiusMeters) {
+  return max(
+    _kPoiMovementThresholdMinMeters,
+    visibleRadiusMeters * _kPoiMovementThresholdRatio,
+  );
+}
+
+/// Decides whether POIs should be reloaded based on map-center movement.
+/// Initial loads always return true.
+bool shouldLoadPoisForMovement({
+  required bool isInitialLoad,
+  required LatLng? lastPoiRequestCenter,
+  required LatLng currentCenter,
+  required double movementThresholdMeters,
+}) {
+  if (isInitialLoad || lastPoiRequestCenter == null) return true;
+  final movedDistance = const Distance().as(
+    LengthUnit.Meter,
+    lastPoiRequestCenter,
+    currentCenter,
+  );
+  return movedDistance >= movementThresholdMeters;
+}
+
+/// A POI response is applied only if it belongs to the latest requested
+/// viewport version.
+bool shouldApplyPoiResponse({
+  required int requestVersion,
+  required int latestRequestVersion,
+}) {
+  return requestVersion == latestRequestVersion;
+}
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -48,7 +86,10 @@ class _MapPageState extends State<MapPage> {
   LatLng _mapCenter = const LatLng(32.0741, 34.7924); // fallback: Azrieli
   final MapController _mapController = MapController();
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
+  int _poiRequestVersion = 0;
+  LatLng? _lastPoiRequestCenter;
   bool _isLoadingPois = false;
+  bool _hasPendingPoiReload = false;
   Poi? _selectedPoi;
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
@@ -77,6 +118,7 @@ class _MapPageState extends State<MapPage> {
   List<PoiSearchResult> _searchSuggestions = [];
   bool _isLoadingSearchSuggestions = false;
   Timer? _searchDebounceTimer;
+  Timer? _poiDebounceTimer;
   List<String> _searchHistory = []; // Recent search queries
 
   @override
@@ -107,6 +149,7 @@ class _MapPageState extends State<MapPage> {
     _locationSubscription?.cancel();
     _ttsService?.dispose();
     _searchDebounceTimer?.cancel();
+    _poiDebounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -244,9 +287,25 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
+    // Monotonic version used to invalidate stale async responses from older
+    // viewport requests when a newer request is scheduled.
+    final requestVersion = ++_poiRequestVersion;
+
+    if (_isLoadingPois) {
+      _hasPendingPoiReload = true;
+      return;
+    }
+    if (isInitialLoad &&
+        _hasPerformedInitialLoad &&
+        _lastPoiRequestCenter != null) {
+      return;
+    }
+
     final now = DateTime.now();
-    if (now.difference(_lastRequestTime).inSeconds < 2) return;
-    _lastRequestTime = now;
+    if (!isInitialLoad &&
+        now.difference(_lastRequestTime) < _kPoiRequestThrottleDelay) {
+      return;
+    }
 
     try {
       final bounds = _mapController.camera.visibleBounds;
@@ -278,8 +337,32 @@ class _MapPageState extends State<MapPage> {
         return;
       }
 
+      final center = LatLng(
+        (bounds.north + bounds.south) / 2,
+        (bounds.east + bounds.west) / 2,
+      );
+      final visibleRadiusMeters = const Distance().as(
+        LengthUnit.Meter,
+        center,
+        LatLng(bounds.north, center.longitude),
+      );
+      final movementThresholdMeters = calculatePoiMovementThresholdMeters(
+        visibleRadiusMeters,
+      );
+      if (!shouldLoadPoisForMovement(
+        isInitialLoad: isInitialLoad,
+        lastPoiRequestCenter: _lastPoiRequestCenter,
+        currentCenter: center,
+        movementThresholdMeters: movementThresholdMeters,
+      )) {
+        return;
+      }
+
+      _lastRequestTime = now;
+
       if (!mounted) return; // Check before setState
       setState(() => _isLoadingPois = true);
+      _hasPendingPoiReload = false;
 
       // Use rectangular bounds for precise POI discovery
       final pois = await _poiService.fetchInBounds(
@@ -291,10 +374,21 @@ class _MapPageState extends State<MapPage> {
       );
 
       if (!mounted) return; // Check before setState
+      if (!shouldApplyPoiResponse(
+        requestVersion: requestVersion,
+        latestRequestVersion: _poiRequestVersion,
+      )) {
+        // Another newer request was scheduled while this request was in-flight.
+        // Ignore this stale payload so it cannot overwrite fresher viewport data.
+        debugPrint(
+          'POI: Ignoring stale response v$requestVersion (latest v$_poiRequestVersion)',
+        );
+        return;
+      }
       setState(() {
         _pois = pois;
-        _isLoadingPois = false;
       });
+      _lastPoiRequestCenter = center;
 
       if (isInitialLoad) {
         debugPrint(
@@ -302,9 +396,6 @@ class _MapPageState extends State<MapPage> {
         );
       }
     } catch (e) {
-      if (!mounted) return; // Check before setState
-      setState(() => _isLoadingPois = false);
-
       if (isInitialLoad) {
         // Reset flag to allow retry
         _hasPerformedInitialLoad = false;
@@ -317,7 +408,28 @@ class _MapPageState extends State<MapPage> {
 
       // Handle error gracefully - could show a snackbar
       debugPrint('Error loading POIs: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingPois = false);
+      }
+      _triggerPendingPoiReload();
     }
+  }
+
+  void _triggerPendingPoiReload() {
+    if (_hasPendingPoiReload) {
+      _hasPendingPoiReload = false;
+      _scheduleDebouncedPoiLoad();
+    }
+  }
+
+  void _scheduleDebouncedPoiLoad() {
+    _poiDebounceTimer?.cancel();
+    _poiDebounceTimer = Timer(_kPoiGestureDebounceDelay, () {
+      if (mounted) {
+        _loadPoisInView();
+      }
+    });
   }
 
   Future<void> _loadPoisInViewWithDelay() async {
@@ -362,7 +474,7 @@ class _MapPageState extends State<MapPage> {
 
     // For subsequent loads triggered by user gestures
     if (hasGesture) {
-      _loadPoisInView();
+      _scheduleDebouncedPoiLoad();
     }
 
     // Track map rotation for compass display

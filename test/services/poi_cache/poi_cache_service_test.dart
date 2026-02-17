@@ -425,5 +425,38 @@ void main() {
 
       await storage.close();
     });
+
+    test('should not cache failed tile fetches as empty results', () async {
+      final settings = AppSettings(poiProvider: PoiProvider.overpass);
+      int fetchCallCount = 0;
+
+      await cacheService.getPoisForViewport(
+        north: 32.08,
+        south: 32.07,
+        east: 34.80,
+        west: 34.79,
+        settings: settings,
+        fetchFunction: (bounds) async {
+          fetchCallCount++;
+          throw Exception('HTTP 429');
+        },
+      );
+
+      expect(fetchCallCount, equals(4));
+
+      await cacheService.getPoisForViewport(
+        north: 32.08,
+        south: 32.07,
+        east: 34.80,
+        west: 34.79,
+        settings: settings,
+        fetchFunction: (bounds) async {
+          fetchCallCount++;
+          throw Exception('HTTP 429');
+        },
+      );
+
+      expect(fetchCallCount, equals(8));
+    });
   });
 }
