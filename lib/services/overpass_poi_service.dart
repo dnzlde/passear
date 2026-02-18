@@ -70,13 +70,30 @@ class OverpassPoiService {
         return pois;
       } catch (e) {
         lastError = e;
+        
+        // If request was cancelled, don't retry - rethrow immediately
+        if (e is ApiRequestCancelledException) {
+          throw e;
+        }
+        
         debugPrint('Error fetching Overpass POIs (attempt $attempt): $e');
 
         final shouldRetry = attempt < _maxAttempts && _isRetryableError(e);
         if (shouldRetry) {
+          // Check if cancelled before retrying
+          if (cancelToken?.isCancelled ?? false) {
+            throw ApiRequestCancelledException();
+          }
+          
           final delay = _calculateDelay(attempt);
           debugPrint('Retrying in ${delay.inMilliseconds}ms...');
           await Future.delayed(delay);
+          
+          // Check if cancelled after delay
+          if (cancelToken?.isCancelled ?? false) {
+            throw ApiRequestCancelledException();
+          }
+          
           continue;
         }
       }

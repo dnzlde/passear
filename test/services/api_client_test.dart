@@ -98,5 +98,119 @@ void main() {
         ),
       );
     });
+
+    test('should throw ApiRequestCancelledException when cancelled before request', () async {
+      // Arrange
+      const expectedResponse = '{"test": "data"}';
+      mockClient.setResponse('example.com', expectedResponse);
+      final url = Uri.parse('https://example.com/api/test');
+      final cancelToken = ApiCancellationToken();
+      
+      // Cancel before making request
+      cancelToken.cancel();
+
+      // Act & Assert
+      expect(
+        () => mockClient.get(url, cancelToken: cancelToken),
+        throwsA(isA<ApiRequestCancelledException>()),
+      );
+    });
+
+    test('should complete normally when cancelToken is not cancelled', () async {
+      // Arrange
+      const expectedResponse = '{"test": "data"}';
+      mockClient.setResponse('example.com', expectedResponse);
+      final url = Uri.parse('https://example.com/api/test');
+      final cancelToken = ApiCancellationToken();
+
+      // Act
+      final result = await mockClient.get(url, cancelToken: cancelToken);
+
+      // Assert
+      expect(result, expectedResponse);
+      expect(cancelToken.isCancelled, false);
+    });
+  });
+
+  group('ApiCancellationToken', () {
+    test('should start with isCancelled = false', () {
+      // Arrange & Act
+      final token = ApiCancellationToken();
+
+      // Assert
+      expect(token.isCancelled, false);
+    });
+
+    test('should set isCancelled = true when cancel() is called', () {
+      // Arrange
+      final token = ApiCancellationToken();
+
+      // Act
+      token.cancel();
+
+      // Assert
+      expect(token.isCancelled, true);
+    });
+
+    test('should reset isCancelled to false when reset() is called', () {
+      // Arrange
+      final token = ApiCancellationToken();
+      token.cancel();
+      expect(token.isCancelled, true);
+
+      // Act
+      token.reset();
+
+      // Assert
+      expect(token.isCancelled, false);
+    });
+
+    test('should allow multiple cancel calls', () {
+      // Arrange
+      final token = ApiCancellationToken();
+
+      // Act
+      token.cancel();
+      token.cancel();
+      token.cancel();
+
+      // Assert
+      expect(token.isCancelled, true);
+    });
+  });
+
+  group('HttpApiClient cancellation', () {
+    test('should throw ApiRequestCancelledException when cancelled before GET request', () async {
+      // Arrange
+      final client = HttpApiClient(null);
+      final url = Uri.parse('https://httpbin.org/delay/5'); // Would take 5 seconds
+      final cancelToken = ApiCancellationToken();
+      
+      // Cancel before making request
+      cancelToken.cancel();
+
+      // Act & Assert
+      expect(
+        () => client.get(url, cancelToken: cancelToken),
+        throwsA(isA<ApiRequestCancelledException>()),
+      );
+    });
+
+    test('should throw ApiRequestCancelledException when cancelled before POST request', () async {
+      // Arrange
+      final client = HttpApiClient(null);
+      final url = Uri.parse('https://httpbin.org/delay/5');
+      final body = '{"test": "data"}';
+      final cancelToken = ApiCancellationToken();
+      
+      // Cancel before making request
+      cancelToken.cancel();
+
+      // Act & Assert
+      expect(
+        () => client.post(url, body, cancelToken: cancelToken),
+        throwsA(isA<ApiRequestCancelledException>()),
+      );
+    });
   });
 }
