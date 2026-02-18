@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/poi.dart';
 import '../models/route.dart';
 import '../models/settings.dart';
+import '../services/api_client.dart';
 import '../services/poi_service.dart';
 import '../services/poi_search_service.dart';
 import '../services/routing_service.dart';
@@ -96,6 +97,7 @@ class _MapPageState extends State<MapPage> {
   double _mapRotation = 0.0; // Track current map rotation for compass display
   bool _hasPerformedInitialLoad =
       false; // Flag to ensure initial load happens only once
+  ApiCancellationToken? _currentPoiRequest; // Track current POI request for cancellation
 
   // Provider settings
   MapProvider _mapProvider = MapProvider.openStreetMap;
@@ -291,6 +293,10 @@ class _MapPageState extends State<MapPage> {
     // viewport requests when a newer request is scheduled.
     final requestVersion = ++_poiRequestVersion;
 
+    // Cancel any previous in-flight request
+    _currentPoiRequest?.cancel();
+    _currentPoiRequest = ApiCancellationToken();
+
     if (_isLoadingPois) {
       _hasPendingPoiReload = true;
       return;
@@ -370,6 +376,7 @@ class _MapPageState extends State<MapPage> {
         south: bounds.south,
         east: bounds.east,
         west: bounds.west,
+        cancelToken: _currentPoiRequest,
         // maxResults will be determined by settings
       );
 
@@ -396,6 +403,12 @@ class _MapPageState extends State<MapPage> {
         );
       }
     } catch (e) {
+      // Handle cancelled requests silently - they're expected
+      if (e is ApiRequestCancelledException) {
+        debugPrint('POI request v$requestVersion was cancelled');
+        return;
+      }
+
       if (isInitialLoad) {
         // Reset flag to allow retry
         _hasPerformedInitialLoad = false;

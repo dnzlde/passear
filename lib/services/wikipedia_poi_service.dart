@@ -46,6 +46,7 @@ class WikipediaPoiService {
     required double east,
     required double west,
     int maxResults = 20,
+    ApiCancellationToken? cancelToken,
   }) async {
     final cacheKey =
         '${north.toStringAsFixed(4)},${south.toStringAsFixed(4)},${east.toStringAsFixed(4)},${west.toStringAsFixed(4)}';
@@ -67,6 +68,7 @@ class WikipediaPoiService {
       centerLon,
       radius: radius,
       limit: math.max(maxResults * 3, 30), // Fetch more to filter better
+      cancelToken: cancelToken,
     );
 
     // Filter POIs to only include those within the actual bounds
@@ -96,6 +98,7 @@ class WikipediaPoiService {
     double lon, {
     int radius = 1000,
     int limit = 10,
+    ApiCancellationToken? cancelToken,
   }) async {
     if (radius > 10000) radius = 10000;
     final url = Uri.https('$lang.wikipedia.org', '/w/api.php', {
@@ -107,7 +110,7 @@ class WikipediaPoiService {
       'gslimit': limit.toString(),
     });
 
-    final responseBody = await _apiClient.get(url);
+    final responseBody = await _apiClient.get(url, cancelToken: cancelToken);
     final data = json.decode(responseBody);
 
     // Check for API errors in the response
@@ -300,6 +303,7 @@ class WikipediaPoiService {
     required double east,
     required double west,
     int maxResults = 20,
+    ApiCancellationToken? cancelToken,
   }) async {
     final pois = await fetchPoisInBounds(
       north: north,
@@ -307,6 +311,7 @@ class WikipediaPoiService {
       east: east,
       west: west,
       maxResults: maxResults * 2, // Get more for better filtering
+      cancelToken: cancelToken,
     );
 
     // Apply additional intelligent filtering

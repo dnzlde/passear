@@ -34,6 +34,7 @@ class OverpassPoiService {
     required double east,
     required double west,
     int maxResults = 50,
+    ApiCancellationToken? cancelToken,
   }) async {
     Object? lastError;
     for (var attempt = 1; attempt <= _maxAttempts; attempt++) {
@@ -46,7 +47,7 @@ class OverpassPoiService {
         // Build the URI with query parameters
         final uri = Uri.https(_baseUrl, '/api/interpreter', {'data': query});
 
-        final responseBody = await _apiClient.get(uri).timeout(
+        final responseBody = await _apiClient.get(uri, cancelToken: cancelToken).timeout(
               _requestTimeout,
               onTimeout: () => throw TimeoutException(
                 'Overpass API request timed out after ${_requestTimeout.inSeconds}s',
