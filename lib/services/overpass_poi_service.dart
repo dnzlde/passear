@@ -34,6 +34,7 @@ class OverpassPoiService {
     required double east,
     required double west,
     int maxResults = 50,
+    ApiCancellationToken? cancelToken,
   }) async {
     Object? lastError;
     for (var attempt = 1; attempt <= _maxAttempts; attempt++) {
@@ -46,7 +47,7 @@ class OverpassPoiService {
         // Build the URI with query parameters
         final uri = Uri.https(_baseUrl, '/api/interpreter', {'data': query});
 
-        final responseBody = await _apiClient.get(uri).timeout(
+        final responseBody = await _apiClient.get(uri, cancelToken: cancelToken).timeout(
               _requestTimeout,
               onTimeout: () => throw TimeoutException(
                 'Overpass API request timed out after ${_requestTimeout.inSeconds}s',
@@ -69,13 +70,30 @@ class OverpassPoiService {
         return pois;
       } catch (e) {
         lastError = e;
+        
+        // If request was cancelled, don't retry - rethrow immediately
+        if (e is ApiRequestCancelledException) {
+          throw e;
+        }
+        
         debugPrint('Error fetching Overpass POIs (attempt $attempt): $e');
 
         final shouldRetry = attempt < _maxAttempts && _isRetryableError(e);
         if (shouldRetry) {
+          // Check if cancelled before retrying
+          if (cancelToken?.isCancelled ?? false) {
+            throw ApiRequestCancelledException();
+          }
+          
           final delay = _calculateDelay(attempt);
           debugPrint('Retrying in ${delay.inMilliseconds}ms...');
           await Future.delayed(delay);
+          
+          // Check if cancelled after delay
+          if (cancelToken?.isCancelled ?? false) {
+            throw ApiRequestCancelledException();
+          }
+          
           continue;
         }
       }

@@ -48,7 +48,8 @@ class PoiService {
 
   /// Fetch POIs for a single tile (used by cache service)
   /// Fetches ALL POIs in the tile area, filtering is done at display time
-  Future<List<Poi>> _fetchPoisForTile(GeoBounds bounds) async {
+  Future<List<Poi>> _fetchPoisForTile(GeoBounds bounds,
+      {ApiCancellationToken? cancelToken}) async {
     // Load current settings
     final settings = await _settingsService.loadSettings();
 
@@ -62,6 +63,7 @@ class PoiService {
           east: bounds.east,
           west: bounds.west,
           maxResults: 100, // Fetch more POIs per tile for comprehensive caching
+          cancelToken: cancelToken,
         );
         allPois = wikiPois.map((wikiPoi) {
           return Poi(
@@ -87,6 +89,7 @@ class PoiService {
           east: bounds.east,
           west: bounds.west,
           maxResults: 100,
+          cancelToken: cancelToken,
         );
         allPois = overpassPois;
         break;
@@ -111,6 +114,7 @@ class PoiService {
     required double east,
     required double west,
     int? maxResults,
+    ApiCancellationToken? cancelToken,
   }) async {
     // Initialize cache if needed
     await _ensureCacheInitialized();
@@ -126,7 +130,7 @@ class PoiService {
       east: east,
       west: west,
       settings: settings,
-      fetchFunction: _fetchPoisForTile,
+      fetchFunction: (bounds) => _fetchPoisForTile(bounds, cancelToken: cancelToken),
     );
 
     // Sort by interest score and return top results

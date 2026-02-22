@@ -2,17 +2,35 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+/// Token for cancelling ongoing API requests
+class ApiCancellationToken {
+  bool _isCancelled = false;
+
+  bool get isCancelled => _isCancelled;
+
+  void cancel() {
+    _isCancelled = true;
+  }
+
+  void reset() {
+    _isCancelled = false;
+  }
+}
+
 /// Abstract interface for making HTTP requests
 abstract class ApiClient {
   /// Makes a GET request to the specified URL
   /// Returns the response body as a string if successful
   /// Throws an exception if the request fails
-  Future<String> get(Uri url);
+  /// Optional [cancelToken] allows cancelling the request
+  Future<String> get(Uri url, {ApiCancellationToken? cancelToken});
 
   /// Makes a POST request to the specified URL with body
   /// Returns the response body as a string if successful
   /// Throws an exception if the request fails
-  Future<String> post(Uri url, String body);
+  /// Optional [cancelToken] allows cancelling the request
+  Future<String> post(Uri url, String body,
+      {ApiCancellationToken? cancelToken});
 }
 
 /// Production implementation that makes real HTTP requests
@@ -22,30 +40,79 @@ class HttpApiClient implements ApiClient {
   HttpApiClient(this._httpClient);
 
   @override
-  Future<String> get(Uri url) async {
-    final client = _httpClient ?? http.Client();
-    final response = await client.get(url);
-    if (response.statusCode == 200) {
-      return response.body;
-    } else {
-      throw Exception('HTTP ${response.statusCode}: Failed to fetch $url');
+  Future<String> get(Uri url, {ApiCancellationToken? cancelToken}) async {
+    // Create a dedicated client for this request if we might need to cancel it
+    final needsDedicatedClient = cancelToken != null && _httpClient == null;
+    final client = needsDedicatedClient ? http.Client() : (_httpClient ?? http.Client());
+    
+    try {
+      // Check if already cancelled before making request
+      if (cancelToken?.isCancelled ?? false) {
+        throw ApiRequestCancelledException();
+      }
+
+      final response = await client.get(url);
+      
+      // Check if cancelled after request completes
+      if (cancelToken?.isCancelled ?? false) {
+        throw ApiRequestCancelledException();
+      }
+      
+      if (response.statusCode == 200) {
+        return response.body;
+      } else {
+        throw Exception('HTTP ${response.statusCode}: Failed to fetch $url');
+      }
+    } finally {
+      // Close the dedicated client to cancel the request if needed
+      if (needsDedicatedClient) {
+        client.close();
+      }
     }
   }
 
   @override
-  Future<String> post(Uri url, String body) async {
-    final client = _httpClient ?? http.Client();
-    final response = await client.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-    if (response.statusCode == 200) {
-      return response.body;
-    } else {
-      throw Exception('HTTP ${response.statusCode}: Failed to post to $url');
+  Future<String> post(Uri url, String body,
+      {ApiCancellationToken? cancelToken}) async {
+    // Create a dedicated client for this request if we might need to cancel it
+    final needsDedicatedClient = cancelToken != null && _httpClient == null;
+    final client = needsDedicatedClient ? http.Client() : (_httpClient ?? http.Client());
+    
+    try {
+      // Check if already cancelled before making request
+      if (cancelToken?.isCancelled ?? false) {
+        throw ApiRequestCancelledException();
+      }
+
+      final response = await client.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+      
+      // Check if cancelled after request completes
+      if (cancelToken?.isCancelled ?? false) {
+        throw ApiRequestCancelledException();
+      }
+      
+      if (response.statusCode == 200) {
+        return response.body;
+      } else {
+        throw Exception('HTTP ${response.statusCode}: Failed to post to $url');
+      }
+    } finally {
+      // Close the dedicated client to cancel the request if needed
+      if (needsDedicatedClient) {
+        client.close();
+      }
     }
   }
+}
+
+/// Exception thrown when an API request is cancelled
+class ApiRequestCancelledException implements Exception {
+  @override
+  String toString() => 'API request was cancelled';
 }
 
 /// Mock implementation for testing
@@ -63,7 +130,12 @@ class MockApiClient implements ApiClient {
   }
 
   @override
-  Future<String> get(Uri url) async {
+  Future<String> get(Uri url, {ApiCancellationToken? cancelToken}) async {
+    // Check if cancelled before processing
+    if (cancelToken?.isCancelled ?? false) {
+      throw ApiRequestCancelledException();
+    }
+
     // For OSRM routing API (both old and new endpoints)
     if (url.toString().contains('router.project-osrm.org') ||
         url.toString().contains('routing.openstreetmap.de') ||
@@ -316,7 +388,13 @@ class MockApiClient implements ApiClient {
   }
 
   @override
-  Future<String> post(Uri url, String body) async {
+  Future<String> post(Uri url, String body,
+      {ApiCancellationToken? cancelToken}) async {
+    // Check if cancelled before processing
+    if (cancelToken?.isCancelled ?? false) {
+      throw ApiRequestCancelledException();
+    }
+
     // Mock implementation for POST requests
     // For routing service, return a simple mock response
     if (url.toString().contains('openrouteservice')) {
