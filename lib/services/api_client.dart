@@ -43,8 +43,9 @@ class HttpApiClient implements ApiClient {
   Future<String> get(Uri url, {ApiCancellationToken? cancelToken}) async {
     // Create a dedicated client for this request if we might need to cancel it
     final needsDedicatedClient = cancelToken != null && _httpClient == null;
-    final client = needsDedicatedClient ? http.Client() : (_httpClient ?? http.Client());
-    
+    final client =
+        needsDedicatedClient ? http.Client() : (_httpClient ?? http.Client());
+
     try {
       // Check if already cancelled before making request
       if (cancelToken?.isCancelled ?? false) {
@@ -52,12 +53,12 @@ class HttpApiClient implements ApiClient {
       }
 
       final response = await client.get(url);
-      
+
       // Check if cancelled after request completes
       if (cancelToken?.isCancelled ?? false) {
         throw ApiRequestCancelledException();
       }
-      
+
       if (response.statusCode == 200) {
         return response.body;
       } else {
@@ -76,8 +77,9 @@ class HttpApiClient implements ApiClient {
       {ApiCancellationToken? cancelToken}) async {
     // Create a dedicated client for this request if we might need to cancel it
     final needsDedicatedClient = cancelToken != null && _httpClient == null;
-    final client = needsDedicatedClient ? http.Client() : (_httpClient ?? http.Client());
-    
+    final client =
+        needsDedicatedClient ? http.Client() : (_httpClient ?? http.Client());
+
     try {
       // Check if already cancelled before making request
       if (cancelToken?.isCancelled ?? false) {
@@ -89,12 +91,12 @@ class HttpApiClient implements ApiClient {
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
-      
+
       // Check if cancelled after request completes
       if (cancelToken?.isCancelled ?? false) {
         throw ApiRequestCancelledException();
       }
-      
+
       if (response.statusCode == 200) {
         return response.body;
       } else {
@@ -274,7 +276,8 @@ class MockApiClient implements ApiClient {
     }
     if (url.toString().contains('wikipedia.org/api/rest_v1/page/summary/')) {
       for (final pattern in _responses.keys) {
-        if (pattern.contains('page_summary') || url.toString().contains(pattern)) {
+        if (pattern.contains('page_summary') ||
+            url.toString().contains(pattern)) {
           return _responses[pattern]!;
         }
       }
