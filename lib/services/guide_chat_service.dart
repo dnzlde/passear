@@ -17,8 +17,8 @@ class GuideChatService {
   GuideChatService({
     required PoiService poiService,
     required LlmService llmService,
-  }) : _poiService = poiService,
-       _llmService = llmService;
+  })  : _poiService = poiService,
+        _llmService = llmService;
 
   /// Get nearby POIs around the given location
   Future<List<Poi>> getNearbyPois(LatLng location) async {

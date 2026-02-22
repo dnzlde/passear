@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/poi.dart';
 import 'api_client.dart';
+import 'poi_telemetry.dart';
 
 /// Overpass API service for fetching POIs from OpenStreetMap
 /// Uses the Overpass API to query OSM data for points of interest
@@ -35,6 +36,7 @@ class OverpassPoiService {
     required double west,
     int maxResults = 50,
     ApiCancellationToken? cancelToken,
+    PoiRequestTrace? trace,
   }) async {
     Object? lastError;
     for (var attempt = 1; attempt <= _maxAttempts; attempt++) {
@@ -47,12 +49,13 @@ class OverpassPoiService {
         // Build the URI with query parameters
         final uri = Uri.https(_baseUrl, '/api/interpreter', {'data': query});
 
-        final responseBody = await _apiClient.get(uri, cancelToken: cancelToken).timeout(
-              _requestTimeout,
-              onTimeout: () => throw TimeoutException(
-                'Overpass API request timed out after ${_requestTimeout.inSeconds}s',
-              ),
-            );
+        final responseBody =
+            await _apiClient.get(uri, cancelToken: cancelToken).timeout(
+                  _requestTimeout,
+                  onTimeout: () => throw TimeoutException(
+                    'Overpass API request timed out after ${_requestTimeout.inSeconds}s',
+                  ),
+                );
         final data = jsonDecode(responseBody) as Map<String, dynamic>;
         final elements = data['elements'] as List<dynamic>? ?? [];
 
@@ -70,12 +73,14 @@ class OverpassPoiService {
         return pois;
       } catch (e) {
         lastError = e;
-        
+
         // If request was cancelled, don't retry - rethrow immediately
         if (e is ApiRequestCancelledException) {
-          throw e;
+          rethrow;
         }
-        
+
+        final errorClass = e.runtimeType.toString();
+        trace?.recordFetchAttempt(attempt: attempt, errorClass: errorClass);
         debugPrint('Error fetching Overpass POIs (attempt $attempt): $e');
 
         final shouldRetry = attempt < _maxAttempts && _isRetryableError(e);
@@ -84,16 +89,16 @@ class OverpassPoiService {
           if (cancelToken?.isCancelled ?? false) {
             throw ApiRequestCancelledException();
           }
-          
+
           final delay = _calculateDelay(attempt);
           debugPrint('Retrying in ${delay.inMilliseconds}ms...');
           await Future.delayed(delay);
-          
+
           // Check if cancelled after delay
           if (cancelToken?.isCancelled ?? false) {
             throw ApiRequestCancelledException();
           }
-          
+
           continue;
         }
       }

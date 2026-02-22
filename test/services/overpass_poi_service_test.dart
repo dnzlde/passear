@@ -12,7 +12,7 @@ class _SequentialApiClient implements ApiClient {
   _SequentialApiClient(this._responses);
 
   @override
-  Future<String> get(Uri url) async {
+  Future<String> get(Uri url, {ApiCancellationToken? cancelToken}) async {
     if (callCount >= _responses.length) {
       throw Exception('No configured response for call #$callCount');
     }
@@ -23,7 +23,8 @@ class _SequentialApiClient implements ApiClient {
   }
 
   @override
-  Future<String> post(Uri url, String body) {
+  Future<String> post(Uri url, String body,
+      {ApiCancellationToken? cancelToken}) {
     throw UnimplementedError();
   }
 }

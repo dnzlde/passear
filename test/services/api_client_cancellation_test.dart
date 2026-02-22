@@ -3,11 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:passear/services/api_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'dart:async';
 
 void main() {
   group('ApiClient Cancellation - Race Conditions', () {
-    test('cancel-race: should handle cancellation during async request', () async {
+    test('cancel-race: should handle cancellation during async request',
+        () async {
       // Arrange - Create a mock client that delays response
       final mockHttpClient = MockClient((request) async {
         // Simulate a slow network request
@@ -21,7 +21,7 @@ void main() {
 
       // Act - Start the request and cancel it immediately
       final requestFuture = apiClient.get(url, cancelToken: cancelToken);
-      
+
       // Cancel after a very short delay (race condition)
       await Future.delayed(const Duration(milliseconds: 10));
       cancelToken.cancel();
@@ -40,7 +40,8 @@ void main() {
       expect(cancelToken.isCancelled, true);
     });
 
-    test('cancel-race: multiple rapid cancellations should not cause issues', () async {
+    test('cancel-race: multiple rapid cancellations should not cause issues',
+        () async {
       // Arrange
       final mockHttpClient = MockClient((request) async {
         await Future.delayed(const Duration(milliseconds: 50));
@@ -58,15 +59,14 @@ void main() {
         futures.add(
           apiClient.get(url, cancelToken: token).then((_) {
             // Success - do nothing
-          }).catchError((e) {
+          }).catchError((Object e) {
             // Ignore errors - we just want to ensure no leaks
             if (e is! ApiRequestCancelledException) {
               throw e;
             }
-            return ''; // Return empty string to satisfy Future<String> return type
           }),
         );
-        
+
         // Cancel some immediately, some after delay
         if (futures.length % 2 == 0) {
           token.cancel();
@@ -84,8 +84,11 @@ void main() {
       }
     });
 
-    test('cancel-before-response: should not process response if cancelled during network call', () async {
+    test(
+        'cancel-before-response: should not process response if cancelled during network call',
+        () async {
       // Arrange
+      // ignore: unused_local_variable
       var responseProcessed = false;
       final mockHttpClient = MockClient((request) async {
         // Simulate slow network
@@ -100,7 +103,7 @@ void main() {
 
       // Act - Start request
       final requestFuture = apiClient.get(url, cancelToken: cancelToken);
-      
+
       // Cancel after 10ms (before the 100ms delay completes)
       await Future.delayed(const Duration(milliseconds: 10));
       cancelToken.cancel();
@@ -117,7 +120,8 @@ void main() {
       expect(cancelToken.isCancelled, true);
     });
 
-    test('no-leaks: cancelled request should not leak pending operations', () async {
+    test('no-leaks: cancelled request should not leak pending operations',
+        () async {
       // Arrange
       final mockHttpClient = MockClient((request) async {
         await Future.delayed(const Duration(milliseconds: 200));
@@ -141,12 +145,13 @@ void main() {
 
       // Assert - Give time for any background operations to complete
       await Future.delayed(const Duration(milliseconds: 300));
-      
+
       // If we reach here without hanging, there are no leaked operations
       expect(cancelToken.isCancelled, true);
     });
 
-    test('no-leaks: multiple cancelled requests should not accumulate', () async {
+    test('no-leaks: multiple cancelled requests should not accumulate',
+        () async {
       // Arrange
       final mockHttpClient = MockClient((request) async {
         await Future.delayed(const Duration(milliseconds: 50));
@@ -161,7 +166,7 @@ void main() {
         final token = ApiCancellationToken();
         final future = apiClient.get(url, cancelToken: token);
         token.cancel();
-        
+
         try {
           await future;
         } on ApiRequestCancelledException {
@@ -171,12 +176,13 @@ void main() {
 
       // Assert - Give time for cleanup
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       // If we reach here without memory issues or hanging, test passes
       expect(true, true);
     });
 
-    test('concurrent requests: cancelling one should not affect others', () async {
+    test('concurrent requests: cancelling one should not affect others',
+        () async {
       // Arrange
       final mockHttpClient = MockClient((request) async {
         await Future.delayed(const Duration(milliseconds: 50));
@@ -213,7 +219,8 @@ void main() {
   });
 
   group('MockApiClient Cancellation - Race Conditions', () {
-    test('cancel-race: MockApiClient should handle immediate cancellation', () async {
+    test('cancel-race: MockApiClient should handle immediate cancellation',
+        () async {
       // Arrange
       final mockClient = MockApiClient();
       mockClient.setResponse('example.com', '{"data": "test"}');
@@ -230,7 +237,9 @@ void main() {
       );
     });
 
-    test('no-leaks: MockApiClient cancelled requests should complete immediately', () async {
+    test(
+        'no-leaks: MockApiClient cancelled requests should complete immediately',
+        () async {
       // Arrange
       final mockClient = MockApiClient();
       mockClient.setResponse('example.com', '{"data": "test"}');
@@ -240,7 +249,7 @@ void main() {
       for (var i = 0; i < 50; i++) {
         final token = ApiCancellationToken();
         token.cancel();
-        
+
         expect(
           () => mockClient.get(url, cancelToken: token),
           throwsA(isA<ApiRequestCancelledException>()),

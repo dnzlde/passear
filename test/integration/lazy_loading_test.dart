@@ -16,13 +16,13 @@ void main() {
     // Mock path_provider plugin
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, (
-          MethodCall methodCall,
-        ) async {
-          if (methodCall.method == 'getApplicationDocumentsDirectory') {
-            return '/tmp/test_app_documents';
-          }
-          return null;
-        });
+      MethodCall methodCall,
+    ) async {
+      if (methodCall.method == 'getApplicationDocumentsDirectory') {
+        return '/tmp/test_app_documents';
+      }
+      return null;
+    });
   });
 
   tearDownAll(() {

@@ -19,7 +19,8 @@ class LocalTtsService implements TtsService {
   }
 
   @override
-  bool get isSynthesizing => false; // LocalTtsService doesn't synthesize, only speaks
+  bool get isSynthesizing =>
+      false; // LocalTtsService doesn't synthesize, only speaks
 
   @override
   void setCompletionCallback(void Function() callback) {
@@ -61,7 +62,7 @@ class LocalTtsService implements TtsService {
           avAudioSessionCategory: AVAudioSessionCategory.playback,
           avAudioSessionCategoryOptions:
               AVAudioSessionCategoryOptions.duckOthers |
-              AVAudioSessionCategoryOptions.mixWithOthers,
+                  AVAudioSessionCategoryOptions.mixWithOthers,
           avAudioSessionMode: AVAudioSessionMode.spokenAudio,
           avAudioSessionRouteSharingPolicy:
               AVAudioSessionRouteSharingPolicy.defaultPolicy,

@@ -7,6 +7,7 @@ import 'api_client.dart';
 import 'settings_service.dart';
 import 'poi_cache/poi_cache_service.dart';
 import 'poi_cache/tile_utils.dart';
+import 'poi_telemetry.dart';
 
 class PoiService {
   WikipediaPoiService? _wikiService;
@@ -48,8 +49,11 @@ class PoiService {
 
   /// Fetch POIs for a single tile (used by cache service)
   /// Fetches ALL POIs in the tile area, filtering is done at display time
-  Future<List<Poi>> _fetchPoisForTile(GeoBounds bounds,
-      {ApiCancellationToken? cancelToken}) async {
+  Future<List<Poi>> _fetchPoisForTile(
+    GeoBounds bounds, {
+    ApiCancellationToken? cancelToken,
+    PoiRequestTrace? trace,
+  }) async {
     // Load current settings
     final settings = await _settingsService.loadSettings();
 
@@ -90,6 +94,7 @@ class PoiService {
           west: bounds.west,
           maxResults: 100,
           cancelToken: cancelToken,
+          trace: trace,
         );
         allPois = overpassPois;
         break;
@@ -123,6 +128,14 @@ class PoiService {
     final settings = await _settingsService.loadSettings();
     final effectiveMaxResults = maxResults ?? settings.maxPoiCount;
 
+    // Start structured telemetry trace for this viewport request
+    final trace = PoiTelemetry.startTrace(
+      north: north,
+      south: south,
+      east: east,
+      west: west,
+    );
+
     // Use cache service to get POIs
     final allPois = await _cacheService!.getPoisForViewport(
       north: north,
@@ -130,12 +143,16 @@ class PoiService {
       east: east,
       west: west,
       settings: settings,
-      fetchFunction: (bounds) => _fetchPoisForTile(bounds, cancelToken: cancelToken),
+      trace: trace,
+      fetchFunction: (bounds) =>
+          _fetchPoisForTile(bounds, cancelToken: cancelToken, trace: trace),
     );
 
     // Sort by interest score and return top results
     allPois.sort((a, b) => b.interestScore.compareTo(a.interestScore));
-    return allPois.take(effectiveMaxResults).toList();
+    final result = allPois.take(effectiveMaxResults).toList();
+    trace.complete(poiCount: result.length);
+    return result;
   }
 
   /// Legacy method for backward compatibility
