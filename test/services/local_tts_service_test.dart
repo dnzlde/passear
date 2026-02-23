@@ -14,32 +14,32 @@ void main() {
     // Mock flutter_tts method calls
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          switch (methodCall.method) {
-            case 'setLanguage':
-            case 'setSpeechRate':
-            case 'setIosAudioCategory':
-            case 'speak':
-            case 'stop':
-              return null;
-            default:
-              return null;
-          }
-        });
+      switch (methodCall.method) {
+        case 'setLanguage':
+        case 'setSpeechRate':
+        case 'setIosAudioCategory':
+        case 'speak':
+        case 'stop':
+          return null;
+        default:
+          return null;
+      }
+    });
 
     // Mock audio_session method calls
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(audioChannel, (MethodCall methodCall) async {
-          switch (methodCall.method) {
-            case 'getConfiguration':
-              return null;
-            case 'setConfiguration':
-              return null;
-            case 'setActive':
-              return null;
-            default:
-              return null;
-          }
-        });
+      switch (methodCall.method) {
+        case 'getConfiguration':
+          return null;
+        case 'setConfiguration':
+          return null;
+        case 'setActive':
+          return null;
+        default:
+          return null;
+      }
+    });
   });
 
   tearDown(() {

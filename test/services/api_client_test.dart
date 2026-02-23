@@ -99,13 +99,15 @@ void main() {
       );
     });
 
-    test('should throw ApiRequestCancelledException when cancelled before request', () async {
+    test(
+        'should throw ApiRequestCancelledException when cancelled before request',
+        () async {
       // Arrange
       const expectedResponse = '{"test": "data"}';
       mockClient.setResponse('example.com', expectedResponse);
       final url = Uri.parse('https://example.com/api/test');
       final cancelToken = ApiCancellationToken();
-      
+
       // Cancel before making request
       cancelToken.cancel();
 
@@ -116,7 +118,8 @@ void main() {
       );
     });
 
-    test('should complete normally when cancelToken is not cancelled', () async {
+    test('should complete normally when cancelToken is not cancelled',
+        () async {
       // Arrange
       const expectedResponse = '{"test": "data"}';
       mockClient.setResponse('example.com', expectedResponse);
@@ -180,12 +183,15 @@ void main() {
   });
 
   group('HttpApiClient cancellation', () {
-    test('should throw ApiRequestCancelledException when cancelled before GET request', () async {
+    test(
+        'should throw ApiRequestCancelledException when cancelled before GET request',
+        () async {
       // Arrange
       final client = HttpApiClient(null);
-      final url = Uri.parse('https://httpbin.org/delay/5'); // Would take 5 seconds
+      final url =
+          Uri.parse('https://httpbin.org/delay/5'); // Would take 5 seconds
       final cancelToken = ApiCancellationToken();
-      
+
       // Cancel before making request
       cancelToken.cancel();
 
@@ -196,13 +202,15 @@ void main() {
       );
     });
 
-    test('should throw ApiRequestCancelledException when cancelled before POST request', () async {
+    test(
+        'should throw ApiRequestCancelledException when cancelled before POST request',
+        () async {
       // Arrange
       final client = HttpApiClient(null);
       final url = Uri.parse('https://httpbin.org/delay/5');
       final body = '{"test": "data"}';
       final cancelToken = ApiCancellationToken();
-      
+
       // Cancel before making request
       cancelToken.cancel();
 

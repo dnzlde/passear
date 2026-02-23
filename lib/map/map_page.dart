@@ -97,7 +97,8 @@ class _MapPageState extends State<MapPage> {
   double _mapRotation = 0.0; // Track current map rotation for compass display
   bool _hasPerformedInitialLoad =
       false; // Flag to ensure initial load happens only once
-  ApiCancellationToken? _currentPoiRequest; // Track current POI request for cancellation
+  ApiCancellationToken?
+      _currentPoiRequest; // Track current POI request for cancellation
 
   // Provider settings
   MapProvider _mapProvider = MapProvider.openStreetMap;
@@ -276,16 +277,16 @@ class _MapPageState extends State<MapPage> {
 
     _locationSubscription =
         Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-          (Position position) {
-            setState(() {
-              _userLocation = LatLng(position.latitude, position.longitude);
-              // Heading is available on some devices (compass direction)
-              _userHeading = position.heading;
-            });
-            // Update navigation progress if navigating
-            _updateNavigationProgress();
-          },
-        );
+      (Position position) {
+        setState(() {
+          _userLocation = LatLng(position.latitude, position.longitude);
+          // Heading is available on some devices (compass direction)
+          _userHeading = position.heading;
+        });
+        // Update navigation progress if navigating
+        _updateNavigationProgress();
+      },
+    );
   }
 
   Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
@@ -371,6 +372,7 @@ class _MapPageState extends State<MapPage> {
       _hasPendingPoiReload = false;
 
       // Use rectangular bounds for precise POI discovery
+      final fetchStart = DateTime.now();
       final pois = await _poiService.fetchInBounds(
         north: bounds.north,
         south: bounds.south,
@@ -378,6 +380,10 @@ class _MapPageState extends State<MapPage> {
         west: bounds.west,
         cancelToken: _currentPoiRequest,
         // maxResults will be determined by settings
+      );
+      debugPrint(
+        'POI: v$requestVersion fetched ${pois.length} POIs in '
+        '${DateTime.now().difference(fetchStart).inMilliseconds}ms',
       );
 
       if (!mounted) return; // Check before setState
@@ -1044,11 +1050,9 @@ class _MapPageState extends State<MapPage> {
     if (_currentRoute == null || _userLocation == null) return;
 
     // Find the closest instruction point
-    for (
-      int i = _currentInstructionIndex;
-      i < _currentRoute!.instructions.length;
-      i++
-    ) {
+    for (int i = _currentInstructionIndex;
+        i < _currentRoute!.instructions.length;
+        i++) {
       final instruction = _currentRoute!.instructions[i];
       final distance = const Distance().distance(
         _userLocation!,
@@ -1533,8 +1537,7 @@ class _MapPageState extends State<MapPage> {
                           Icon(
                             _getInstructionIcon(
                               _currentRoute!
-                                  .instructions[_currentInstructionIndex]
-                                  .type,
+                                  .instructions[_currentInstructionIndex].type,
                             ),
                             color: Colors.blue,
                             size: 32,
@@ -1571,8 +1574,7 @@ class _MapPageState extends State<MapPage> {
                       ),
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
-                        value:
-                            (_currentInstructionIndex + 1) /
+                        value: (_currentInstructionIndex + 1) /
                             _currentRoute!.instructions.length,
                         backgroundColor: Colors.grey[300],
                         valueColor: const AlwaysStoppedAnimation<Color>(
@@ -1614,8 +1616,7 @@ class _MapPageState extends State<MapPage> {
                     },
                     tooltip: 'Reset map orientation to north',
                     child: AnimatedRotation(
-                      turns:
-                          _mapRotation /
+                      turns: _mapRotation /
                           360.0, // Rotate with map to show orientation
                       duration: const Duration(milliseconds: 180),
                       curve: Curves.easeOut,

@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/poi.dart';
 import '../../models/settings.dart';
+import '../poi_telemetry.dart';
 import 'poi_cache_entry.dart';
 import 'poi_tile_storage.dart';
 import 'tile_utils.dart';
@@ -55,12 +56,11 @@ class PoiCacheService {
   String createFiltersHash(AppSettings settings) {
     final filterData = {
       'provider': settings.poiProvider.name,
-      'categories':
-          settings.enabledCategories.entries
-              .where((e) => e.value)
-              .map((e) => e.key.name)
-              .toList()
-            ..sort(),
+      'categories': settings.enabledCategories.entries
+          .where((e) => e.value)
+          .map((e) => e.key.name)
+          .toList()
+        ..sort(),
       // maxCount deliberately excluded - cache all POIs, filter at display time
     };
     final jsonString = jsonEncode(filterData);
@@ -79,6 +79,7 @@ class PoiCacheService {
     required double west,
     required AppSettings settings,
     required Future<List<Poi>> Function(GeoBounds bounds) fetchFunction,
+    PoiRequestTrace? trace,
   }) async {
     final filtersHash = createFiltersHash(settings);
     final tiles = TileUtils.getTilesForViewport(
@@ -103,6 +104,7 @@ class PoiCacheService {
           // Fresh cache hit
           _cacheHits++;
           debugPrint('POI Cache: HIT (fresh) - $cacheKey');
+          trace?.recordCacheEvent(cacheKey, PoiCacheResult.hitFresh);
 
           // Update last access time
           await _storage.put(cacheKey, cachedEntry.copyWithAccess());
@@ -115,6 +117,7 @@ class PoiCacheService {
           // Stale cache hit - use it but schedule refresh
           _staleHits++;
           debugPrint('POI Cache: HIT (stale) - $cacheKey');
+          trace?.recordCacheEvent(cacheKey, PoiCacheResult.hitStale);
 
           // Add stale POIs to result
           for (final poi in cachedEntry.pois) {
@@ -128,6 +131,7 @@ class PoiCacheService {
         // Cache miss
         _cacheMisses++;
         debugPrint('POI Cache: MISS - $cacheKey');
+        trace?.recordCacheEvent(cacheKey, PoiCacheResult.miss);
         tilesToFetch.add(tile);
       }
     }
@@ -200,21 +204,18 @@ class PoiCacheService {
       final completer = Completer<void>();
       _inflightRequests[cacheKey] = completer;
 
-      final future =
-          _fetchAndCacheTile(
-                tile: tile,
-                cacheKey: cacheKey,
-                fetchFunction: fetchFunction,
-              )
-              .then((_) {
-                _inflightRequests.remove(cacheKey);
-                completer.complete();
-              })
-              .catchError((error) {
-                _inflightRequests.remove(cacheKey);
-                completer.completeError(error);
-                debugPrint('POI Cache: Error fetching tile $cacheKey: $error');
-              });
+      final future = _fetchAndCacheTile(
+        tile: tile,
+        cacheKey: cacheKey,
+        fetchFunction: fetchFunction,
+      ).then((_) {
+        _inflightRequests.remove(cacheKey);
+        completer.complete();
+      }).catchError((error) {
+        _inflightRequests.remove(cacheKey);
+        completer.completeError(error);
+        debugPrint('POI Cache: Error fetching tile $cacheKey: $error');
+      });
 
       futures.add(future);
 

@@ -1,7 +1,6 @@
 // test/services/poi_service_cancellation_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:passear/services/api_client.dart';
-import 'package:passear/services/poi_service.dart';
 import 'package:passear/services/overpass_poi_service.dart';
 import 'package:passear/services/wikipedia_poi_service.dart';
 import 'dart:convert';
@@ -22,7 +21,7 @@ class DelayedMockApiClient implements ApiClient {
   @override
   Future<String> get(Uri url, {ApiCancellationToken? cancelToken}) async {
     requestCount++;
-    
+
     // Check cancellation before delay
     if (cancelToken?.isCancelled ?? false) {
       cancelledCount++;
@@ -42,9 +41,10 @@ class DelayedMockApiClient implements ApiClient {
   }
 
   @override
-  Future<String> post(Uri url, String body, {ApiCancellationToken? cancelToken}) async {
+  Future<String> post(Uri url, String body,
+      {ApiCancellationToken? cancelToken}) async {
     requestCount++;
-    
+
     if (cancelToken?.isCancelled ?? false) {
       cancelledCount++;
       throw ApiRequestCancelledException();
@@ -65,18 +65,21 @@ void main() {
   group('OverpassPoiService Cancellation', () {
     test('should propagate cancellation token to API client', () async {
       // Arrange
-      final mockClient = DelayedMockApiClient(delay: Duration(milliseconds: 50));
-      mockClient.setResponse('overpass-api.de', jsonEncode({
-        'elements': [
-          {
-            'type': 'node',
-            'id': 1,
-            'lat': 32.0741,
-            'lon': 34.7924,
-            'tags': {'name': 'Test Museum', 'tourism': 'museum'},
-          },
-        ],
-      }));
+      final mockClient =
+          DelayedMockApiClient(delay: Duration(milliseconds: 50));
+      mockClient.setResponse(
+          'overpass-api.de',
+          jsonEncode({
+            'elements': [
+              {
+                'type': 'node',
+                'id': 1,
+                'lat': 32.0741,
+                'lon': 34.7924,
+                'tags': {'name': 'Test Museum', 'tourism': 'museum'},
+              },
+            ],
+          }));
 
       final service = OverpassPoiService(apiClient: mockClient);
       final cancelToken = ApiCancellationToken();
@@ -99,7 +102,7 @@ void main() {
         requestFuture,
         throwsA(isA<ApiRequestCancelledException>()),
       );
-      
+
       await Future.delayed(const Duration(milliseconds: 100));
       expect(mockClient.requestCount, 1);
       expect(mockClient.cancelledCount, 1);
@@ -107,18 +110,21 @@ void main() {
 
     test('should complete successfully without cancellation', () async {
       // Arrange
-      final mockClient = DelayedMockApiClient(delay: Duration(milliseconds: 10));
-      mockClient.setResponse('overpass-api.de', jsonEncode({
-        'elements': [
-          {
-            'type': 'node',
-            'id': 1,
-            'lat': 32.0741,
-            'lon': 34.7924,
-            'tags': {'name': 'Test Museum', 'tourism': 'museum'},
-          },
-        ],
-      }));
+      final mockClient =
+          DelayedMockApiClient(delay: Duration(milliseconds: 10));
+      mockClient.setResponse(
+          'overpass-api.de',
+          jsonEncode({
+            'elements': [
+              {
+                'type': 'node',
+                'id': 1,
+                'lat': 32.0741,
+                'lon': 34.7924,
+                'tags': {'name': 'Test Museum', 'tourism': 'museum'},
+              },
+            ],
+          }));
 
       final service = OverpassPoiService(apiClient: mockClient);
       final cancelToken = ApiCancellationToken();
@@ -144,15 +150,18 @@ void main() {
   group('WikipediaPoiService Cancellation', () {
     test('should propagate cancellation token through service chain', () async {
       // Arrange
-      final mockClient = DelayedMockApiClient(delay: Duration(milliseconds: 50));
+      final mockClient =
+          DelayedMockApiClient(delay: Duration(milliseconds: 50));
       // Configure default Wikipedia responses via setResponse
-      mockClient.setResponse('wikipedia.org/w/api.php', jsonEncode({
-        'query': {
-          'geosearch': [
-            {'title': 'Test Location', 'lat': 32.0741, 'lon': 34.7924},
-          ],
-        },
-      }));
+      mockClient.setResponse(
+          'wikipedia.org/w/api.php',
+          jsonEncode({
+            'query': {
+              'geosearch': [
+                {'title': 'Test Location', 'lat': 32.0741, 'lon': 34.7924},
+              ],
+            },
+          }));
 
       final service = WikipediaPoiService(apiClient: mockClient);
       final cancelToken = ApiCancellationToken();
@@ -174,7 +183,7 @@ void main() {
         requestFuture,
         throwsA(isA<ApiRequestCancelledException>()),
       );
-      
+
       await Future.delayed(const Duration(milliseconds: 100));
       expect(mockClient.cancelledCount, greaterThan(0));
     });
@@ -202,20 +211,24 @@ void main() {
   });
 
   group('POI Loading Cancellation Scenarios', () {
-    test('viewport change: second request should cancel first request', () async {
+    test('viewport change: second request should cancel first request',
+        () async {
       // Arrange
-      final mockClient = DelayedMockApiClient(delay: Duration(milliseconds: 100));
-      mockClient.setResponse('overpass-api.de', jsonEncode({
-        'elements': [
-          {
-            'type': 'node',
-            'id': 1,
-            'lat': 32.0741,
-            'lon': 34.7924,
-            'tags': {'name': 'Test Museum', 'tourism': 'museum'},
-          },
-        ],
-      }));
+      final mockClient =
+          DelayedMockApiClient(delay: Duration(milliseconds: 100));
+      mockClient.setResponse(
+          'overpass-api.de',
+          jsonEncode({
+            'elements': [
+              {
+                'type': 'node',
+                'id': 1,
+                'lat': 32.0741,
+                'lon': 34.7924,
+                'tags': {'name': 'Test Museum', 'tourism': 'museum'},
+              },
+            ],
+          }));
 
       final service = OverpassPoiService(apiClient: mockClient);
 
@@ -257,18 +270,21 @@ void main() {
 
     test('rapid viewport changes: only last request should complete', () async {
       // Arrange
-      final mockClient = DelayedMockApiClient(delay: Duration(milliseconds: 50));
-      mockClient.setResponse('overpass-api.de', jsonEncode({
-        'elements': [
-          {
-            'type': 'node',
-            'id': 1,
-            'lat': 32.0741,
-            'lon': 34.7924,
-            'tags': {'name': 'Test', 'tourism': 'museum'},
-          },
-        ],
-      }));
+      final mockClient =
+          DelayedMockApiClient(delay: Duration(milliseconds: 50));
+      mockClient.setResponse(
+          'overpass-api.de',
+          jsonEncode({
+            'elements': [
+              {
+                'type': 'node',
+                'id': 1,
+                'lat': 32.0741,
+                'lon': 34.7924,
+                'tags': {'name': 'Test', 'tourism': 'museum'},
+              },
+            ],
+          }));
 
       final service = OverpassPoiService(apiClient: mockClient);
       final tokens = <ApiCancellationToken>[];
@@ -279,13 +295,16 @@ void main() {
         final token = ApiCancellationToken();
         tokens.add(token);
 
-        final request = service.fetchPoisInBounds(
-          north: 32.08 + (i * 0.01),
-          south: 32.06 + (i * 0.01),
-          east: 34.80 + (i * 0.01),
-          west: 34.78 + (i * 0.01),
-          cancelToken: token,
-        ).then((pois) => pois as List<dynamic>).catchError((e) {
+        final request = service
+            .fetchPoisInBounds(
+              north: 32.08 + (i * 0.01),
+              south: 32.06 + (i * 0.01),
+              east: 34.80 + (i * 0.01),
+              west: 34.78 + (i * 0.01),
+              cancelToken: token,
+            )
+            .then((pois) => pois as List<dynamic>)
+            .catchError((e) {
           if (e is ApiRequestCancelledException) {
             return <dynamic>[]; // Return empty list for cancelled requests
           }
@@ -317,7 +336,7 @@ void main() {
 
       expect(successfulRequests, 1);
       expect(tokens.last.isCancelled, false);
-      
+
       // All except the last should be cancelled
       for (var i = 0; i < tokens.length - 1; i++) {
         expect(tokens[i].isCancelled, true);
@@ -326,10 +345,13 @@ void main() {
 
     test('no-leaks: cancelled POI requests should not accumulate', () async {
       // Arrange
-      final mockClient = DelayedMockApiClient(delay: Duration(milliseconds: 30));
-      mockClient.setResponse('overpass-api.de', jsonEncode({
-        'elements': [],
-      }));
+      final mockClient =
+          DelayedMockApiClient(delay: Duration(milliseconds: 30));
+      mockClient.setResponse(
+          'overpass-api.de',
+          jsonEncode({
+            'elements': [],
+          }));
 
       final service = OverpassPoiService(apiClient: mockClient);
 
@@ -356,7 +378,7 @@ void main() {
 
       // Assert - Give time for cleanup
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       // If we reach here without memory issues, test passes
       expect(mockClient.cancelledCount, greaterThan(20));
       expect(true, true);

@@ -32,8 +32,7 @@ class TextRunSplitter {
     for (int i = 0; i < runs.length; i++) {
       final run = runs[i];
       final text = run.chars.join();
-      final isWhitespaceOrPunct =
-          text.trim().isEmpty ||
+      final isWhitespaceOrPunct = text.trim().isEmpty ||
           text.length == 1 &&
               RegExp(r'[\s\p{P}]', unicode: true).hasMatch(text);
 

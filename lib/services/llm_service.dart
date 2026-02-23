@@ -69,7 +69,7 @@ class LlmService {
   static const int contentCheckMaxTokens = 20;
 
   LlmService({required this.config, http.Client? client})
-    : _client = client ?? http.Client();
+      : _client = client ?? http.Client();
 
   /// Generate an AI story for a POI
   Future<String> generateStory({
