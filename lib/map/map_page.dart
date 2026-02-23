@@ -17,6 +17,7 @@ import '../services/routing_service.dart';
 import '../services/tts_service.dart';
 import '../services/tts/tts_orchestrator.dart';
 import '../services/settings_service.dart';
+import '../services/viewport_request_coalescer.dart';
 import '../services/llm_service.dart';
 import '../services/guide_chat_service.dart';
 import '../settings/settings_page.dart';
@@ -100,8 +101,13 @@ class _MapPageState extends State<MapPage> {
   ApiCancellationToken?
       _currentPoiRequest; // Track current POI request for cancellation
 
+  // Coalescer: prevents duplicate in-flight fetchInBounds calls for the same
+  // viewport bounds + provider combination.
+  final ViewportRequestCoalescer _poiCoalescer = ViewportRequestCoalescer();
+
   // Provider settings
   MapProvider _mapProvider = MapProvider.openStreetMap;
+  PoiProvider _currentPoiProvider = PoiProvider.wikipedia;
 
   // User location tracking
   LatLng? _userLocation;
@@ -166,6 +172,11 @@ class _MapPageState extends State<MapPage> {
       });
       // Update routing and POI providers (outside setState since they don't affect UI state)
       _routingService.updateProvider(settings.routingProvider);
+      if (_currentPoiProvider != settings.poiProvider) {
+        _currentPoiProvider = settings.poiProvider;
+        // Provider changed — old coalescer key is no longer valid
+        _poiCoalescer.reset();
+      }
       _poiService.updateProvider(settings.poiProvider);
     }
   }
@@ -290,18 +301,7 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _loadPoisInView({bool isInitialLoad = false}) async {
-    // Monotonic version used to invalidate stale async responses from older
-    // viewport requests when a newer request is scheduled.
-    final requestVersion = ++_poiRequestVersion;
-
-    // Cancel any previous in-flight request
-    _currentPoiRequest?.cancel();
-    _currentPoiRequest = ApiCancellationToken();
-
-    if (_isLoadingPois) {
-      _hasPendingPoiReload = true;
-      return;
-    }
+    // Fast early returns that don't need bounds computation.
     if (isInitialLoad &&
         _hasPerformedInitialLoad &&
         _lastPoiRequestCenter != null) {
@@ -313,6 +313,12 @@ class _MapPageState extends State<MapPage> {
         now.difference(_lastRequestTime) < _kPoiRequestThrottleDelay) {
       return;
     }
+
+    // requestVersion and coalescerKey are set only when we commit to a new
+    // request so the finally block can distinguish committed requests from
+    // early returns.
+    int? requestVersion;
+    String? coalescerKey;
 
     try {
       final bounds = _mapController.camera.visibleBounds;
@@ -365,6 +371,39 @@ class _MapPageState extends State<MapPage> {
         return;
       }
 
+      // Build a stable key for this viewport + provider combination so we can
+      // coalesce duplicate requests before committing to a network call.
+      final key = ViewportRequestCoalescer.buildKey(
+        north: bounds.north,
+        south: bounds.south,
+        east: bounds.east,
+        west: bounds.west,
+        filtersHash: _currentPoiProvider.name,
+      );
+
+      if (_isLoadingPois) {
+        if (_poiCoalescer.shouldCoalesce(key)) {
+          // Identical viewport already in-flight — skip without invalidating it.
+          debugPrint('POI: Coalescing duplicate viewport request (key=$key)');
+          return;
+        }
+        // Different viewport while a request is loading — invalidate the
+        // in-flight response, clear the stale coalescer key, and queue a
+        // reload for the new viewport.
+        ++_poiRequestVersion;
+        _currentPoiRequest?.cancel();
+        _poiCoalescer.reset();
+        _hasPendingPoiReload = true;
+        return;
+      }
+
+      // No in-flight request — commit to starting a fresh one.
+      requestVersion = ++_poiRequestVersion;
+      _currentPoiRequest?.cancel();
+      _currentPoiRequest = ApiCancellationToken();
+      coalescerKey = key;
+      _poiCoalescer.beginRequest(key);
+
       _lastRequestTime = now;
 
       if (!mounted) return; // Check before setState
@@ -411,7 +450,9 @@ class _MapPageState extends State<MapPage> {
     } catch (e) {
       // Handle cancelled requests silently - they're expected
       if (e is ApiRequestCancelledException) {
-        debugPrint('POI request v$requestVersion was cancelled');
+        // requestVersion is always set before fetchInBounds is called, so it
+        // is guaranteed to be non-null when this exception can be thrown.
+        debugPrint('POI request v${requestVersion!} was cancelled');
         return;
       }
 
@@ -428,10 +469,14 @@ class _MapPageState extends State<MapPage> {
       // Handle error gracefully - could show a snackbar
       debugPrint('Error loading POIs: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoadingPois = false);
+      // Only clean up state when we actually committed to a request.
+      if (coalescerKey != null) {
+        _poiCoalescer.endRequest(coalescerKey);
+        if (mounted) {
+          setState(() => _isLoadingPois = false);
+        }
+        _triggerPendingPoiReload();
       }
-      _triggerPendingPoiReload();
     }
   }
 
